@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<TextureAtlas imagePath="button-campaign.png">
+	<!-- Created with Adobe Flash CS6 version 12.0.0.481 -->
+	<!-- http://www.adobe.com/products/flash.html -->
+	<SubTexture name="campaign selected0000" x="1" y="362" width="797" height="174" frameX="0" frameY="-3" frameWidth="797" frameHeight="182"/>
+	<SubTexture name="campaign selected0001" x="1" y="185" width="795" height="175" frameX="-2" frameY="-2" frameWidth="797" frameHeight="182"/>
+	<SubTexture name="campaign selected0002" x="1" y="1" width="795" height="182" frameX="0" frameY="0" frameWidth="797" frameHeight="182"/>
+	<SubTexture name="campaign unselected0000" x="1" y="538" width="616" height="123"/>
+	<SubTexture name="campaign unselected0001" x="1" y="538" width="616" height="123"/>
+	<SubTexture name="campaign unselected0002" x="1" y="538" width="616" height="123"/>
+	<SubTexture name="campaign unselected0003" x="1" y="663" width="616" height="123"/>
+	<SubTexture name="campaign unselected0004" x="1" y="663" width="616" height="123"/>
+	<SubTexture name="campaign unselected0005" x="1" y="663" width="616" height="123"/>
+	<SubTexture name="campaign unselected0006" x="1" y="788" width="616" height="123"/>
+	<SubTexture name="campaign unselected0007" x="1" y="788" width="616" height="123"/>
+	<SubTexture name="campaign unselected0008" x="1" y="788" width="616" height="123"/>
+</TextureAtlas>

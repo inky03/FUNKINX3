@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<TextureAtlas imagePath="button-mods.png">
+	<!-- Created with Adobe Flash CS6 version 12.0.0.481 -->
+	<!-- http://www.adobe.com/products/flash.html -->
+	<SubTexture name="mods selected0000" x="1" y="177" width="426" height="172" frameX="0" frameY="-1" frameWidth="430" frameHeight="174"/>
+	<SubTexture name="mods selected0001" x="1" y="351" width="425" height="172" frameX="-2" frameY="-1" frameWidth="430" frameHeight="174"/>
+	<SubTexture name="mods selected0002" x="1" y="1" width="427" height="174" frameX="-3" frameY="0" frameWidth="430" frameHeight="174"/>
+	<SubTexture name="mods unselected0000" x="1" y="525" width="318" height="123"/>
+	<SubTexture name="mods unselected0001" x="1" y="525" width="318" height="123"/>
+	<SubTexture name="mods unselected0002" x="1" y="650" width="318" height="123"/>
+	<SubTexture name="mods unselected0003" x="1" y="650" width="318" height="123"/>
+	<SubTexture name="mods unselected0004" x="1" y="775" width="318" height="123"/>
+	<SubTexture name="mods unselected0005" x="1" y="775" width="318" height="123"/>
+</TextureAtlas>

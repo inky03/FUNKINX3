@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<TextureAtlas imagePath="button-credits.png">
+	<!-- Created with Adobe Flash CS6 version 12.0.0.481 -->
+	<!-- http://www.adobe.com/products/flash.html -->
+	<SubTexture name="credits selected0000" x="1" y="180" width="634" height="172" frameX="0" frameY="-2" frameWidth="634" frameHeight="177"/>
+	<SubTexture name="credits selected0001" x="1" y="354" width="627" height="172" frameX="-3" frameY="-3" frameWidth="634" frameHeight="177"/>
+	<SubTexture name="credits selected0002" x="1" y="1" width="630" height="177" frameX="-3" frameY="0" frameWidth="634" frameHeight="177"/>
+	<SubTexture name="credits unselected0000" x="1" y="528" width="480" height="114"/>
+	<SubTexture name="credits unselected0001" x="1" y="528" width="480" height="114"/>
+	<SubTexture name="credits unselected0002" x="1" y="644" width="480" height="114"/>
+	<SubTexture name="credits unselected0003" x="1" y="644" width="480" height="114"/>
+	<SubTexture name="credits unselected0004" x="1" y="760" width="480" height="114"/>
+	<SubTexture name="credits unselected0005" x="1" y="760" width="480" height="114"/>
+</TextureAtlas>
