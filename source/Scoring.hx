@@ -8,8 +8,8 @@ class Scoring {
 			new HitWindow('sick', 350, .3, 1),
 			new HitWindow('good', 200, .6, .8, .75),
 			new HitWindow('bad', 100, .9, .5, .5),
-			new HitWindow('shit', 50, 1, .2, .25),
-			new HitWindow('shit', 50, 1, .2, -.5) //HORRIBLE
+			new HitWindow('shit', 50, 1, .2, 0),
+			new HitWindow('shit', 50, 1, .2, -.75) //HORRIBLE
 		];
 		windows[0].splash = true;
 		windows[2].breaksCombo = true;

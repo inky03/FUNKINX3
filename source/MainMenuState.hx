@@ -24,7 +24,8 @@ class MainMenuState extends MusicBeatState {
 		
 		var i:Int = 0;
 		var buttonSpacing:Float = 152;
-		for (buttonName in ['campaign', 'freeplay', 'mods', 'options', 'credits']) {
+		var buttons:Array<String> = ['campaign', 'freeplay', 'mods', 'options', 'credits'];
+		for (buttonName in buttons) {
 			var button:FunkinSprite = new FunkinSprite(FlxG.width * .5, FlxG.height * .5 + (i - buttons.length * .5 + .5) * buttonSpacing).loadAtlas('mainmenu/button-${buttonName}');
 			button.animation.addByPrefix('unselected', '${buttonName} unselected', 24, true);
 			button.animation.addByPrefix('selected', '${buttonName} selected', 24, true);

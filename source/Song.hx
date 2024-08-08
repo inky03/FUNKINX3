@@ -16,6 +16,7 @@ class Song {
 	public var scrollSpeed:Float = 1;
 	
 	public var instLoaded:Bool;
+	public var vocalsLoaded:Bool;
 	public var instTrack:FlxSound;
 	public var vocalTrack:FlxSound;
 	
@@ -160,10 +161,14 @@ class Song {
 	public function loadMusic(path:String) {
 		if (instLoaded) return true;
 		try {
-			instTrack.loadEmbedded(Sound.fromFile(path + 'Inst.ogg'));
-			vocalTrack.loadEmbedded(Sound.fromFile(path + 'Voices.ogg'));
-			instLoaded = (instTrack.length > 144);
-			if (!instLoaded) trace('MUSIC FAILED TO LOAD! (OUT OF MEMORY)');
+			if (FileSystem.exists(path + 'Voices.ogg')) {
+				vocalTrack.loadEmbedded(Sound.fromFile(path + 'Voices.ogg'));
+				vocalsLoaded = (vocalTrack.length > 0);
+			}
+			if (FileSystem.exists(path + 'Inst.ogg')) {
+				instTrack.loadEmbedded(Sound.fromFile(path + 'Inst.ogg'));
+				instLoaded = (instTrack.length > 0);
+			}
 			return true;
 		} catch(e:Dynamic)
 			return false;

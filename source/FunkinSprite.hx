@@ -34,11 +34,11 @@ class FunkinSprite extends FlxSprite {
 		frames = Paths.getSparrowAtlas(path);
 		return this;
 	}
+	
 	public override function makeGraphic(width:Int, height:Int, color:FlxColor = FlxColor.WHITE, unique:Bool = false, ?key:String) {
 		super.makeGraphic(width, height, color, unique, key);
 		return this;
 	}
-	
 	public override function updateHitbox() {
 		super.updateHitbox();
 		spriteOffset.set(offset.x / scale.x, offset.y / scale.y);
@@ -48,6 +48,13 @@ class FunkinSprite extends FlxSprite {
 		spriteOffset.set(offset.x / scale.x, offset.y / scale.y);
 	}
 	public function setOffset(x:Float, y:Float) spriteOffset.set(x / scale.x, y / scale.y);
+	public function hasAnimationPrefix(prefix:String) {
+		if (animation == null) return false;
+		var frames:Array<flixel.graphics.frames.FlxFrame> = [];
+		@:privateAccess //why is it private :sob:
+		animation.findByPrefix(frames, prefix);
+		return (frames.length > 0);
+	}
 	
 	inline public function refreshOffset() {
 		var xP:Float = (spriteOffset.x + animOffset.x) * scale.x;

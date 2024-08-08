@@ -11,6 +11,7 @@ import Character;
 import Strumline;
 import Scoring;
 import Rating;
+import Chloe;
 import Lane;
 import Note;
 import Song;
@@ -20,6 +21,7 @@ class PlayState extends MusicBeatState {
 	public var player1:Character;
 	public var player2:Character;
 	
+	public var lol:Alphabet;
 	public var healthBar:Bar;
 	public var scoreTxt:FlxText;
 	public var opponentStrumline:Strumline;
@@ -55,6 +57,9 @@ class PlayState extends MusicBeatState {
 	
 	override public function create() {
 		super.create();
+		
+		//FlxG.drawFramerate = 240;
+		//FlxG.updateFramerate = 240;
 		
 		paused = true; //setup the freaking song
 		song = Song.loadLegacySong('esculent', 'hard');
@@ -98,6 +103,9 @@ class PlayState extends MusicBeatState {
 		player1.offsets.set('singRIGHTmiss', FlxPoint.get(-44, 19));
 		player1.dance(0);
 		add(player1);
+		
+		lol = new Alphabet(-100, 300, 'Idk what the hell im doing (yippee)');
+		add(lol);
 		
 		var scrollDir:Float = (Settings.data.downscroll ? 270 : 90);
 		
@@ -153,6 +161,7 @@ class PlayState extends MusicBeatState {
 	}
 
 	override public function update(elapsed:Float) {
+		lol.text = 'hiiii ${Util.padDecimals(Conductor.songPosition, 2)}';
 		if (FlxG.keys.justPressed.R) {
 			opponentStrumline.clearNotes();
 			playerStrumline.clearNotes();
@@ -227,7 +236,7 @@ class PlayState extends MusicBeatState {
 	
 	public function syncMusic(forceSongpos:Bool = false) {
 		if (song.instLoaded && song.instTrack.playing) {
-			if (Math.abs(song.instTrack.time - song.vocalTrack.time) > 100)
+			if (song.vocalsLoaded && Math.abs(song.instTrack.time - song.vocalTrack.time) > 100)
 				song.vocalTrack.time = song.instTrack.time;
 			if ((forceSongpos && Conductor.songPosition < song.instTrack.time) || Math.abs(song.instTrack.time - Conductor.songPosition) > 100)
 				Conductor.songPosition = song.instTrack.time;
@@ -305,8 +314,10 @@ class PlayState extends MusicBeatState {
 			if (player1.animation.name != anim)
 				player1.playAnimation(anim, true);
 			player1.timeAnimSteps(player1.singForSteps);
+			if (note.isHoldTail)
+				FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
 		} else {
-			FlxG.sound.play(Paths.sound('hitsound'), .6);
+			FlxG.sound.play(Paths.sound('hitsound'), .7);
 			player1.playAnimation('sing${singAnimations[note.noteData]}', true);
 			
 			var window:HitWindow = Scoring.judgeLegacy(hitWindows, note.hitWindow, note.msTime - Conductor.songPosition);
