@@ -1,14 +1,15 @@
 package;
 
 class Alphabet extends FlxSpriteGroup {
-	public var bold(default, set):Bool;
-	public var text(default, set):String = '';
+	public var type(default, set):String;
+	public var text(default, set):String;
 	public var padding(default, set):Float = -3;
+	public var letterCase(default, set):AlphabetCase = NONE;
 	public var characters:Array<AlphabetCharacter> = [];
 	
-	public function new(x:Float = 0, y:Float = 0, text:String = '', bold:Bool = true) {
+	public function new(x:Float = 0, y:Float = 0, text:String = '', type:String = 'bold') {
 		super(x, y);
-		this.bold = bold;
+		this.type = type;
 		this.text = text;
 	}
 	
@@ -21,42 +22,61 @@ class Alphabet extends FlxSpriteGroup {
 		}
 		return padding = newPadding;
 	}
-	public function set_bold(newBold:Bool) {
-		for (letter in characters) letter.bold = newBold;
-		return bold = newBold;
+	public inline function recalculateLetters() {
+		var xx:Float = 0;
+		for (character in characters) {
+			character.baseX = xx;
+			xx += (character.blank ? 50 : character.width) + padding;
+		}
+	}
+	public function set_letterCase(newCase:AlphabetCase) {
+		for (character in characters) character.letterCase = newCase;
+		recalculateLetters();
+		return letterCase = newCase;
+	}
+	public function set_type(newType:String) {
+		switch (newType) {
+			case 'bold':
+				padding = -3;
+				letterCase = UPPERCASE;
+			case 'black':
+				padding = 3;
+				letterCase = NONE;
+			default:
+		}
+		for (character in characters) {
+			character.letterCase = letterCase;
+			character.type = newType;
+		}
+		recalculateLetters();
+		return type = newType;
 	}
 	public function set_text(newText:String = '') {
 		if (newText == text) return newText;
+		
 		while (characters.length > newText.length) {
 			var character:AlphabetCharacter = characters.shift();
 			remove(character, true);
-			character.destroy();
+			character.destroy(); //todo: pool letters?
 		}
 		
 		var stringLetters:Array<String> = newText.split('');
-		var xx:Float = 0;
 		var i:Int = 0;
 		for (letter in stringLetters) {
-			var character:Null<AlphabetCharacter> = null;
+			var character:AlphabetCharacter;
 			if (i >= characters.length) {
-				character = new AlphabetCharacter(xx, 0, letter, bold);
+				character = new AlphabetCharacter(0, 0, letter, type);
 				characters.push(character);
 				add(character);
 			} else {
 				character = characters[i];
-				//trace('mod character ${character.character} -> ${letter}');
 				character.character = letter;
-				character.baseX = xx;
 			}
-			if (character != null)
-				xx += (character.blank ? 50 : character.width) + padding;
+			character.letterCase = letterCase;
 			i ++;
 		}
 		
-		var penis:String = '';
-		for (char in characters) penis += char.character;
-		//trace('${characters.length} / ${stringLetters.length} /// ${penis} / ${newText}');
-			//trace('${newChar} (${letter.name}) -> ${letterAnim}');
+		recalculateLetters();
 		return text = newText;
 	}
 }
@@ -64,45 +84,57 @@ class Alphabet extends FlxSpriteGroup {
 class AlphabetCharacter extends FunkinSprite {
 	public var baseX(default, set):Float;
 	public var baseY(default, set):Float;
-	public var bold(default, set):Bool;
+	public var type(default, set):String;
 	public var blank(default, null):Bool;
 	public var character(default, set):String = '';
+	public var letterCase(default, set):AlphabetCase = NONE;
 	public static var meta:Map<String, Letter> = [
+		'!' => {name: '-exclamation point-', boldOffset: [0, 0], blackOffset: [0, 0]},
 		'.' => {name: '-period-', boldOffset: [0, 0], blackOffset: [0, 0]},
 		'&' => {name: '-and-', boldOffset: [0, 0], blackOffset: [0, 0]},
 	];
 	
-	inline static function isLowerCase(character:String) return (character.toLowerCase() == character && character.toUpperCase() != character);
-	public static function getLetter(character:String, bold:Bool = true) {
-		if (AlphabetCharacter.meta.exists(character)) return AlphabetCharacter.meta[character];
-		return {name: character, boldOffset: [0, 0], blackOffset: [0, 0]};
+	inline static function isLowerCase(char:String) return (char.toLowerCase() == char && char.toUpperCase() != char);
+	public static function getLetter(char:String) {
+		if (AlphabetCharacter.meta.exists(char)) return AlphabetCharacter.meta[char];
+		return {name: char, boldOffset: [0, 0], blackOffset: [0, 0]};
 	}
 	
-	public function new(x:Float = 0, y:Float = 0, character:String = ' ', bold:Bool = true) {
+	public function new(x:Float = 0, y:Float = 0, character:String = ' ', type:String = 'bold') {
 		super();
 		this.baseX = x;
 		this.baseY = y;
-		this.bold = bold;
+		this.type = type;
 		this.character = character;
 	}
 	public function set_character(newChar:String) {
+		switch (letterCase) {
+			case UPPERCASE:
+				newChar = newChar.toUpperCase();
+			case LOWERCASE:
+				newChar = newChar.toLowerCase();
+			default:
+		}
+		
 		if (frames == null) return character = newChar;
+		
 		if (!animation.exists(newChar)) {
-			var letter:Letter = AlphabetCharacter.getLetter(bold ? newChar.toUpperCase() : newChar, bold);
+			var letter:Letter = AlphabetCharacter.getLetter(newChar);
 			
-			var letterOffset:Array<Float> = (bold ? letter.boldOffset : letter.blackOffset);
 			var letterAnim:String = letter.name;
-			if (bold) letterAnim = '${letterAnim} bold';
-			else if (isLowerCase(letterAnim)) letterAnim = '${letterAnim} lowercase';
+			if (type == 'bold') letterAnim = '${letterAnim} bold';
+			else if (isLowerCase(newChar)) letterAnim = '${letterAnim} lowercase';
 			
 			if (hasAnimationPrefix(letterAnim)) {
+				var letterOffset:Array<Float> = (type == 'bold' ? letter.boldOffset : letter.blackOffset);
 				visible = true;
 				blank = false;
 				offsets[newChar] = FlxPoint.get(letterOffset[0], letterOffset[1]);
-				animation.addByPrefix(newChar, letterAnim, 24, true);
+				animation.addByPrefix(newChar, '${letterAnim}0', 24, true);
 				playAnimation(newChar);
 				updateHitbox();
-				if (letterOffset[1] == 0) offsets[newChar].y = height - 68;
+				if (letterOffset[1] == 0)
+					spriteOffset.y = offsets[newChar].y = height - 68;
 			} else {
 				blank = true;
 				visible = false;
@@ -115,13 +147,18 @@ class AlphabetCharacter extends FunkinSprite {
 		}
 		return character = newChar;
 	}
-	public function set_bold(newBold:Bool) {
-		if (bold != newBold) {
+	public function set_letterCase(newCase:AlphabetCase) {
+		letterCase = newCase;
+		set_character(character);
+		return letterCase = newCase;
+	}
+	public function set_type(newType:String) {
+		if (type != newType) {
 			offsets.clear();
-			loadAtlas('alphabet-${newBold ? 'bold' : 'black'}');
+			loadAtlas('alphabet${newType == '' ? '' : '-${newType}'}');
 			set_character(character);
 		}
-		return bold = newBold;
+		return type = newType;
 	}
 	public function set_baseX(newX:Float) {
 		x += newX - baseX;
@@ -135,6 +172,12 @@ class AlphabetCharacter extends FunkinSprite {
 
 typedef Letter = {
 	public var name:String;
-	public var boldOffset:Array<Float>;
+	public var boldOffset:Array<Float>; //well uh.
 	public var blackOffset:Array<Float>;
+}
+
+enum AlphabetCase {
+	UPPERCASE;
+	LOWERCASE;
+	NONE;
 }

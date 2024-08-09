@@ -145,7 +145,7 @@ class Strumline extends FlxSpriteGroup {
 			updateHitbox();
 		}
 	}
-	public inline function center(axes:FlxAxes = XY) {
+	public function center(axes:FlxAxes = XY) { //do Not inline that.
 		switch (axes) {
 			case X:
 				x = (FlxG.width - strumlineWidth) * .5;

@@ -21,7 +21,6 @@ class PlayState extends MusicBeatState {
 	public var player1:Character;
 	public var player2:Character;
 	
-	public var lol:Alphabet;
 	public var healthBar:Bar;
 	public var scoreTxt:FlxText;
 	public var opponentStrumline:Strumline;
@@ -104,9 +103,6 @@ class PlayState extends MusicBeatState {
 		player1.dance(0);
 		add(player1);
 		
-		lol = new Alphabet(-100, 300, 'Idk what the hell im doing (yippee)');
-		add(lol);
-		
 		var scrollDir:Float = (Settings.data.downscroll ? 270 : 90);
 		
 		opponentStrumline = new Strumline(4, scrollDir, song.scrollSpeed);
@@ -161,7 +157,7 @@ class PlayState extends MusicBeatState {
 	}
 
 	override public function update(elapsed:Float) {
-		lol.text = 'hiiii ${Util.padDecimals(Conductor.songPosition, 2)}';
+		//DEBUG CONTROL
 		if (FlxG.keys.justPressed.R) {
 			opponentStrumline.clearNotes();
 			playerStrumline.clearNotes();
