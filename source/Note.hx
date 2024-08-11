@@ -33,6 +33,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var msTime:Float = 0;
 	public var msLength:Float = 0;
 	public var endMs(get, never):Float;
+	public var beatTime(default, set):Float = 0;
 	
 	public var isHoldPiece:Bool = false;
 	public var isHoldTail:Bool = false;
@@ -71,6 +72,10 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		updateHitbox();
 		clipHeight = frameHeight;
 	}
+	public function set_beatTime(newTime:Float) {
+		msTime = Conductor.convertMeasure(newTime, BEAT, MS);
+		return beatTime = newTime;
+	}
 	
 	public static function distanceToMS(distance:Float, scrollSpeed:Float) {
 		return distance / (.45 * scrollSpeed);
@@ -108,6 +113,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		x = receptor.x + noteOffset.x + Math.sin(rad) * xP + Math.cos(rad) * yP;
 		y = receptor.y + noteOffset.y + Math.sin(rad) * yP + Math.cos(rad) * xP;
 		alpha = lane.alpha * receptor.alpha * multAlpha;
+		//trace('${Math.round(x)},${Math.round(y)} / ${width},${height} / ${scale.x},${scale.y} / ${offset.x},${offset.y} / alpha: ${alpha} / vis: ${visible} / dist: ${scrollDistance}');
 		
 		if (isHoldPiece) { //handle in DISTANCE to support scroll direction
 			var clip:Bool = (lane.held);

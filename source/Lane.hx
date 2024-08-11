@@ -8,8 +8,9 @@ class Lane extends FlxSpriteGroup {
 	public var noteData:Int;
 	public var cpu:Bool = true;
 	public var held(default, set):Bool = false;
-	public var scrollSpeed:Float = 1;
+	public var scrollSpeed(default, set):Float = 1;
 	public var direction:Float = 90;
+	public var spawnRadius:Float;
 	public var hitWindow:Float = Scoring.safeFrames / 60 * 1000;
 	public var strumline:Strumline;
 	
@@ -23,7 +24,12 @@ class Lane extends FlxSpriteGroup {
 	public var notes:FlxTypedSpriteGroup<Note>;
 	public var noteSplashes:FlxTypedSpriteGroup<NoteSplash>;
 	public var noteSparks:FlxTypedSpriteGroup<NoteSpark>;
+	public var queue:Array<Note> = [];
 	
+	public function set_scrollSpeed(newSpeed:Float) {
+		spawnRadius = Note.distanceToMS(FlxG.height, newSpeed);
+		return scrollSpeed = newSpeed;
+	}
 	public function set_held(newHeld:Bool) {
 		if (newHeld) popCover();
 		else noteCover.visible = false;
@@ -36,6 +42,7 @@ class Lane extends FlxSpriteGroup {
 		notes = new FlxTypedSpriteGroup<Note>();
 		noteSparks = new FlxTypedSpriteGroup<NoteSpark>(0, 0, 5);
 		noteSplashes = new FlxTypedSpriteGroup<NoteSplash>(0, 0, 5);
+		spawnRadius = Note.distanceToMS(FlxG.height, scrollSpeed);
 		receptor.lane = this; //lol
 		this.noteData = data;
 		this.add(receptor);
@@ -48,7 +55,25 @@ class Lane extends FlxSpriteGroup {
 	public override function update(elapsed:Float) {
 		super.update(elapsed);
 		
-		var i:Int = notes.length;
+		var i:Int = 0;
+		var limit:Int = 50;
+		while (i < queue.length) {
+			var note:Note = queue[i];
+			if (note == null) {
+				trace('WARNING: Note was null!! (lane ${noteData})');
+				queue.remove(note);
+				continue;
+			}
+			if ((note.msTime - Conductor.songPosition) <= spawnRadius && (note.endMs - Conductor.songPosition) >= -spawnRadius) {
+				queue.remove(note);
+				insertNote(note);
+				limit --;
+				if (limit < 0) break;
+			} else
+				i ++;
+		}
+		
+		i = notes.length;
 		while (i > 0) {
 			i --;
 			var note:Note = notes.members[i];
@@ -63,16 +88,24 @@ class Lane extends FlxSpriteGroup {
 						receptor.animation.finishCallback = null;
 					}
 				}
-				if (Conductor.songPosition >= note.endMs)
+				if (Conductor.songPosition >= note.endMs) {
 					killNote(note);
+					continue;
+				}
 			}
 			if (note.lost || note.goodHit || note.isHoldPiece) {
-				if (Conductor.songPosition - 1000 > note.endMs)
+				if ((note.endMs - Conductor.songPosition) < -spawnRadius) {
+					queue.push(note);
 					killNote(note);
+				}
 			} else {
 				if (Conductor.songPosition - hitWindow > note.msTime) {
 					note.lost = true;
 					onNoteLost(note, this);
+				}
+				if ((note.msTime - Conductor.songPosition) > spawnRadius) {
+					queue.push(note);
+					killNote(note);
 				}
 			}
 		}
@@ -104,8 +137,12 @@ class Lane extends FlxSpriteGroup {
 		spark.sparkOnReceptor(receptor);
 	}
 	
-	public function clearNotes() notes.clear();
-	public function insertNote(note:Note) {
+	public function clearNotes() {
+		for (note in notes) note.kill();
+		notes.clear();
+	}
+	public function insertNote(note:Note, pos:Int = 0) {
+		if (notes.members.contains(note)) return;
 		note.hitWindow = hitWindow;
 		note.goodHit = false;
 		if (!note.isHoldPiece) {
@@ -115,7 +152,7 @@ class Lane extends FlxSpriteGroup {
 		note.scale.copyFrom(receptor.scale);
 		note.updateHitbox();
 		note.revive();
-		notes.insert(0, note);
+		notes.insert(pos, note);
 		note.followLane(this, scrollSpeed);
 	}
 	public dynamic function hitNote(note:Note, kill:Bool = true) {

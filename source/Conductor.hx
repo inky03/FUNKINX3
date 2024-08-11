@@ -1,21 +1,49 @@
 package;
 
 class Conductor {
-	public static var songPosition(default, set):Float = 0;
-	public static var crochet:Float = 600;
-	public static var stepCrochet:Float = crochet * .25;
+	@:isVar public static var songPosition(get, set):Float = 0;
+	public static var crochet(get, never):Float;
+	public static var stepCrochet(get, never):Float;
 	public static var metronome:Metronome = new Metronome();
 	
-	inline public static function getCrochet(bpm:Float, denominator:Int) return (60000 / bpm / denominator * 4);
-	inline public static function recalculateCrochet(BPM:Float, numerator:Int, denominator:Int) {
-		crochet = getCrochet(BPM, denominator);
-		stepCrochet = crochet * .25; //step is ALWAYS 1/4 of a beat. doesnt matter
-	}
+	public static function get_crochet() return (metronome.getCrochet(metronome.bpm, metronome.denominator));
+	public static function get_stepCrochet() return (crochet * .25);
+	
+	public static function get_songPosition() return metronome.ms;
 	public static function set_songPosition(newMS:Float) {
-		metronome.updateFromMS(newMS);
-		recalculateCrochet(metronome.bpm, metronome.numerator, metronome.denominator);
+		metronome.setMS(newMS);
 		return songPosition = newMS;
 	}
+	public static function resetToDefault() {
+		metronome = new Metronome();
+	}
+	public static function convertMeasure(value:Float, input:MetronomeMeasure, output:MetronomeMeasure) {
+		var prevMS:Float = metronome.ms;
+		var target:Float = 0;
+		switch (input) {
+			case STEP: metronome.setStep(value);
+			case BEAT: metronome.setBeat(value);
+			case BAR: metronome.setBar(value);
+			case MS: metronome.setMS(value);
+			default:
+		}
+		switch (output) {
+			case STEP: target = metronome.step;
+			case BEAT: target = metronome.beat;
+			case BAR: target = metronome.bar;
+			case MS: target = metronome.ms; //why
+			default:
+		}
+		metronome.setMS(prevMS);
+		return target;
+	}
+}
+
+enum MetronomeMeasure {
+	STEP;
+	BEAT;
+	BAR;
+	MS;
 }
 
 class Metronome {
@@ -23,9 +51,9 @@ class Metronome {
 	public var step:Float;
 	public var beat:Float;
 	public var bar:Float;
-	public var bpm:Float;
+	public var ms:Float;
 	
-	//time signatures
+	public var bpm:Float;
 	public var numerator:Int;
 	public var denominator:Int;
 	
@@ -39,10 +67,89 @@ class Metronome {
 		denominator = newDenom;
 		tempoChanges = [new TempoChange(0, 100, 4, 4)];
 	}
-	public function updateFromMS(ms:Float) { //todo: optimize (dont recalculate every bpm change every update)
-		var firstChange = tempoChanges[0];
-		if (firstChange == null) return;
+	
+	public function setStep(newStep:Float) {
+		setBeat(newStep * 4);
+		return step = newStep;
+	}
+	
+	public function setBeat(newBeat:Float) {
+		if (beat == newBeat) return newBeat;
 		
+		var firstChange:TempoChange = tempoChanges[0];
+		bpm = firstChange.bpm;
+		numerator = firstChange.numerator;
+		denominator = firstChange.denominator;
+		
+		var tempBeat:Float = 0;
+		var lastBeat:Float = 0;
+		var lastBar:Float = 0;
+		var lastMS:Float = 0;
+		
+		for (change in tempoChanges) {
+			tempBeat += (change.beatTime - lastBeat);
+			if (tempBeat > newBeat) break;
+			
+			lastBeat = tempBeat;
+			lastBar += (change.beatTime - lastBeat) / numerator;
+			lastMS += (change.beatTime - lastBeat) * getCrochet(bpm, denominator);
+			
+			if (change.changeBPM) bpm = change.bpm;
+			if (change.changeTimeSign) {
+				numerator = change.numerator;
+				denominator = change.denominator;
+			}
+		}
+		
+		var crochet:Float = getCrochet(bpm, denominator);
+		var relBeat = newBeat - lastBeat;
+		step = beat * 4;
+		ms = relBeat * crochet + lastMS;
+		bar = relBeat / numerator + lastBar;
+		
+		return beat = newBeat;
+	}
+	
+	public function setBar(newBar:Float) {
+		if (bar == newBar) return newBar;
+		
+		var firstChange:TempoChange = tempoChanges[0];
+		bpm = firstChange.bpm;
+		numerator = firstChange.numerator;
+		denominator = firstChange.denominator;
+		
+		var lastBeat:Float = 0;
+		var tempBar:Float = 0;
+		var lastBar:Float = 0;
+		var lastMS:Float = 0;
+		
+		for (change in tempoChanges) {
+			tempBar += (change.beatTime - lastBeat) / numerator;
+			if (tempBar > newBar) break;
+			
+			lastBeat = change.beatTime;
+			lastMS += (change.beatTime - lastBeat) * getCrochet(bpm, denominator);
+			
+			if (change.changeBPM) bpm = change.bpm;
+			if (change.changeTimeSign) {
+				numerator = change.numerator;
+				denominator = change.denominator;
+			}
+		}
+		
+		var crochet:Float = getCrochet(bpm, denominator);
+		var relBeat = (newBar - lastBeat) * numerator;
+		step = bar * 4;
+		beat = relBeat + lastBeat;
+		ms = relBeat * crochet + lastMS;
+		
+		return bar = newBar;
+	}
+	
+	public function setMS(newMS:Float) { //todo: optimize (dont recalculate every bpm change every update)
+		if (ms == newMS) return newMS;
+		
+		var firstChange:TempoChange = tempoChanges[0];
 		bpm = firstChange.bpm;
 		numerator = firstChange.numerator;
 		denominator = firstChange.denominator;
@@ -54,7 +161,7 @@ class Metronome {
 		
 		for (change in tempoChanges) {
 			tempMS += (change.beatTime - lastBeat) * getCrochet(bpm, denominator);
-			if (tempMS > ms) break;
+			if (tempMS > newMS) break;
 			
 			lastMS = tempMS;
 			lastBar += (change.beatTime - lastBeat) / numerator;
@@ -68,10 +175,12 @@ class Metronome {
 		}
 		
 		var crochet:Float = getCrochet(bpm, denominator);
-		var relBeat = (ms - lastMS) / crochet;
+		var relBeat = (newMS - lastMS) / crochet;
 		beat = relBeat + lastBeat;
 		step = beat * 4;
 		bar = relBeat / numerator + lastBar;
+		
+		return ms = newMS;
 	}
 }
 

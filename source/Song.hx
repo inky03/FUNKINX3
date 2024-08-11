@@ -72,7 +72,7 @@ class Song {
 		try {
 			song.name = song.json.song;
 			song.initialBpm = song.json.bpm;
-			song.tempoChanges.push(new TempoChange(0, song.initialBpm, 4, 4));
+			song.tempoChanges = [new TempoChange(0, song.initialBpm, 4, 4)];
 			song.scrollSpeed = song.json.speed;
 			
 			var ms:Float = 0;

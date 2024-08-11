@@ -16,6 +16,7 @@ class Strumline extends FlxSpriteGroup {
 	
 	//all lane setters (getters are Not representative of all lanes)
 	public var cpu(default, set):Bool;
+	public var laneCount(default, set):Int;
 	public var hitWindow(default, set):Float;
 	public var direction(default, set):Float;
 	public var scrollSpeed(default, set):Float;
@@ -41,6 +42,19 @@ class Strumline extends FlxSpriteGroup {
 			i ++;
 		}
 		return laneSpacing = newSpacing;
+	}
+	public function set_laneCount(newCount:Int) {
+		while (lanes.length > 0 && lanes.length > newCount) {
+			var lane = lanes.members[lanes.length - 1];
+			lanes.remove(lane, true);
+			lane.destroy();
+		}
+		for (i in laneCount...newCount) {
+			var lane:Lane = new Lane(i * laneSpacing, 0, i);
+			lane.strumline = this;
+			lanes.add(lane);
+		}
+		return laneCount = newCount;
 	}
 	
 	//getters
@@ -95,15 +109,11 @@ class Strumline extends FlxSpriteGroup {
 	public override function get_width() return strumlineWidth;
 	public override function get_height() return strumlineHeight;
 	
-	public function new(noteCount:Int = 4, direction:Float = 90, scrollSpeed:Float = 1) {
+	public function new(laneCount:Int = 4, direction:Float = 90, scrollSpeed:Float = 1) {
 		super();
 		this.lanes = new FlxTypedSpriteGroup<Lane>();
-		for (i in 0...noteCount) {
-			var lane:Lane = new Lane(i * laneSpacing, 0, i);
-			lane.strumline = this;
-			lanes.add(lane);
-		}
 		this.add(lanes);
+		this.laneCount = laneCount;
 		this.direction = direction;
 		this.scrollSpeed = scrollSpeed;
 		this.onNoteHit = (note:Note, lane:Lane) -> {
@@ -117,6 +127,22 @@ class Strumline extends FlxSpriteGroup {
 				if (!lane.cpu) lane.spark();
 			}
 		};
+	}
+	public function fadeIn() {
+		var i:Int = 0;
+		var targetY:Float = y;
+		for (lane in lanes) {
+			lane.alpha = 0;
+			var targetX:Float = x + i * laneSpacing;
+			var rad:Float = lane.direction / 180 * Math.PI;
+			
+			FlxTween.cancelTweensOf(lane);
+			lane.x = targetX - Math.cos(rad) * 10;
+			lane.y = targetY - Math.sin(rad) * 10;
+			FlxTween.tween(lane, {x: targetX, y: targetY, alpha: 1}, 1, {ease: FlxEase.circOut, startDelay: .5 + i * .2});
+			
+			i ++;
+		}
 	}
 	
 	public function fitToSize(targetWidth:Float = 0, targetHeight:Float = 0, center:FlxAxes = NONE) {
@@ -159,8 +185,11 @@ class Strumline extends FlxSpriteGroup {
 		return this;
 	}
 	
-	public function clearNotes() {
-		for (lane in lanes) lane.clearNotes();
+	public function clearAllNotes() {
+		for (lane in lanes) {
+			lane.clearNotes();
+			lane.queue = [];
+		}
 	}
 	
 	public function getLane(noteData:Int) return lanes.members[noteData];

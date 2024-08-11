@@ -18,7 +18,6 @@ class MusicBeatState extends FlxUIState {
 		curBeat = -1;
 		curStep = -1;
 		Conductor.songPosition = 0;
-		updateMetronome();
 	}
 	public function stepHit(step:Int) {
 	}
@@ -43,8 +42,8 @@ class MusicBeatState extends FlxUIState {
 		curStep = Math.floor(Conductor.metronome.step);
 		curBeat = Math.floor(Conductor.metronome.beat);
 		curBar = Math.floor(Conductor.metronome.bar);
-		if (prevStep != curStep) stepHit(curStep);
-		if (prevBeat != curBeat) beatHit(curBeat);
 		if (prevBar != curBar) barHit(curBar);
+		if (prevBeat != curBeat) beatHit(curBeat);
+		if (prevStep != curStep) stepHit(curStep);
 	}
 }

@@ -7,6 +7,7 @@ import flixel.FlxState;
 
 import Scoring.HitWindow;
 import Song.SongEvent;
+import Conductor;
 import Character;
 import Strumline;
 import Scoring;
@@ -38,7 +39,6 @@ class PlayState extends MusicBeatState {
 	public var camFocusTarget:FlxPoint;
 	
 	public var song:Song;
-	public var unspawnedNotes:Array<Note> = [];
 	public var events:Array<SongEvent> = [];
 	public var noteSpawnOffset:Float;
 	
@@ -61,11 +61,12 @@ class PlayState extends MusicBeatState {
 		//FlxG.updateFramerate = 240;
 		
 		paused = true; //setup the freaking song
+		
+		var tempNotes:Array<Note> = [];
 		song = Song.loadLegacySong('esculent', 'hard');
 		for (event in song.events) events.push(event);
-		for (note in song.notes) unspawnedNotes.push(note);
 		Conductor.metronome.tempoChanges = song.tempoChanges;
-		Conductor.songPosition = 0;
+		Conductor.metronome.setBeat(-5);
 		
 		camHUD = new FlxCamera();
 		camOther = new FlxCamera();
@@ -119,6 +120,9 @@ class PlayState extends MusicBeatState {
 		playerStrumline.cpu = false;
 		add(playerStrumline);
 		
+		opponentStrumline.fadeIn();
+		playerStrumline.fadeIn();
+		
 		var playerHit = playerStrumline.onNoteHit;
 		playerStrumline.onNoteHit = (note:Note, lane:Lane) -> {
 			noteHit(note);
@@ -127,6 +131,11 @@ class PlayState extends MusicBeatState {
 		playerStrumline.onNoteLost = (note:Note, lane:Lane) -> {
 			noteMissed(note);
 		};
+		for (note in song.notes) {
+			var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
+			var lane:Lane = strumline.getLane(note.noteData);
+			lane.queue.push(note);
+		}
 		
 		if (Settings.data.middlescroll) {
 			playerStrumline.center(X);
@@ -158,24 +167,29 @@ class PlayState extends MusicBeatState {
 
 	override public function update(elapsed:Float) {
 		//DEBUG CONTROL
+		if (FlxG.keys.justPressed.Q) {
+			Conductor.songPosition -= 350;
+		}
 		if (FlxG.keys.justPressed.R) {
-			opponentStrumline.clearNotes();
-			playerStrumline.clearNotes();
-			unspawnedNotes = [];
+			opponentStrumline.fadeIn();
+			playerStrumline.fadeIn();
+			
+			opponentStrumline.clearAllNotes();
+			playerStrumline.clearAllNotes();
 			events = [];
-			for (event in song.events) events.push(event);
 			for (note in song.notes) {
-				note.revive();
-				note.clipRect = null;
-				unspawnedNotes.push(note);
+				var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
+				var lane:Lane = strumline.getLane(note.noteData);
+				lane.queue.push(note);
 			}
+			for (event in song.events) events.push(event);
 			for (track in [song.instTrack, song.vocalTrack]) {
-				if (paused)
-					track.time = 0;
-				else
-					track.play(true);
+				track.time = 0;
+				track.pause();
+				//track.play(true);
 			}
 			resetMusic();
+			Conductor.metronome.setBeat(-5);
 			resetScore();
 		}
 		
@@ -190,13 +204,11 @@ class PlayState extends MusicBeatState {
 		}
 		if (FlxG.keys.justPressed.ENTER) {
 			paused = !paused;
-			if (paused) {
-				song.instTrack.pause();
-				song.vocalTrack.pause();
-			} else {
-				for (track in [song.instTrack, song.vocalTrack]) {
+			for (track in [song.instTrack, song.vocalTrack]) {
+				if (paused || Conductor.songPosition < 0)
+					track.pause();
+				else
 					track.play(true, Conductor.songPosition);
-				}
 			}
 		}
 		
@@ -218,15 +230,6 @@ class PlayState extends MusicBeatState {
 			var event:SongEvent = events.shift();
 			triggerEvent(event);
 			limit --;
-		}
-		limit = 50;
-		while (unspawnedNotes.length > 0 && limit > 0 && Conductor.songPosition >= (unspawnedNotes[0].msTime - noteSpawnOffset)) {
-			var note:Note = unspawnedNotes.shift();
-			var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
-			var lane:Lane = strumline.getLane(note.noteData);
-			lane.insertNote(note);
-			limit --;
-			//receptor.notes.insert(0, note);
 		}
 	}
 	
@@ -260,6 +263,21 @@ class PlayState extends MusicBeatState {
 	override public function beatHit(beat:Int) {
 		super.beatHit(beat);
 		player1.dance(beat);
+		switch (beat) {
+			case -4:
+				FlxG.sound.play(Paths.sound('intro3'));
+			case -3:
+				FlxG.sound.play(Paths.sound('intro2'));
+			case -2:
+				FlxG.sound.play(Paths.sound('intro1'));
+			case -1:
+				FlxG.sound.play(Paths.sound('introGo'));
+			case 0:
+				if (song.instLoaded) song.instTrack.play(true);
+				if (song.vocalsLoaded) song.vocalTrack.play(true);
+				syncMusic();
+			default:
+		}
 	}
 	override public function barHit(bar:Int) {
 		super.barHit(bar);
@@ -414,5 +432,6 @@ class PlayState extends MusicBeatState {
 	override public function destroy() {
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
+		super.destroy();
 	}
 }
