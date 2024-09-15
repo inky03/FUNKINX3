@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas imagePath="quant.png">
+	<!-- Created with Adobe Flash CS6 version 12.0.0.481 -->
+	<!-- http://www.adobe.com/products/flash.html -->
+	<SubTexture name="quant0000" x="1" y="1" width="123" height="102"/>
+	<SubTexture name="quant0001" x="125" y="1" width="123" height="102"/>
+	<SubTexture name="quant0002" x="249" y="1" width="123" height="102"/>
+	<SubTexture name="quant0003" x="373" y="1" width="123" height="102"/>
+	<SubTexture name="quant0004" x="1" y="104" width="123" height="102"/>
+	<SubTexture name="quant0005" x="125" y="104" width="123" height="102"/>
+	<SubTexture name="quant0006" x="249" y="104" width="123" height="102"/>
+	<SubTexture name="quant0007" x="373" y="104" width="123" height="102"/>
+	<SubTexture name="quant0008" x="1" y="207" width="123" height="102"/>
+	<SubTexture name="quant0009" x="1" y="207" width="123" height="102"/>
+</TextureAtlas>

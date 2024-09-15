@@ -1,5 +1,6 @@
 package;
 
+import flixel.input.keyboard.FlxKey;
 import flixel.util.FlxAxes;
 
 class Strumline extends FlxSpriteGroup {
@@ -20,20 +21,12 @@ class Strumline extends FlxSpriteGroup {
 	public var hitWindow(default, set):Float;
 	public var direction(default, set):Float;
 	public var scrollSpeed(default, set):Float;
-	public var onNoteDespawned(default, set):(note:Note, lane:Lane)->Void;
-	public var onNoteSpawned(default, set):(note:Note, lane:Lane)->Void;
-	public var onNoteLost(default, set):(note:Note, lane:Lane)->Void;
-	public var onNoteHit(default, set):(note:Note, lane:Lane)->Void;
 	
+	//oh dear
 	public function set_cpu(isCpu:Bool) { for (lane in lanes) lane.cpu = isCpu; return cpu = isCpu; }
 	public function set_direction(newDir:Float) { for (lane in lanes) lane.direction = newDir; return direction = newDir; }
 	public function set_hitWindow(newWindow:Float) { for (lane in lanes) lane.hitWindow = newWindow; return hitWindow = newWindow; }
 	public function set_scrollSpeed(newSpeed:Float) { for (lane in lanes) lane.scrollSpeed = newSpeed; return scrollSpeed = newSpeed; }
-	//Oh god
-	public function set_onNoteDespawned(newFunc:(note:Note, lane:Lane)->Void) { for (lane in lanes) lane.onNoteDespawned = newFunc; return onNoteDespawned = newFunc; }
-	public function set_onNoteSpawned(newFunc:(note:Note, lane:Lane)->Void) { for (lane in lanes) lane.onNoteSpawned = newFunc; return onNoteSpawned = newFunc; }
-	public function set_onNoteLost(newFunc:(note:Note, lane:Lane)->Void) { for (lane in lanes) lane.onNoteLost = newFunc; return onNoteLost = newFunc; }
-	public function set_onNoteHit(newFunc:(note:Note, lane:Lane)->Void) { for (lane in lanes) lane.onNoteHit = newFunc; return onNoteHit = newFunc; }
 	public function set_laneSpacing(newSpacing:Float) {
 		var i:Int = 0;
 		var diff:Float = newSpacing - laneSpacing;
@@ -116,17 +109,21 @@ class Strumline extends FlxSpriteGroup {
 		this.laneCount = laneCount;
 		this.direction = direction;
 		this.scrollSpeed = scrollSpeed;
-		this.onNoteHit = (note:Note, lane:Lane) -> {
-			lane.playReceptor('confirm', !note.isHoldPiece);
-			if (!note.isHoldPiece && note.msLength > 0) {
-				for (child in note.children) child.canHit = true;
-				lane.held = true;
+		this.addEvent(function (e:Lane.NoteEvent):Void {
+			if (e.type == HIT) {
+				var note:Note = e.note;
+				var lane:Lane = e.lane;
+				lane.receptor.playAnimation('confirm', !note.isHoldPiece);
+				if (!note.isHoldPiece && note.msLength > 0) {
+					for (child in note.children) child.canHit = true;
+					lane.held = true;
+				}
+				if (note.isHoldTail) {
+					lane.held = false;
+					if (!lane.cpu) lane.spark();
+				}
 			}
-			if (note.isHoldTail) {
-				lane.held = false;
-				if (!lane.cpu) lane.spark();
-			}
-		};
+		});
 	}
 	public function fadeIn() {
 		var i:Int = 0;
@@ -184,6 +181,15 @@ class Strumline extends FlxSpriteGroup {
 		}
 		return this;
 	}
+	public function assignKeys(keybinds:Array<Array<FlxKey>>) {
+		var i = 0;
+		for (keybindSet in keybinds) {
+			var lane:Lane = getLane(i);
+			if (lane != null)
+				lane.inputKeys = keybindSet;
+			i ++;
+		}
+	}
 	
 	public function clearAllNotes() {
 		for (lane in lanes) {
@@ -193,4 +199,10 @@ class Strumline extends FlxSpriteGroup {
 	}
 	
 	public function getLane(noteData:Int) return lanes.members[noteData];
+
+	public function addEvent(event:Lane.NoteEvent->Void) {
+		for (lane in lanes)
+			lane.noteEvent.add(event);
+		return event;
+	}
 }

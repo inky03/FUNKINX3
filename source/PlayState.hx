@@ -11,7 +11,6 @@ import Conductor;
 import Character;
 import Strumline;
 import Scoring;
-import Rating;
 import Chloe;
 import Lane;
 import Note;
@@ -26,7 +25,7 @@ class PlayState extends MusicBeatState {
 	public var scoreTxt:FlxText;
 	public var opponentStrumline:Strumline;
 	public var playerStrumline:Strumline;
-	public var ratingGroup:FlxTypedGroup<Rating>;
+	public var ratingGroup:FlxTypedGroup<FunkinSprite>;
 	
 	public var singAnimations:Array<String> = ['LEFT', 'DOWN', 'UP', 'RIGHT'];
 	public var hitWindows:Array<HitWindow> = Scoring.emiDefault();
@@ -54,16 +53,20 @@ class PlayState extends MusicBeatState {
 	public var percent:Float = 0;
 	public var extraWindow:Float = 0; //mash mechanic
 	
+	public var testHold:Note.NoteTail;
+
+	public var hitsound:FlxSound;
+	
 	override public function create() {
 		super.create();
 		
-		//FlxG.drawFramerate = 240;
-		//FlxG.updateFramerate = 240;
+		FlxG.drawFramerate = 240;
+		FlxG.updateFramerate = 240;
 		
 		paused = true; //setup the freaking song
 		
 		var tempNotes:Array<Note> = [];
-		song = Song.loadLegacySong('esculent', 'hard');
+		song = Song.loadLegacySong('sporting', 'hard');
 		for (event in song.events) events.push(event);
 		Conductor.metronome.tempoChanges = song.tempoChanges;
 		Conductor.metronome.setBeat(-5);
@@ -79,8 +82,6 @@ class PlayState extends MusicBeatState {
 		camFocus = new FlxObject(camFocusTarget.x, camFocusTarget.y, 1, 1);
 		FlxG.camera.follow(camFocus, LOCKON, 1);
 		add(camFocus);
-		
-		keybinds = Settings.data.keybinds['4k'];
 		
 		var strumlineBound:Float = (FlxG.width - 300) * .5;
 		var strumlineY:Float = 50;
@@ -123,14 +124,9 @@ class PlayState extends MusicBeatState {
 		opponentStrumline.fadeIn();
 		playerStrumline.fadeIn();
 		
-		var playerHit = playerStrumline.onNoteHit;
-		playerStrumline.onNoteHit = (note:Note, lane:Lane) -> {
-			noteHit(note);
-			playerHit(note, lane);
-		}
-		playerStrumline.onNoteLost = (note:Note, lane:Lane) -> {
-			noteMissed(note);
-		};
+		keybinds = Settings.data.keybinds['4k'];
+		playerStrumline.assignKeys(Settings.data.keybinds['4k']);
+		playerStrumline.addEvent(playerNoteEvent);
 		for (note in song.notes) {
 			var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
 			var lane:Lane = strumline.getLane(note.noteData);
@@ -142,7 +138,7 @@ class PlayState extends MusicBeatState {
 			opponentStrumline.fitToSize(playerStrumline.leftBound - 50 - opponentStrumline.leftBound, -1, Y);
 		}
 		
-		ratingGroup = new FlxTypedGroup<Rating>();
+		ratingGroup = new FlxTypedGroup<FunkinSprite>();
 		add(ratingGroup);
 		
 		healthBar = new Bar(0, FlxG.height - 50, 'healthBar', () -> return health);
@@ -163,10 +159,19 @@ class PlayState extends MusicBeatState {
 		
 		noteSpawnOffset = Note.distanceToMS(720, playerStrumline.scrollSpeed);
 		updateRating();
+
+		hitsound = new FlxSound().loadEmbedded(Paths.sound('hitsound'));
+		
+		//testHold = new Note.NoteTail(0);
+		//testHold.setPosition(20, 20);
+		//add(testHold);
 	}
 
 	override public function update(elapsed:Float) {
-		//DEBUG CONTROL
+		if (FlxG.keys.pressed.SHIFT && FlxG.keys.justPressed.C) {
+			trace('clean mem');
+			hl.Gc.major();
+		}
 		if (FlxG.keys.justPressed.Q) {
 			Conductor.songPosition -= 350;
 		}
@@ -310,56 +315,61 @@ class PlayState extends MusicBeatState {
 		if (note != null) {
 			lane.hitNote(note);
 			extraWindow = Math.min(extraWindow + 6, 200);
-			if (note.ratingData.splash) lane.splash();
 		} else {
-			lane.playReceptor('press', true);
+			lane.receptor.playAnimation('press', true);
 			extraWindow = Math.min(extraWindow + 15, 200);
 		}
 		Conductor.songPosition = oldTime;
 	}
 	public function inputOff(keybind:Int) {
 		var lane:Lane = playerStrumline.getLane(keybind);
-		lane.playReceptor('static', true);
+		lane.receptor.playAnimation('static', true);
 		lane.held = false;
 	}
-	public function noteHit(note:Note) {
-		if (note.isHoldPiece) {
-			var anim:String = 'sing${singAnimations[note.noteData]}';
-			if (player1.animation.name != anim)
-				player1.playAnimation(anim, true);
-			player1.timeAnimSteps(player1.singForSteps);
-			if (note.isHoldTail)
-				FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
-		} else {
-			FlxG.sound.play(Paths.sound('hitsound'), .7);
-			player1.playAnimation('sing${singAnimations[note.noteData]}', true);
-			
-			var window:HitWindow = Scoring.judgeLegacy(hitWindows, note.hitWindow, note.msTime - Conductor.songPosition);
-			window.count ++;
-			
-			note.ratingData = window;
-			popRating(window.rating);
-			score += window.score;
-			health += note.healthGain * window.health;
-			accuracyMod += window.accuracyMod;
-			accuracyDiv ++;
-			totalNotes ++;
-			totalHits ++;
-			if (window.breaksCombo) combo = 0;
-			else popCombo(++ combo);
+	public function playerNoteEvent(e:Lane.NoteEvent) {
+		var note:Note = e.note;
+		var lane:Lane = e.lane;
+		switch (e.type) {
+			case HIT:
+				if (note.isHoldPiece) {
+					var anim:String = 'sing${singAnimations[note.noteData]}';
+					if (player1.animation.name != anim)
+						player1.playAnimation(anim, true);
+					player1.timeAnimSteps(player1.singForSteps);
+					if (note.isHoldTail)
+						FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
+				} else {
+					hitsound.play(true);
+					player1.playAnimation('sing${singAnimations[note.noteData]}', true);
+					
+					var window:HitWindow = Scoring.judgeLegacy(hitWindows, note.hitWindow, note.msTime - Conductor.songPosition);
+					window.count ++;
+					
+					note.ratingData = window;
+					popRating(window.rating);
+					score += window.score;
+					health += note.healthGain * window.health;
+					accuracyMod += window.accuracyMod;
+					accuracyDiv ++;
+					totalNotes ++;
+					totalHits ++;
+					if (window.breaksCombo) combo = 0;
+					else popCombo(++ combo);
+					if (note.ratingData.splash) lane.splash();
+				}
+				updateRating();
+			case LOST:
+				popRating('sadmiss');
+				player1.playAnimation('sing${singAnimations[note.noteData]}miss', true);
+				health -= note.healthLoss;
+				accuracyDiv ++;
+				totalNotes ++;
+				misses ++;
+				combo = 0;
+				score -= 10;
+				updateRating();
+			default:
 		}
-		updateRating();
-	}
-	public function noteMissed(note:Note) {
-		popRating('sadmiss');
-		player1.playAnimation('sing${singAnimations[note.noteData]}miss', true);
-		health -= note.healthLoss;
-		accuracyDiv ++;
-		totalNotes ++;
-		misses ++;
-		combo = 0;
-		score -= 10;
-		updateRating();
 	}
 	public dynamic function comboBroken(oldCombo:Int) {
 		popCombo(0);
@@ -376,15 +386,12 @@ class PlayState extends MusicBeatState {
 		var xOffset:Float = -nums.length * .5 + .5;
 		var i:Int = 0;
 		for (num in nums) {
-			var popNum:ComboNumber = new ComboNumber(FlxG.width * .5 + (i + xOffset) * 43, FlxG.height * .5 + 80, num, Conductor.crochet * .002);
-			popNum.scale.set(.5, .5);
-			popNum.updateHitbox();
-			popNum.setOffset(popNum.frameWidth * .5, popNum.frameHeight * .5);
-			popNum.onComplete = (tween:FlxTween) -> {
-				ratingGroup.remove(popNum, true);
-				popNum.destroy();
-			};
-			ratingGroup.add(popNum);
+			var popNum:FunkinSprite = popRating('num$num', .5, 2);
+			popNum.setPosition(FlxG.width * .5 + (i + xOffset) * 43, FlxG.height * .5 + 80);
+			popNum.acceleration.y = FlxG.random.int(200, 300);
+			popNum.velocity.y = -FlxG.random.int(140, 160);
+			popNum.velocity.x = FlxG.random.float(-5, 5);
+
 			i ++;
 		}
 	}
@@ -408,16 +415,23 @@ class PlayState extends MusicBeatState {
 		percent = (accuracyMod / Math.max(1, accuracyDiv)) * 100;
 		updateScore();
 	}
-	public function popRating(rating:String) {
-		var rating:Rating = new Rating(FlxG.width * .5, FlxG.height * .5, rating, Conductor.crochet * .001);
-		rating.scale.set(.7, .7);
+	public function popRating(ratingString:String, scale:Float = .7, beats:Float = 1) {
+		var rating:FunkinSprite = new FunkinSprite(FlxG.width * .5, FlxG.height * .5);
+		rating.loadTexture(ratingString);
+		rating.scale.set(scale, scale);
 		rating.updateHitbox();
 		rating.setOffset(rating.frameWidth * .5, rating.frameHeight * .5);
-		rating.onComplete = (tween:FlxTween) -> {
+
+		rating.acceleration.y = 550;
+		rating.velocity.y = -FlxG.random.int(140, 175);
+		rating.velocity.x = FlxG.random.int(0, 10);
+
+		ratingGroup.add(rating);
+		FlxTween.tween(rating, {alpha: 0}, .2, {onComplete: (tween:FlxTween) -> {
 			ratingGroup.remove(rating, true);
 			rating.destroy();
-		};
-		ratingGroup.add(rating);
+		}, startDelay: Conductor.crochet * .001 * beats});
+		return rating;
 	}
 	public function updateScore() {
 		var accuracyString:String = 'NA';

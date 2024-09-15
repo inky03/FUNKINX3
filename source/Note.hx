@@ -3,6 +3,9 @@ package;
 import Lane;
 import Lane.Receptor;
 import Scoring.HitWindow;
+import flixel.graphics.frames.FlxFrame;
+import flixel.graphics.frames.FlxFramesCollection;
+import flixel.addons.display.FlxTiledSprite;
 
 class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affect society
 	public static var colorNames:Array<String> = ['purple', 'blue', 'green', 'red'];
@@ -11,6 +14,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var children:Array<Note> = [];
 	public var parent:Note;
 	public var tail:Note;
+	public var lane:Lane;
 	
 	public var ratingData:HitWindow;
 	public var goodHit:Bool = false;
@@ -18,6 +22,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var clipHeight:Float;
 	public var noteOffset:FlxPoint;
 	public var scrollDistance:Float = 0;
+	public var preventDespawn:Bool = false;
 	
 	public var healthLoss:Float = .0775 * .5;
 	public var healthGain:Float = .033 * .5;
@@ -30,16 +35,23 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var ignore:Bool = false;
 	public var canHit:Bool = true;
 	public var noteData:Int = 0;
-	public var msTime:Float = 0;
-	public var msLength:Float = 0;
 	public var endMs(get, never):Float;
+	public var endBeat(get, never):Float;
+	public var msTime(default, set):Float = 0;
 	public var beatTime(default, set):Float = 0;
+	public var msLength(default, set):Float = 0;
+	public var beatLength(default, set):Float = 0;
 	
 	public var isHoldPiece:Bool = false;
 	public var isHoldTail:Bool = false;
 	
 	public var multAlpha:Float = 1;
 	
+	public override function destroy() {
+		for (child in children)
+			child.destroy();
+		super.destroy();
+	}
 	public override function revive() {
 		lost = false;
 		goodHit = false;
@@ -47,6 +59,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		super.revive();
 	}
 	public function get_endMs() return msTime + (isHoldPiece ? msLength : 0);
+	public function get_endBeat() return beatTime + (isHoldPiece ? beatLength : 0);
 	public function new(player:Bool, msTime:Float, noteData:Int, msLength:Float = 0, type:String = '', isHoldPiece:Bool = false) {
 		super();
 		this.player = player;
@@ -72,9 +85,25 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		updateHitbox();
 		clipHeight = frameHeight;
 	}
+	public function set_msTime(newTime:Float) {
+		if (msTime == newTime) return newTime;
+		Reflect.setField(this, 'beatTime', Conductor.convertMeasure(newTime, MS, BEAT));
+		return msTime = newTime;
+	}
 	public function set_beatTime(newTime:Float) {
-		msTime = Conductor.convertMeasure(newTime, BEAT, MS);
+		if (beatTime == newTime) return newTime;
+		Reflect.setField(this, 'msTime', Conductor.convertMeasure(newTime, BEAT, MS));
 		return beatTime = newTime;
+	}
+	public function set_msLength(newLength:Float) {
+		if (msLength == newLength) return newLength;
+		Reflect.setField(this, 'beatLength', Conductor.convertMeasure(msTime + newLength, MS, BEAT) - beatTime);
+		return msLength = newLength;
+	}
+	public function set_beatLength(newLength:Float) {
+		if (beatLength == newLength) return newLength;
+		Reflect.setField(this, 'msLength', Conductor.convertMeasure(beatTime + newLength, BEAT, MS) - msTime);
+		return beatLength = newLength;
 	}
 	
 	public static function distanceToMS(distance:Float, scrollSpeed:Float) {
@@ -113,13 +142,16 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		x = receptor.x + noteOffset.x + Math.sin(rad) * xP + Math.cos(rad) * yP;
 		y = receptor.y + noteOffset.y + Math.sin(rad) * yP + Math.cos(rad) * xP;
 		alpha = lane.alpha * receptor.alpha * multAlpha;
-		//trace('${Math.round(x)},${Math.round(y)} / ${width},${height} / ${scale.x},${scale.y} / ${offset.x},${offset.y} / alpha: ${alpha} / vis: ${visible} / dist: ${scrollDistance}');
 		
 		if (isHoldPiece) { //handle in DISTANCE to support scroll direction
 			var clip:Bool = (lane.held);
 			if (clip) clipHeight = Math.min(Math.max(0, (holdHeight + scrollDistance) / scale.y), frameHeight);
-			var tail:Note = parent.tail;
-			var clipBottom:Float = (isHoldTail ? 0 : Math.min(0, (Note.msToDistance(tail.msTime - msTime, scrollSpeed) - tail.frameHeight * tail.scale.x /* lmao */ - holdHeight) / scale.y));
+			
+			var clipBottom:Float = 0;
+			if (parent != null && parent.tail != null) {
+				var tail:Note = parent.tail;
+				clipBottom = (isHoldTail ? 0 : Math.min(0, (Note.msToDistance(tail.msTime - msTime, scrollSpeed) - tail.frameHeight * tail.scale.x /* lmao */ - holdHeight) / scale.y));
+			}
 			
 			if (clipRect == null) clipRect = new FlxRect();
 			clipRect.y = frameHeight - clipHeight;
@@ -127,5 +159,68 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 			clipRect.height = clipHeight + clipBottom;
 			clipRect = clipRect; //refresh clip rect
 		}
+	}
+}
+
+class NoteBody extends FunkinSprite {
+	public function new() {
+		super();
+	}
+}
+
+class NoteTail extends FlxSpriteGroup {
+	var hold:FlxTiledSprite;
+	var tail:FunkinSprite;
+	var holdHeight(default, set):Float;
+	
+	public function new(strumIndex:Int) {
+		super();
+		var dirName:String = Note.directionNames[strumIndex];
+		
+		tail = new FunkinSprite();
+		tail.loadAtlas('NOTE_assets');
+		tail.animation.addByPrefix('tail', '${dirName} hold tail', 24, false);
+		tail.playAnimation('tail');
+		tail.updateHitbox();
+		add(tail);
+		
+		var pieceGraphic:FlxGraphic = null;
+		if (tail.frames != null) {
+			var pieceFrames:Array<FlxFrame> = tail.frames.getAllByPrefix('${dirName} hold piece');
+			if (pieceFrames.length > 0) {
+				pieceGraphic = FlxGraphic.fromFrame(pieceFrames[0]);
+			}
+		}
+		hold = new FlxTiledSprite(pieceGraphic, pieceGraphic.width, pieceGraphic.height, false, true);
+		add(hold);
+		
+		hold.origin.set(hold.width * .5, 0);
+		tail.origin.set(tail.width * .5, 0);
+		origin.set(width * .5, 0);
+		holdHeight = 500;
+	}
+	public function set_holdHeight(newHeight:Float) {
+		if (holdHeight == newHeight) return newHeight;
+		hold.height = newHeight - tail.offset.y;
+		refreshTailPos();
+		return holdHeight = newHeight;
+	}
+	public override function set_angle(newAngle:Float) {
+		if (angle == newAngle) return newAngle;
+		super.set_angle(newAngle);
+		hold.angle = newAngle;
+		tail.angle = newAngle;
+		refreshTailPos();
+		return newAngle;
+	}
+	public function refreshTailPos() {
+		var rad:Float = angle / 180 * Math.PI;
+		var target:Float = hold.height;
+		tail.x = Math.sin(rad) * target;
+		tail.y = Math.cos(rad) * target;
+	}
+	public override function draw() {
+		hold.draw();
+		tail.draw();
 	}
 }

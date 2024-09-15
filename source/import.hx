@@ -7,8 +7,6 @@ import FunkinSprite;
 import MusicBeatState;
 
 //libraries
-import FileRef;
-
 import openfl.media.Sound;
 import openfl.system.System;
 #if !flash
@@ -31,6 +29,7 @@ import flixel.util.FlxColor;
 import flixel.sound.FlxSound;
 import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
+import flixel.graphics.FlxGraphic;
 import flixel.group.FlxSpriteGroup;
 import flixel.group.FlxGroup.FlxTypedGroup;
 import flixel.group.FlxSpriteGroup.FlxTypedSpriteGroup;

@@ -5,12 +5,16 @@ import openfl.events.KeyboardEvent;
 import flixel.input.keyboard.FlxKey;
 
 class CharterState extends MusicBeatState {
-	public var quant:Float = 4;
+	public var quant:Int = 4;
+	public var quantGraphic:FunkinSprite;
 	public var scrollSpeed(default, set):Float = 1;
 	public var measureLines:FlxTypedSpriteGroup<MeasureLine>;
 	public var strumlines:FlxTypedSpriteGroup<Strumline>;
 	public var keybinds:Array<Array<FlxKey>> = [];
+	
+	private var heldNotes:Array<Note> = [];
 	private var heldKeys:Array<FlxKey> = [];
+	private var quants:Array<Int> = [4, 8, 12, 16, 20, 24, 32, 48, 64, 96, 192];
 	
 	override public function create() {
 		Conductor.songPosition = 0;
@@ -41,6 +45,14 @@ class CharterState extends MusicBeatState {
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
 		
+		quantGraphic = new FunkinSprite().loadAtlas('charter/quant');
+		quantGraphic.animation.addByPrefix('quant', 'quant', 0);
+		quantGraphic.playAnimation('quant', true);
+		quantGraphic.updateHitbox();
+		quantGraphic.x = strumlines.x + xx - strumlineSpacing;
+		quantGraphic.y = strumlines.y + (h - quantGraphic.height) * .5;
+		add(quantGraphic);
+		
 		for (i in 0...10) {
 			var test:MeasureLine = new MeasureLine(strumlines.x, strumlines.y, i, i * 4, 4, xx - strumlineSpacing, Note.msToDistance(Conductor.crochet, scrollSpeed));
 			measureLines.add(test);
@@ -56,6 +68,9 @@ class CharterState extends MusicBeatState {
 		for (line in measureLines) {
 			line.y = FlxG.height * .5 + Note.msToDistance(Conductor.convertMeasure(line.startTime, BEAT, MS) - Conductor.songPosition, scrollSpeed);
 		}
+		
+		if (!paused)
+			updateHolds();
 	}
 	
 	override public function beatHit(beat:Int) {
@@ -81,18 +96,26 @@ class CharterState extends MusicBeatState {
 		if (keybind >= 0 && FlxG.keys.checkStatus(key, JUST_PRESSED)) inputOn(keybind);
 		
 		var scrollMod:Int = 1;
+		var leniency:Float = 1 / 256;
 		var prevBeat:Float = Conductor.metronome.beat;
+		var quantMultiplier:Float = (quant * .25);
 		switch (key) {
+			case FlxKey.LEFT | FlxKey.RIGHT:
+				changeQuant(key == FlxKey.LEFT ? -1 : 1);
 			case FlxKey.UP | FlxKey.DOWN:
 				if (key == FlxKey.UP) scrollMod *= -1;
-				if (Math.abs(Conductor.metronome.beat - Std.int(Conductor.metronome.beat)) < 1 / quant)
-					Conductor.metronome.setBeat(Conductor.metronome.beat + scrollMod / quant * 4);
-				Conductor.metronome.setBeat((scrollMod == -1 ? Math.floor : Math.ceil)(Conductor.metronome.beat));
+				var targetBeat:Float = prevBeat + scrollMod / quantMultiplier;
+				if (Math.abs(prevBeat - Math.round(prevBeat * quantMultiplier) / quantMultiplier) < leniency * 2)
+					Conductor.metronome.setBeat(Math.round(targetBeat * quantMultiplier) / quantMultiplier);
+				else
+					Conductor.metronome.setBeat((scrollMod > 0 ? Math.floor : Math.ceil)(targetBeat * quantMultiplier) / quantMultiplier);
+				updateHolds();
 			case FlxKey.PAGEUP | FlxKey.PAGEDOWN:
 				if (key == FlxKey.PAGEUP) scrollMod *= -1;
-				if (Math.abs(Conductor.metronome.beat - Std.int(Conductor.metronome.beat)) < 1 / quant)
+				if (Math.abs(Conductor.metronome.bar - Std.int(Conductor.metronome.bar)) < (1 / quant - .0006))
 					Conductor.metronome.setBar(Conductor.metronome.bar + scrollMod);
 				Conductor.metronome.setBar((scrollMod == -1 ? Math.floor : Math.ceil)(Conductor.metronome.bar));
+				updateHolds();
 			case FlxKey.HOME:
 				Conductor.metronome.setMS(0);
 			default:
@@ -107,31 +130,101 @@ class CharterState extends MusicBeatState {
 		if (keybind >= 0) inputOff(keybind);
 	}
 	
+	public function changeQuant(mod:Int) {
+		var quantIndex:Int = FlxMath.wrap(quants.indexOf(quant) + mod, 0, quants.length - 1);
+		quantGraphic.animation.curAnim.curFrame = Std.int(Math.min(quantIndex, quantGraphic.animation.curAnim.numFrames - 1));
+		quant = quants[quantIndex];
+	}
 	public function inputOn(keybind:Int) {
 		var strumlineId:Int = 0;
+		var data:Int = keybind;
 		for (strumline in strumlines) {
-			if (keybind >= strumline.laneCount) {
-				keybind -= strumline.laneCount;
+			if (data >= strumline.laneCount) {
+				data -= strumline.laneCount;
 				strumlineId ++;
 			}
 		}
+		var quantMultiplier:Float = (quant * .25);
 		var strumline:Strumline = strumlines.members[strumlineId];
-		var lane = strumline.getLane(keybind);
+		var lane = strumline.getLane(data);
 		var matchingNote:Null<Note> = null;
 		for (note in lane.notes) {
-			if (Math.abs(note.beatTime - Conductor.metronome.beat) < 1 / quant)
+			if (note.isHoldPiece) continue;
+			if (Math.abs(note.beatTime - Conductor.metronome.beat) <= 1 / quantMultiplier)
 				matchingNote = note;
 		}
 		if (matchingNote == null) {
-			var note:Note = new Note(false, 0, keybind);
-			note.beatTime = Conductor.metronome.beat;
+			FlxG.sound.play(Paths.sound('hitsound'), .7);
+			var snappedBeat:Float = Math.round(Conductor.metronome.beat * quantMultiplier) / quantMultiplier;
+			var note:Note = new Note(false, 0, data);
+			note.extraData.set('keybind', keybind);
+			note.beatTime = snappedBeat;
+			note.preventDespawn = true;
 			lane.insertNote(note);
+			heldNotes.push(note);
 		} else {
-			lane.notes.remove(matchingNote, true);
+			for (child in matchingNote.children) lane.killNote(child);
+			lane.killNote(matchingNote);
 			matchingNote.destroy();
 		}
 	}
 	public function inputOff(keybind:Int) {
+		var i:Int = heldNotes.length;
+		while (i > 0) {
+			i --;
+			var note:Note = heldNotes[i];
+			if (note == null) {
+				trace('WARNING: Note was null');
+				heldNotes.remove(note);
+				continue;
+			}
+			if (heldNotes.length == 0 || note.extraData.get('keybind') == keybind) {
+				FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
+				for (child in note.children) child.preventDespawn = false;
+				note.preventDespawn = false;
+				heldNotes.remove(note);
+			}
+		}
+	}
+	public function updateHolds() {
+		var quantMultiplier:Float = (quant * .25);
+		var snappedBeat:Float = Math.round(Conductor.metronome.beat * quantMultiplier) / quantMultiplier;
+		for (note in heldNotes) {
+			var lane:Lane = note.lane;
+			note.beatLength = snappedBeat - note.beatTime;
+			if (note.beatLength > 0) {
+				if (note.children.length == 0) {
+					var piece:Note = new Note(false, note.msTime, note.noteData, note.msLength, note.noteKind, true);
+					piece.preventDespawn = true;
+					note.children.push(piece);
+					piece.parent = note;
+					var tail:Note = new Note(false, note.msTime, note.noteData, 0, note.noteKind, true);
+					tail.preventDespawn = true;
+					note.children.push(tail);
+					tail.parent = note;
+					note.tail = tail;
+					
+					lane.insertNote(tail);
+					lane.insertNote(piece);
+					
+					piece.beatLength = note.beatLength; //What
+					tail.beatTime = snappedBeat;
+				} else {
+					var piece:Note = note.children[0];
+					piece.beatLength = note.beatLength;
+					note.tail.beatTime = snappedBeat;
+					
+					lane.updateNote(note.tail);
+					lane.updateNote(piece);
+				}
+			} else {
+				while (note.children.length > 0) {
+					var child:Note = note.children.shift();
+					lane.killNote(child);
+					child.destroy();
+				}
+			}
+		}
 	}
 	
 	override public function destroy() {

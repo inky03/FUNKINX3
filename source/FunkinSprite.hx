@@ -31,7 +31,7 @@ class FunkinSprite extends FlxSprite {
 		return this;
 	}
 	public function loadAtlas(path) {
-		frames = Paths.getSparrowAtlas(path);
+		frames = Paths.sparrowAtlas(path);
 		return this;
 	}
 	

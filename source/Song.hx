@@ -32,19 +32,20 @@ class Song {
 		
 		var time:Float = Sys.time();
 		trace('loading song music...');
-		loadMusic('assets/data/${path}/');
-		loadMusic('assets/songs/${path}/');
+		loadMusic('data/${path}/');
+		loadMusic('songs/${path}/');
 		trace(instLoaded ? ('Music loaded in ${Math.round((Sys.time() - time) * 1000) / 1000}s!') : ('Music failed to load...'));
 	}
 	
 	public static function loadJson(path:String, difficulty:String = 'normal') {
-		var jsonPath:String = '${path}/${path}';
-		var diffSuffix:String = '-${difficulty}';
+		var jsonPathD:String = 'data/$path/$path';
+		var diffSuffix:String = '-$difficulty';
 		
-		var jsonFile:FileRef = new FileRef(Paths.json(jsonPath + diffSuffix));
-		if (!jsonFile.exists) jsonFile.path = Paths.json(jsonPath);
-		if (jsonFile.exists) {
-			var jsonData:Dynamic = TJSON.parse(jsonFile.content);
+		var jsonPath:String = '$jsonPathD$diffSuffix.json';
+		if (!Paths.exists(jsonPath)) jsonPath = jsonPathD;
+		if (Paths.exists(jsonPath)) {
+			var content:String = Paths.text(jsonPath);
+			var jsonData:Dynamic = TJSON.parse(content);
 			if (jsonData.song != null) {
 				return jsonData.song;
 			} else {
@@ -93,17 +94,6 @@ class Song {
 					song.events.push(new SongEvent('Focus', ms, [focus]));
 				}
 				
-				for (dataNote in section.sectionNotes) {
-					var noteTime:Float = dataNote[0];
-					var noteData:Int = Std.int(dataNote[1]);
-					var noteLength:Float = dataNote[2];
-					var noteKind:Dynamic = dataNote[3];
-					if (!Std.isOfType(noteKind, String)) noteKind = '';
-					var playerNote:Bool = ((noteData < keyCount) == section.mustHitSection);
-					
-					for (note in generateNotes(playerNote, noteTime, noteData % keyCount, noteKind, noteLength, stepCrochet)) song.notes.push(note);
-				}
-				
 				var sectionDenominator:Int = 4;
 				var sectionNumerator:Float = section.sectionBeats;
 				if (sectionNumerator == 0) sectionNumerator = section.lengthInSteps * .25;
@@ -122,6 +112,17 @@ class Song {
 				}
 				beat += sectionNumerator;
 				ms += sectionNumerator * crochet;
+				
+				for (dataNote in section.sectionNotes) {
+					var noteTime:Float = dataNote[0];
+					var noteData:Int = Std.int(dataNote[1]);
+					var noteLength:Float = dataNote[2];
+					var noteKind:Dynamic = dataNote[3];
+					if (!Std.isOfType(noteKind, String)) noteKind = '';
+					var playerNote:Bool = ((noteData < keyCount) == section.mustHitSection);
+					
+					for (note in generateNotes(playerNote, noteTime, noteData % keyCount, noteKind, noteLength, stepCrochet)) song.notes.push(note);
+				}
 			}
 			song.sortNotes();
 			trace('Chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
@@ -161,14 +162,10 @@ class Song {
 	public function loadMusic(path:String) {
 		if (instLoaded) return true;
 		try {
-			if (FileSystem.exists(path + 'Voices.ogg')) {
-				vocalTrack.loadEmbedded(Sound.fromFile(path + 'Voices.ogg'));
-				vocalsLoaded = (vocalTrack.length > 0);
-			}
-			if (FileSystem.exists(path + 'Inst.ogg')) {
-				instTrack.loadEmbedded(Sound.fromFile(path + 'Inst.ogg'));
-				instLoaded = (instTrack.length > 0);
-			}
+			vocalTrack.loadEmbedded(Paths.ogg('${path}Voices'));
+			vocalsLoaded = (vocalTrack.length > 0);
+			instTrack.loadEmbedded(Paths.ogg('${path}Inst'));
+			instLoaded = (instTrack.length > 0);
 			return true;
 		} catch(e:Dynamic)
 			return false;
@@ -204,4 +201,12 @@ typedef LegacySongSection = {
 	var gfSection:Bool;
 	var changeBPM:Bool;
 	var bpm:Float;
+}
+
+typedef SongNote = { //IM STILL DEBATING IF I WANT TO DO THIS
+	var msTime:Float;
+	var msLength:Float;
+	var strumIndex:Int; //todo: change all "noteData" by strumIndex?
+	var strumlineIndex:Int;
+	var noteKind:String;
 }

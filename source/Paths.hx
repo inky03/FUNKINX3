@@ -1,119 +1,79 @@
 package;
 
-import flixel.graphics.frames.FlxAtlasFrames;
+import flixel.graphics.FlxGraphic;
+import openfl.display.BitmapData;
+import flixel.graphics.frames.*;
 import openfl.utils.AssetType;
-import openfl.utils.Assets as OpenFlAssets;
+import openfl.media.Sound;
+import openfl.utils.Assets;
+// TODO: maybe i should bring back the usage of Assets for html5 and stuff. lol.
 
-class Paths
-{
-	inline public static var SOUND_EXT = #if web "mp3" #else "ogg" #end;
+class Paths {
+	public static var graphicCache:Map<String, FlxGraphic> = [];
+	public static var soundCache:Map<String, Sound> = [];
 
-	static var currentLevel:String;
+	static public function getPath(key:String, ignoreMods:Bool = false) {
+		var path:String = sharedPath(key);
+		if (FileSystem.exists(path)) return path;
+		return null;
+	}
+	static public function sharedPath(key:String)
+		return 'assets/$key';
+	static public function exists(key:String, ignoreMods:Bool = false)
+		return (getPath(key, ignoreMods) != null);
 
-	static public function setCurrentLevel(name:String)
-	{
-		currentLevel = name.toLowerCase();
+	static public function text(key:String) {
+		if (Assets.exists(sharedPath(key), TEXT))
+			return Assets.getText(sharedPath(key));
+
+		var assetKey:String = getPath(key);
+		if (assetKey == null) return null;
+		return File.getContent(assetKey);
 	}
 
-	static function getPath(file:String, type:AssetType, library:Null<String>)
-	{
-		if (library != null)
-			return getLibraryPath(file, library);
+	static public function sound(key:String)
+		return ogg('sounds/$key');
 
-		if (currentLevel != null)
-		{
-			var levelPath = getLibraryPathForce(file, currentLevel);
-			if (OpenFlAssets.exists(levelPath, type))
-				return levelPath;
+	static public function image(key:String) {
+		if (graphicCache[key] != null) return graphicCache[key];
+
+		var bmd:BitmapData;
+		var bmdKey:String = 'images/$key.png';
+
+		if (Assets.exists(sharedPath(bmdKey), IMAGE))
+			bmd = Assets.getBitmapData(sharedPath(bmdKey));
+		else {
+			var assetKey:String = getPath(bmdKey);
+			if (assetKey == null) return null;
+			bmd = BitmapData.fromFile(assetKey);
 		}
 
-		var levelPath = getLibraryPathForce(file, "shared");
-		if (OpenFlAssets.exists(levelPath, type))
-			return levelPath;
-
-		return getPreloadPath(file);
+		var graphic:FlxGraphic = graphicCache[key] = FlxGraphic.fromBitmapData(bmd);
+		graphic.destroyOnNoUse = false;
+		graphic.persist = true;
+		return graphic;
 	}
 
-	static public function getLibraryPath(file:String, library = "preload")
-	{
-		return if (library == "preload" || library == "default") getPreloadPath(file); else getLibraryPathForce(file, library);
+	static public function ogg(key:String):Sound {
+		if (soundCache[key] != null) return soundCache[key];
+
+		var sndKey:String = '$key.ogg';
+
+		if (Assets.exists(sharedPath(sndKey), SOUND))
+			return Assets.getSound(sharedPath(sndKey));
+		
+		var assetKey:String = getPath(sndKey);
+		if (assetKey == null) return new Sound();
+		var snd:Sound = soundCache[key] = Sound.fromFile(assetKey);
+		return snd;
 	}
 
-	inline static function getLibraryPathForce(file:String, library:String)
-	{
-		return '$library:assets/$library/$file';
-	}
+	static public function font(key:String)
+		return (getPath('fonts/$key') ?? 'Nokia Cellphone FC');
 
-	inline static function getPreloadPath(file:String)
-	{
-		return 'assets/$file';
-	}
-
-	inline static public function file(file:String, type:AssetType = TEXT, ?library:String)
-	{
-		return getPath(file, type, library);
-	}
-
-	inline static public function txt(key:String, ?library:String)
-	{
-		return getPath('data/$key.txt', TEXT, library);
-	}
-
-	inline static public function xml(key:String, ?library:String)
-	{
-		return getPath('data/$key.xml', TEXT, library);
-	}
-
-	inline static public function json(key:String, ?library:String)
-	{
-		return getPath('data/$key.json', TEXT, library);
-	}
-
-	static public function sound(key:String, ?library:String)
-	{
-		return getPath('sounds/$key.$SOUND_EXT', SOUND, library);
-	}
-
-	inline static public function soundRandom(key:String, min:Int, max:Int, ?library:String)
-	{
-		return sound(key + FlxG.random.int(min, max), library);
-	}
-
-	inline static public function music(key:String, ?library:String)
-	{
-		return getPath('music/$key.$SOUND_EXT', MUSIC, library);
-	}
-
-	inline static public function voices(song:String, ?suffix:String)
-	{
-		if (suffix == null)
-			suffix = ""; // no suffix, for a sorta backwards compatibility with older-ish voice files
-
-		return 'songs:assets/songs/${song.toLowerCase()}/Voices$suffix.$SOUND_EXT';
-	}
-
-	inline static public function inst(song:String)
-	{
-		return 'songs:assets/songs/${song.toLowerCase()}/Inst.$SOUND_EXT';
-	}
-
-	inline static public function image(key:String, ?library:String)
-	{
-		return getPath('images/$key.png', IMAGE, library);
-	}
-
-	inline static public function font(key:String)
-	{
-		return 'assets/fonts/$key';
-	}
-
-	inline static public function getSparrowAtlas(key:String, ?library:String)
-	{
-		return FlxAtlasFrames.fromSparrow(image(key, library), file('images/$key.xml', library));
-	}
-
-	inline static public function getPackerAtlas(key:String, ?library:String)
-	{
-		return FlxAtlasFrames.fromSpriteSheetPacker(image(key, library), file('images/$key.txt', library));
+	static public function sparrowAtlas(key:String) {
+		var xmlContent:String = text('images/$key.xml');
+		if (xmlContent == null) return null;
+		return FlxAtlasFrames.fromSparrow(image(key), xmlContent);
 	}
 }

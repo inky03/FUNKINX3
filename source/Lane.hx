@@ -1,5 +1,7 @@
 package;
 
+import flixel.util.FlxSignal.FlxTypedSignal;
+import flixel.input.keyboard.FlxKey;
 import Strumline;
 import Scoring;
 import Note;
@@ -12,12 +14,10 @@ class Lane extends FlxSpriteGroup {
 	public var direction:Float = 90;
 	public var spawnRadius:Float;
 	public var hitWindow:Float = Scoring.safeFrames / 60 * 1000;
+	public var inputKeys:Array<FlxKey> = [];
 	public var strumline:Strumline;
 	
-	public dynamic function onNoteDespawned(note:Note, lane:Lane) {}
-	public dynamic function onNoteSpawned(note:Note, lane:Lane) {}
-	public dynamic function onNoteLost(note:Note, lane:Lane) {}
-	public dynamic function onNoteHit(note:Note, lane:Lane) {}
+	public var noteEvent:FlxTypedSignal<NoteEvent->Void>;
 	
 	public var receptor:Receptor;
 	public var noteCover:NoteCover;
@@ -50,12 +50,14 @@ class Lane extends FlxSpriteGroup {
 		this.add(noteCover);
 		this.add(noteSparks);
 		this.add(noteSplashes);
+		noteEvent = new FlxTypedSignal<NoteEvent->Void>();
 	}
 	
 	public override function update(elapsed:Float) {
 		super.update(elapsed);
 		
 		var i:Int = 0;
+		var early:Bool;
 		var limit:Int = 50;
 		while (i < queue.length) {
 			var note:Note = queue[i];
@@ -64,53 +66,30 @@ class Lane extends FlxSpriteGroup {
 				queue.remove(note);
 				continue;
 			}
-			if ((note.msTime - Conductor.songPosition) <= spawnRadius && (note.endMs - Conductor.songPosition) >= -spawnRadius) {
+			early = (note.msTime - Conductor.songPosition > spawnRadius);
+			if (!early && (note.endMs - Conductor.songPosition) >= -spawnRadius) {
 				queue.remove(note);
 				insertNote(note);
 				limit --;
 				if (limit < 0) break;
 			} else
 				i ++;
+			if (early) break;
 		}
 		
 		i = notes.length;
 		while (i > 0) {
 			i --;
 			var note:Note = notes.members[i];
-			note.followLane(this, scrollSpeed);
-			if (note.ignore) continue;
-			if (Conductor.songPosition >= note.msTime && !note.lost && note.canHit && (cpu || held)) {
-				if (!note.goodHit) hitNote(note, false);
-				playReceptor('confirm', !note.isHoldPiece);
-				if (cpu) {
-					receptor.animation.finishCallback = (anim:String) -> {
-						playReceptor('static', true);
-						receptor.animation.finishCallback = null;
-					}
-				}
-				if (Conductor.songPosition >= note.endMs) {
-					killNote(note);
-					continue;
-				}
-			}
-			if (note.lost || note.goodHit || note.isHoldPiece) {
-				if ((note.endMs - Conductor.songPosition) < -spawnRadius) {
-					queue.push(note);
-					killNote(note);
-				}
-			} else {
-				if (Conductor.songPosition - hitWindow > note.msTime) {
-					note.lost = true;
-					onNoteLost(note, this);
-				}
-				if ((note.msTime - Conductor.songPosition) > spawnRadius) {
-					queue.push(note);
-					killNote(note);
-				}
-			}
+			updateNote(note);
 		}
 	}
 	
+	public function input(key:FlxKey) {
+		if (inputKeys.contains(key)) {
+			
+		}
+	}
 	public function getHighestNote(filter:Null<(note:Note)->Bool> = null) {
 		var highNote:Null<Note> = null;
 		for (note in notes) {
@@ -141,10 +120,46 @@ class Lane extends FlxSpriteGroup {
 		for (note in notes) note.kill();
 		notes.clear();
 	}
-	public function insertNote(note:Note, pos:Int = 0) {
+	public function updateNote(note:Note) {
+		note.followLane(this, scrollSpeed);
+		if (note.ignore) return;
+		if (Conductor.songPosition >= note.msTime && !note.lost && note.canHit && (cpu || held)) {
+			if (!note.goodHit) hitNote(note, false);
+			receptor.playAnimation('confirm', !note.isHoldPiece);
+			if (cpu) {
+				receptor.animation.finishCallback = (anim:String) -> {
+					receptor.playAnimation('static', true);
+					receptor.animation.finishCallback = null;
+				}
+			}
+			if (Conductor.songPosition >= note.endMs) {
+				killNote(note);
+				return;
+			}
+		}
+		var canDespawn:Bool = !note.preventDespawn;
+		if (note.lost || note.goodHit || note.isHoldPiece) {
+			if (canDespawn && (note.endMs - Conductor.songPosition) < -spawnRadius) {
+				queue.push(note);
+				killNote(note);
+			}
+		} else {
+			if (Conductor.songPosition - hitWindow > note.msTime) {
+				note.lost = true;
+				noteEvent.dispatch({note: note, lane: this, type: LOST});
+				// onNoteLost.dispatch(note, this);
+			}
+			if (canDespawn && (note.msTime - Conductor.songPosition) > spawnRadius) {
+				queue.push(note);
+				killNote(note);
+			}
+		}
+	}
+	public function insertNote(note:Note, pos:Int = -1) {
 		if (notes.members.contains(note)) return;
 		note.hitWindow = hitWindow;
 		note.goodHit = false;
+		note.lane = this;
 		if (!note.isHoldPiece) {
 			note.canHit = true;
 			for (child in note.children) child.canHit = false;
@@ -152,21 +167,29 @@ class Lane extends FlxSpriteGroup {
 		note.scale.copyFrom(receptor.scale);
 		note.updateHitbox();
 		note.revive();
+		updateNote(note);
+		if (pos < 0) {
+			pos = 0;
+			for (note in notes) {
+				if (note.isHoldPiece) pos ++;
+				else break;
+			}
+		}
 		notes.insert(pos, note);
-		note.followLane(this, scrollSpeed);
+		noteEvent.dispatch({note: note, lane: this, type: SPAWNED});
 	}
 	public dynamic function hitNote(note:Note, kill:Bool = true) {
 		note.goodHit = true;
-		onNoteHit(note, this);
+		noteEvent.dispatch({note: note, lane: this, type: HIT});
+		// onNoteHit(note, this);
 		if (kill) killNote(note);
 	}
 	public function killNote(note:Note) {
 		notes.remove(note, true);
 		note.kill();
-		onNoteDespawned(note, this);
+		noteEvent.dispatch({note: note, lane: this, type: DESPAWNED});
+		// onNoteDespawned(note, this);
 	}
-	
-	public function playReceptor(anim:String, forced:Bool = false) if (receptor != null) receptor.playAnimation(anim, forced);
 }
 
 class Receptor extends FunkinSprite {
@@ -217,12 +240,14 @@ class NoteSplash extends FunkinSprite {
 }
 
 class NoteCover extends FunkinSprite {
+	public static var directionNames:Array<String> = ['Purple', 'Blue', 'Green', 'Red'];
 	public function new(data:Int) {
 		super();
-		loadAtlas('holdCoverRed');
+		var dir:String = directionNames[data];
+		loadAtlas('holdCover${dir}');
 		
-		animation.addByPrefix('start', 'holdCoverStartRed', 24, false);
-		animation.addByPrefix('loop', 'holdCoverRed', 24, true);
+		animation.addByPrefix('start', 'holdCoverStart${dir}', 24, false);
+		animation.addByPrefix('loop', 'holdCover${dir}', 24, true);
 		animation.finishCallback = (anim:String) -> {
 			playAnimation('loop');
 		};
@@ -244,9 +269,10 @@ class NoteCover extends FunkinSprite {
 class NoteSpark extends FunkinSprite {
 	public function new(data:Int) {
 		super(data);
-		loadAtlas('holdCoverRed');
+		var dir:String = NoteCover.directionNames[data];
+		loadAtlas('holdCover${dir}');
 		
-		animation.addByPrefix('spark', 'holdCoverEndRed', 24, false);
+		animation.addByPrefix('spark', 'holdCoverEnd${dir}', 24, false);
 		animation.finishCallback = (anim:String) -> {
 			kill();
 		}
@@ -261,4 +287,17 @@ class NoteSpark extends FunkinSprite {
 		updateHitbox();
 		spriteOffset.set(width * .5 + 10, height * .5 - 46);
 	}
+}
+
+typedef NoteEvent = {
+	var note:Note;
+	var lane:Lane;
+	var type:NoteEventType;
+}
+
+enum NoteEventType {
+	SPAWNED;
+	DESPAWNED;
+	HIT;
+	LOST;
 }
