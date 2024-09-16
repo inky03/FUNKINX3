@@ -59,6 +59,8 @@ class Song {
 				return null;
 			}
 		} else {
+			trace('Chart: $jsonPath');
+			trace('Verify path:');
 			trace('Song JSON not found... (chart not generated)');
 			return null;
 		}
@@ -67,22 +69,28 @@ class Song {
 	public static function loadStepmaniaSong(path:String) {
 	}
 
-	public static function loadVSliceSong(path:String, difficulty:String = 'hard') {
+	// suffix is for playable characters
+	public static function loadVSliceSong(path:String, difficulty:String = 'hard', suffix:String = '') {
 		trace('Loading VSlice chart "$path"');
 
-		var songPath = 'data/$path/$path';
-		var song = new Song(path, 4);
+		var songPath:String = 'data/$path/$path';
+		var chartPath:String = '$songPath-chart$suffix.json';
+		var metaPath:String = '$songPath-metadata$suffix.json';
+		var song:Song = new Song(path, 4);
 
-		try {
-			var chartContent:String = Paths.text('$songPath-chart.json');
-			var metaContent:Null<String> = Paths.text('$songPath-metadata.json');
-			song.chart = new FNFVSlice().fromJson(chartContent, metaContent);
-		} catch (e:Exception) {
-			trace('fail: ${e.details()}');
+		if (!Paths.exists(chartPath) || !Paths.exists(metaPath)) {
+			trace('Metadata: $metaPath');
+			trace('Chart: $chartPath');
+			trace('Verify paths:');
+			trace('Chart or Metadata JSON not found... (chart not generated)');
 			return song;
 		}
 
 		try {
+			var chartContent:String = Paths.text(chartPath);
+			var metaContent:String = Paths.text(metaPath);
+			song.chart = new FNFVSlice().fromJson(chartContent, metaContent);
+
 			var meta:BasicMetaData = song.chart.getChartMeta();
 			song.name = meta.title;
 			song.scrollSpeed = meta.scrollSpeeds[difficulty] ?? 1;
@@ -104,7 +112,7 @@ class Song {
 					song.notes.push(note);
 			}
 		} catch (e:Exception) {
-			trace('fail (the other one): ${e.details()}');
+			trace('Error when generating chart! -> <<< ${e.details()} >>>');
 			return song;
 		}
 
@@ -181,7 +189,7 @@ class Song {
 			}
 			song.sortNotes();
 			trace('Chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
-		} catch(e:haxe.Exception) {
+		} catch(e:Exception) {
 			trace('Error when generating chart! -> <<< ${e.details()} >>>');
 		}
 		return song;
