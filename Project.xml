@@ -32,13 +32,14 @@
 	<set name="BUILD_DIR" value="export" />
 	<source path="source" />
 	<assets path="assets" />
-	<assets path="alsoft.ini">
+	<assets path="alsoft.ini"/>
 
 	<!-- _______________________________ Libraries ______________________________ -->
 
 	<haxelib name="flixel" />
 	<haxelib name="flixel-addons" />
 	<haxelib name="flixel-ui" />
+	<haxelib name="moonchart" />
 	<haxelib name="tjson" />
 
 	<!--In case you want to use nape with flixel-->

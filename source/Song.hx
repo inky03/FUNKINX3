@@ -1,13 +1,19 @@
 package;
 
 import Note;
+import Conductor.Metronome;
 import Conductor.TempoChange;
+
+import haxe.Exception;
+import moonchart.formats.BasicFormat;
+import moonchart.formats.fnf.FNFVSlice;
 
 class Song {
 	public var path:String;
 	
 	public var name:String;
 	public var json:Dynamic;
+	public var chart:Dynamic;
 	public var initialBpm:Float = 100;
 	public var keyCount:Int = 4;
 	public var notes:Array<Note> = [];
@@ -59,6 +65,50 @@ class Song {
 	}
 	
 	public static function loadStepmaniaSong(path:String) {
+	}
+
+	public static function loadVSliceSong(path:String, difficulty:String = 'hard') {
+		trace('Loading VSlice chart "$path"');
+
+		var songPath = 'data/$path/$path';
+		var song = new Song(path, 4);
+
+		try {
+			var chartContent:String = Paths.text('$songPath-chart.json');
+			var metaContent:Null<String> = Paths.text('$songPath-metadata.json');
+			song.chart = new FNFVSlice().fromJson(chartContent, metaContent);
+		} catch (e:Exception) {
+			trace('fail: ${e.details()}');
+			return song;
+		}
+
+		try {
+			var meta:BasicMetaData = song.chart.getChartMeta();
+			song.name = meta.title;
+			song.scrollSpeed = meta.scrollSpeeds[difficulty] ?? 1;
+
+			var bpmChanges:Array<BasicBPMChange> = meta.bpmChanges;
+			var firstChange:BasicBPMChange = bpmChanges[0];
+			var tempMetronome:Metronome = new Metronome(firstChange.bpm);
+			song.initialBpm = tempMetronome.bpm;
+			song.tempoChanges = [new TempoChange(0, song.initialBpm, 4, 4)];
+			tempMetronome.tempoChanges = song.tempoChanges;
+			for (change in bpmChanges) {
+				var beat:Float = Conductor.convertMeasure(change.time, MS, BEAT, tempMetronome);
+				song.tempoChanges.push(new TempoChange(beat, change.bpm, Std.int(change.beatsPerMeasure), Std.int(change.stepsPerBeat)));
+			}
+
+			var notes:Array<BasicNote> = song.chart.getNotes(difficulty);
+			for (note in notes) {
+				for (note in generateNotes(note.lane < 4, note.time, Std.int(note.lane % 4), '', note.length ?? 0, 250))
+					song.notes.push(note);
+			}
+		} catch (e:Exception) {
+			trace('fail (the other one): ${e.details()}');
+			return song;
+		}
+
+		return song;
 	}
 	
 	public static function loadLegacySong(path:String, difficulty:String = 'normal', keyCount:Int = 4) {
@@ -116,6 +166,11 @@ class Song {
 				for (dataNote in section.sectionNotes) {
 					var noteTime:Float = dataNote[0];
 					var noteData:Int = Std.int(dataNote[1]);
+					if (noteData < 0) { // old psych event
+						song.events.push(new SongEvent(dataNote[2], noteTime, [dataNote[3], dataNote[4]]));
+						continue;
+					}
+
 					var noteLength:Float = dataNote[2];
 					var noteKind:Dynamic = dataNote[3];
 					if (!Std.isOfType(noteKind, String)) noteKind = '';

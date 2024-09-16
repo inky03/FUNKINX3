@@ -66,7 +66,7 @@ class PlayState extends MusicBeatState {
 		paused = true; //setup the freaking song
 		
 		var tempNotes:Array<Note> = [];
-		song = Song.loadLegacySong('esculent', 'hard');
+		song = Song.loadVSliceSong('darnell', 'hard');
 		for (event in song.events) events.push(event);
 		Conductor.metronome.tempoChanges = song.tempoChanges;
 		Conductor.metronome.setBeat(-5);

@@ -17,24 +17,25 @@ class Conductor {
 	public static function resetToDefault() {
 		metronome = new Metronome();
 	}
-	public static function convertMeasure(value:Float, input:MetronomeMeasure, output:MetronomeMeasure) {
-		var prevMS:Float = metronome.ms;
+	public static function convertMeasure(value:Float, input:MetronomeMeasure, output:MetronomeMeasure, ?baseMetronome:Metronome) {
+		baseMetronome = baseMetronome ?? Conductor.metronome;
+		var prevMS:Float = baseMetronome.ms;
 		var target:Float = 0;
 		switch (input) {
-			case STEP: metronome.setStep(value);
-			case BEAT: metronome.setBeat(value);
-			case BAR: metronome.setBar(value);
-			case MS: metronome.setMS(value);
+			case STEP: baseMetronome.setStep(value);
+			case BEAT: baseMetronome.setBeat(value);
+			case BAR: baseMetronome.setBar(value);
+			case MS: baseMetronome.setMS(value);
 			default:
 		}
 		switch (output) {
-			case STEP: target = metronome.step;
-			case BEAT: target = metronome.beat;
-			case BAR: target = metronome.bar;
-			case MS: target = metronome.ms; //why
+			case STEP: target = baseMetronome.step;
+			case BEAT: target = baseMetronome.beat;
+			case BAR: target = baseMetronome.bar;
+			case MS: target = baseMetronome.ms; //why
 			default:
 		}
-		metronome.setMS(prevMS);
+		baseMetronome.setMS(prevMS);
 		return target;
 	}
 }
