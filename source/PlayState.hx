@@ -63,7 +63,7 @@ class PlayState extends MusicBeatState {
 		FlxG.drawFramerate = 240;
 		FlxG.updateFramerate = 240;
 		
-		paused = true; //setup the freaking song
+		paused = true; //setup the freaking song -- loadLegacySong for FNFLegacy and loadVSliceSong for FNFVSlice
 		
 		var tempNotes:Array<Note> = [];
 		song = Song.loadVSliceSong('darnell', 'hard');
