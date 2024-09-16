@@ -66,7 +66,7 @@ class PlayState extends MusicBeatState {
 		paused = true; //setup the freaking song
 		
 		var tempNotes:Array<Note> = [];
-		song = Song.loadLegacySong('sporting', 'hard');
+		song = Song.loadLegacySong('esculent', 'hard');
 		for (event in song.events) events.push(event);
 		Conductor.metronome.tempoChanges = song.tempoChanges;
 		Conductor.metronome.setBeat(-5);
@@ -87,22 +87,7 @@ class PlayState extends MusicBeatState {
 		var strumlineY:Float = 50;
 		
 		player1 = new Character(700, 300);
-		player1.loadAtlas('characters/BOYFRIEND');
-		player1.animation.addByPrefix('idle', 'BF idle dance', 24, false);
-		for (ani in singAnimations) {
-			player1.animation.addByPrefix('sing${ani}', 'BF NOTE ${ani}0', 24, false);
-			player1.animation.addByPrefix('sing${ani}miss', 'BF NOTE ${ani} MISS', 24, false);
-		}
-		player1.offsets.set('idle', FlxPoint.get(-5, 0));
-		player1.offsets.set('singLEFT', FlxPoint.get(5, -6));
-		player1.offsets.set('singDOWN', FlxPoint.get(-20, -51));
-		player1.offsets.set('singUP', FlxPoint.get(-46, 27));
-		player1.offsets.set('singRIGHT', FlxPoint.get(-48, -7));
-		player1.offsets.set('singLEFTmiss', FlxPoint.get(7, 19));
-		player1.offsets.set('singDOWNmiss', FlxPoint.get(-15, -19));
-		player1.offsets.set('singUPmiss', FlxPoint.get(-46, 27));
-		player1.offsets.set('singRIGHTmiss', FlxPoint.get(-44, 19));
-		player1.dance(0);
+		player1.useDefault();
 		add(player1);
 		
 		var scrollDir:Float = (Settings.data.downscroll ? 270 : 90);

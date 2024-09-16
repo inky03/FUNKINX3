@@ -8,9 +8,14 @@ import flixel.graphics.frames.FlxFramesCollection;
 import flixel.addons.display.FlxTiledSprite;
 
 class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affect society
-	public static var colorNames:Array<String> = ['purple', 'blue', 'green', 'red'];
 	public static var directionNames:Array<String> = ['left', 'down', 'up', 'right'];
-	
+	public static var directionColors:Array<Array<FlxColor>> = [
+		[FlxColor.fromRGB(194, 75, 153), FlxColor.fromRGB(60, 31, 86)],
+		[FlxColor.fromRGB(0, 255, 255), FlxColor.fromRGB(21, 66, 183)],
+		[FlxColor.fromRGB(18, 250, 5), FlxColor.fromRGB(10, 68, 71)],
+		[FlxColor.fromRGB(249, 57, 63), FlxColor.fromRGB(101, 16, 56)],
+	];
+
 	public var children:Array<Note> = [];
 	public var parent:Note;
 	public var tail:Note;
@@ -70,8 +75,8 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		this.isHoldPiece = isHoldPiece;
 		this.isHoldTail = (isHoldPiece && msLength <= 0);
 		noteOffset = FlxPoint.get();
-		
-		loadAtlas('NOTE_assets');
+
+		loadAtlas('notes');
 		var dirName:String = Note.directionNames[noteData];
 		
 		animation.addByPrefix('main', '${dirName} note', 24, false);
@@ -118,6 +123,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		var dir:Float = lane.direction + directionOffset;
 		var prevDist:Float = scrollDistance;
 		var holdHeight:Float = 0;
+		var cutHeight:Float = frameHeight;
 		scrollDistance = Note.msToDistance(msTime - Conductor.songPosition, speed);
 		
 		if (isHoldPiece) { //im jumping off a building
@@ -131,9 +137,10 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 			if (isHoldTail) {
 				scrollDistance -= frameHeight * prevSX;
 				holdHeight = frameHeight * prevSX;
-			}
+			} else
+				cutHeight = frameHeight - 1;
 			origin.set(width * .5, 0);
-			scale.set(prevSX, isHoldTail ? prevSX : (holdHeight / frameHeight));
+			scale.set(prevSX, isHoldTail ? prevSX : (holdHeight / cutHeight));
 		}
 		
 		var xP:Float = 0;
@@ -145,7 +152,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		
 		if (isHoldPiece) { //handle in DISTANCE to support scroll direction
 			var clip:Bool = (lane.held);
-			if (clip) clipHeight = Math.min(Math.max(0, (holdHeight + scrollDistance) / scale.y), frameHeight);
+			if (clip) clipHeight = Math.min(Math.max(0, (holdHeight + scrollDistance) / scale.y), cutHeight);
 			
 			var clipBottom:Float = 0;
 			if (parent != null && parent.tail != null) {
@@ -154,7 +161,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 			}
 			
 			if (clipRect == null) clipRect = new FlxRect();
-			clipRect.y = frameHeight - clipHeight;
+			clipRect.y = cutHeight - clipHeight;
 			clipRect.width = frameWidth;
 			clipRect.height = clipHeight + clipBottom;
 			clipRect = clipRect; //refresh clip rect

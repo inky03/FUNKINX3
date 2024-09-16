@@ -12,14 +12,14 @@ class Paths {
 	public static var graphicCache:Map<String, FlxGraphic> = [];
 	public static var soundCache:Map<String, Sound> = [];
 
-	static public function getPath(key:String, ignoreMods:Bool = false) {
+	inline static public function getPath(key:String, ignoreMods:Bool = false) {
 		var path:String = sharedPath(key);
 		if (FileSystem.exists(path)) return path;
 		return null;
 	}
-	static public function sharedPath(key:String)
+	inline static public function sharedPath(key:String)
 		return 'assets/$key';
-	static public function exists(key:String, ignoreMods:Bool = false)
+	inline static public function exists(key:String, ignoreMods:Bool = false)
 		return (getPath(key, ignoreMods) != null);
 
 	static public function text(key:String) {
@@ -31,7 +31,7 @@ class Paths {
 		return File.getContent(assetKey);
 	}
 
-	static public function sound(key:String)
+	inline static public function sound(key:String)
 		return ogg('sounds/$key');
 
 	static public function image(key:String) {
@@ -54,7 +54,7 @@ class Paths {
 		return graphic;
 	}
 
-	static public function ogg(key:String):Sound {
+	inline static public function ogg(key:String):Sound {
 		if (soundCache[key] != null) return soundCache[key];
 
 		var sndKey:String = '$key.ogg';
@@ -68,7 +68,7 @@ class Paths {
 		return snd;
 	}
 
-	static public function font(key:String)
+	inline static public function font(key:String)
 		return (getPath('fonts/$key') ?? 'Nokia Cellphone FC');
 
 	static public function sparrowAtlas(key:String) {

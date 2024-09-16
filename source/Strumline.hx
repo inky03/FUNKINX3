@@ -159,7 +159,8 @@ class Strumline extends FlxSpriteGroup {
 					//shrug
 			}
 			for (lane in lanes) {
-				lane.receptor.setGraphicSize(lane.receptor.width * ratio);
+				lane.receptor.scale.x *= ratio;
+				lane.receptor.scale.y *= ratio;
 				lane.receptor.updateHitbox();
 				lane.receptor.spriteOffset.set(0, 0);
 				lane.updateHitbox();
