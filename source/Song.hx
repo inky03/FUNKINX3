@@ -52,11 +52,12 @@ class Song {
 		if (Paths.exists(jsonPath)) {
 			var content:String = Paths.text(jsonPath);
 			var jsonData:Dynamic = TJSON.parse(content);
-			if (jsonData.song != null) {
+			var fromSong:Bool = (!Std.isOfType(jsonData.song, String));
+			Reflect.setField(jsonData, 'fromSong', fromSong);
+			if (fromSong) {
 				return jsonData.song;
 			} else {
-				trace('Bad song JSON... (chart not generated)');
-				return null;
+				return jsonData; // lets assume the data is here
 			}
 		} else {
 			trace('Chart: $jsonPath');
@@ -138,6 +139,7 @@ class Song {
 			var beat:Float = 0;
 			var sectionNumerator:Float = 0;
 			var osectionNumerator:Float = 0;
+			var fromSong:Bool = song.json.fromSong;
 			
 			var bpm:Float = song.initialBpm;
 			var crochet:Float = 60000 / song.initialBpm;
@@ -182,7 +184,11 @@ class Song {
 					var noteLength:Float = dataNote[2];
 					var noteKind:Dynamic = dataNote[3];
 					if (!Std.isOfType(noteKind, String)) noteKind = '';
-					var playerNote:Bool = ((noteData < keyCount) == section.mustHitSection);
+					var playerNote:Bool;
+					if (fromSong)
+						playerNote = ((noteData < keyCount) == section.mustHitSection);
+					else // assume psych 1.0
+						playerNote = (noteData < keyCount);
 					
 					for (note in generateNotes(playerNote, noteTime, noteData % keyCount, noteKind, noteLength, stepCrochet)) song.notes.push(note);
 				}
