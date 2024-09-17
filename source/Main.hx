@@ -8,6 +8,7 @@ class Main extends Sprite {
 	
 	public function new() {
 		super();
+		DiscordRPC.prepare();
 		addChild(new FlxGame(0, 0, PlayState));
 		addChild(new DebugDisplay(10, 3, 0xFFFFFF));
 	}

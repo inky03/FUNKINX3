@@ -66,7 +66,7 @@ class PlayState extends MusicBeatState {
 		paused = true; //setup the freaking song -- loadLegacySong for FNFLegacy and loadVSliceSong for FNFVSlice
 		
 		var tempNotes:Array<Note> = [];
-		song = Song.loadVSliceSong('darnell', 'hard');
+		song = Song.loadLegacySong('squidmungus', 'squidmode');
 		for (event in song.events) events.push(event);
 		Conductor.metronome.tempoChanges = song.tempoChanges;
 		Conductor.metronome.setBeat(-5);
@@ -153,10 +153,6 @@ class PlayState extends MusicBeatState {
 	}
 
 	override public function update(elapsed:Float) {
-		if (FlxG.keys.pressed.SHIFT && FlxG.keys.justPressed.C) {
-			trace('clean mem');
-			hl.Gc.major();
-		}
 		if (FlxG.keys.justPressed.Q) {
 			Conductor.songPosition -= 350;
 		}
