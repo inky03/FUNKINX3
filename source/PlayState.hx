@@ -66,7 +66,7 @@ class PlayState extends MusicBeatState {
 		paused = true; //setup the freaking song -- loadLegacySong for FNFLegacy and loadVSliceSong for FNFVSlice
 		
 		var tempNotes:Array<Note> = [];
-		song = Song.loadLegacySong('squidmungus', 'squidmode');
+		song = Song.loadVSliceSong('darnell', 'hard', '-bf');
 		for (event in song.events) events.push(event);
 		Conductor.metronome.tempoChanges = song.tempoChanges;
 		Conductor.metronome.setBeat(-5);
@@ -146,6 +146,7 @@ class PlayState extends MusicBeatState {
 		updateRating();
 
 		hitsound = new FlxSound().loadEmbedded(Paths.sound('hitsound'));
+		hitsound.volume = .7;
 		
 		//testHold = new Note.NoteTail(0);
 		//testHold.setPosition(20, 20);
@@ -169,7 +170,7 @@ class PlayState extends MusicBeatState {
 				lane.queue.push(note);
 			}
 			for (event in song.events) events.push(event);
-			for (track in [song.instTrack, song.vocalTrack]) {
+			for (track in [song.instTrack, song.vocalTrack, song.oppVocalTrack]) {
 				track.time = 0;
 				track.pause();
 				//track.play(true);
@@ -190,7 +191,7 @@ class PlayState extends MusicBeatState {
 		}
 		if (FlxG.keys.justPressed.ENTER) {
 			paused = !paused;
-			for (track in [song.instTrack, song.vocalTrack]) {
+			for (track in [song.instTrack, song.vocalTrack, song.oppVocalTrack]) {
 				if (paused || Conductor.songPosition < 0)
 					track.pause();
 				else
@@ -207,8 +208,8 @@ class PlayState extends MusicBeatState {
 		camHUD.zoom = FlxMath.lerp(camHUD.zoom, 1, elapsed * 3);
 		FlxG.camera.zoom = FlxMath.lerp(FlxG.camera.zoom, 1, elapsed * 3);
 		camFocus.setPosition(
-			FlxMath.lerp(camFocus.x, camFocusTarget.x, 1 - Math.exp(-elapsed * 3)),
-			FlxMath.lerp(camFocus.y, camFocusTarget.y, 1 - Math.exp(-elapsed * 3)),
+			Util.smoothLerp(camFocus.x, camFocusTarget.x, elapsed * 3),
+			Util.smoothLerp(camFocus.y, camFocusTarget.y, elapsed * 3)
 		);
 		
 		var limit:Int = 50; //avoid lags
@@ -221,8 +222,10 @@ class PlayState extends MusicBeatState {
 	
 	public function syncMusic(forceSongpos:Bool = false) {
 		if (song.instLoaded && song.instTrack.playing) {
-			if (song.vocalsLoaded && Math.abs(song.instTrack.time - song.vocalTrack.time) > 100)
+			if (song.vocalsLoaded && Math.abs(song.instTrack.time - song.vocalTrack.time) > 100) {
 				song.vocalTrack.time = song.instTrack.time;
+				song.oppVocalTrack.time = song.instTrack.time;
+			}
 			if ((forceSongpos && Conductor.songPosition < song.instTrack.time) || Math.abs(song.instTrack.time - Conductor.songPosition) > 100)
 				Conductor.songPosition = song.instTrack.time;
 		}
@@ -235,10 +238,14 @@ class PlayState extends MusicBeatState {
 	}
 	
 	public function triggerEvent(event:SongEvent) {
-		var values:Array<Dynamic> = event.values;
-		switch (event.event) {
-			case 'Focus':
-				camFocusTarget.x = FlxG.width * .5 + (values[0] == 0 ? 180 : -180);
+		var params:Map<String, Dynamic> = event.params;
+		switch (event.name) {
+			case 'FocusCamera':
+				camFocusTarget.x = FlxG.width * .5 + (params['char'] == 0 ? 180 : -180);
+				switch (params['char']) {
+					case 0:
+
+				}
 		}
 	}
 	
@@ -261,6 +268,7 @@ class PlayState extends MusicBeatState {
 			case 0:
 				if (song.instLoaded) song.instTrack.play(true);
 				if (song.vocalsLoaded) song.vocalTrack.play(true);
+				if (song.oppVocalsLoaded) song.oppVocalTrack.play(true);
 				syncMusic();
 			default:
 		}

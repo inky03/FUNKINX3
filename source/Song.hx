@@ -20,11 +20,14 @@ class Song {
 	public var events:Array<SongEvent> = [];
 	public var tempoChanges:Array<TempoChange> = [new TempoChange(0, 100, 4, 4)];
 	public var scrollSpeed:Float = 1;
-	
+
 	public var instLoaded:Bool;
 	public var vocalsLoaded:Bool;
+	public var audioSuffix:String;
 	public var instTrack:FlxSound;
 	public var vocalTrack:FlxSound;
+	public var oppVocalsLoaded:Bool;
+	public var oppVocalTrack:FlxSound;
 	
 	public function new(path:String, keyCount:Int = 4) {
 		this.path = path;
@@ -33,14 +36,10 @@ class Song {
 		instLoaded = false;
 		instTrack = new FlxSound();
 		vocalTrack = new FlxSound();
+		oppVocalTrack = new FlxSound();
 		FlxG.sound.list.add(instTrack);
 		FlxG.sound.list.add(vocalTrack);
-		
-		var time:Float = Sys.time();
-		trace('loading song music...');
-		loadMusic('data/${path}/');
-		loadMusic('songs/${path}/');
-		trace(instLoaded ? ('Music loaded in ${Math.round((Sys.time() - time) * 1000) / 1000}s!') : ('Music failed to load...'));
+		FlxG.sound.list.add(oppVocalTrack);
 	}
 	
 	public static function loadJson(path:String, difficulty:String = 'normal') {
@@ -52,17 +51,11 @@ class Song {
 		if (Paths.exists(jsonPath)) {
 			var content:String = Paths.text(jsonPath);
 			var jsonData:Dynamic = TJSON.parse(content);
-			var fromSong:Bool = (!Std.isOfType(jsonData.song, String));
-			Reflect.setField(jsonData, 'fromSong', fromSong);
-			if (fromSong) {
-				return jsonData.song;
-			} else {
-				return jsonData; // lets assume the data is here
-			}
+			return jsonData;
 		} else {
-			trace('Chart: $jsonPath');
-			trace('Verify path:');
 			trace('Song JSON not found... (chart not generated)');
+			trace('Verify path:');
+			trace('Chart: $jsonPath');
 			return null;
 		}
 	}
@@ -80,13 +73,14 @@ class Song {
 		var song:Song = new Song(path, 4);
 
 		if (!Paths.exists(chartPath) || !Paths.exists(metaPath)) {
-			trace('Metadata: $metaPath');
-			trace('Chart: $chartPath');
-			trace('Verify paths:');
 			trace('Chart or Metadata JSON not found... (chart not generated)');
+			trace('Verify paths:');
+			trace('Chart: $chartPath');
+			trace('Metadata: $metaPath');
 			return song;
 		}
 
+		var time = Sys.time();
 		try {
 			var chartContent:String = Paths.text(chartPath);
 			var metaContent:String = Paths.text(metaPath);
@@ -107,11 +101,30 @@ class Song {
 				song.tempoChanges.push(new TempoChange(beat, change.bpm, Std.int(change.beatsPerMeasure), Std.int(change.stepsPerBeat)));
 			}
 
+			var events:Array<BasicEvent> = song.chart.getEvents();
+			for (event in events) {
+				var newParams:Map<String, Dynamic> = [];
+				for (param in Reflect.fields(event.data))
+					newParams[param] = Reflect.field(event.data, param);
+				song.events.push({name: event.name, msTime: event.time, params: newParams});
+			}
+
 			var notes:Array<BasicNote> = song.chart.getNotes(difficulty);
 			for (note in notes) {
-				for (note in generateNotes(note.lane < 4, note.time, Std.int(note.lane % 4), '', note.length ?? 0, 250))
+				tempMetronome.setMS(note.time + 1);
+				for (note in generateNotes(note.lane < 4, note.time, Std.int(note.lane % 4), '', note.length ?? 0, tempMetronome.getCrochet(tempMetronome.bpm, tempMetronome.denominator) * .25))
 					song.notes.push(note);
 			}
+			trace('Chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
+
+			var p1:String = meta.extraData['FNF_P1'];
+			var p2:String = meta.extraData['FNF_P2'];
+			trace('loading song music...');
+			time = Sys.time();
+			song.audioSuffix = suffix;
+			song.loadMusic('data/${path}/', p1, p2);
+			song.loadMusic('songs/${path}/', p1, p2);
+			trace(song.instLoaded ? ('Music loaded in ${Math.round((Sys.time() - time) * 1000) / 1000}s!') : ('Music failed to load...'));
 		} catch (e:Exception) {
 			trace('Error when generating chart! -> <<< ${e.details()} >>>');
 			return song;
@@ -127,6 +140,8 @@ class Song {
 		song.json = Song.loadJson(path, difficulty);
 		
 		if (song.json == null) return song;
+		var fromSong:Bool = (!Std.isOfType(song.json.song, String));
+		if (fromSong) song.json = song.json.song;
 		
 		var time = Sys.time();
 		try {
@@ -139,19 +154,28 @@ class Song {
 			var beat:Float = 0;
 			var sectionNumerator:Float = 0;
 			var osectionNumerator:Float = 0;
-			var fromSong:Bool = song.json.fromSong;
 			
 			var bpm:Float = song.initialBpm;
 			var crochet:Float = 60000 / song.initialBpm;
 			var stepCrochet:Float = crochet * .25;
-			var focus:Null<Int> = null;
+			var focus:Int = -1;
 			
 			var sections:Array<LegacySongSection> = song.json.notes;
+			if (song.json.events != null) { // todo: implement events.json
+				var eventBlobs:Array<Array<Dynamic>> = song.json.events;
+				for (eventBlob in eventBlobs) {
+					var eventTime:Float = eventBlob[0];
+					var events:Array<Array<String>> = eventBlob[1];
+					for (event in events) {
+						song.events.push({name: event[0], msTime: eventTime, params: ['value1' => event[1], 'value2' => event[2]]});
+					}
+				}
+			}
 			for (section in sections) {
 				var sectionFocus:Int = (section.gfSection ? 2 : (section.mustHitSection ? 0 : 1));
 				if (focus != sectionFocus) {
 					focus = sectionFocus;
-					song.events.push(new SongEvent('Focus', ms, [focus]));
+					song.events.push({name: 'FocusCamera', msTime: ms, params: ['char' => focus]});
 				}
 				
 				var sectionDenominator:Int = 4;
@@ -177,7 +201,7 @@ class Song {
 					var noteTime:Float = dataNote[0];
 					var noteData:Int = Std.int(dataNote[1]);
 					if (noteData < 0) { // old psych event
-						song.events.push(new SongEvent(dataNote[2], noteTime, [dataNote[3], dataNote[4]]));
+						song.events.push({name: dataNote[2], msTime: noteTime, params: ['value1' => dataNote[3], 'value2' => dataNote[4]]});
 						continue;
 					}
 
@@ -185,10 +209,11 @@ class Song {
 					var noteKind:Dynamic = dataNote[3];
 					if (!Std.isOfType(noteKind, String)) noteKind = '';
 					var playerNote:Bool;
-					if (fromSong)
+					if (fromSong) {
 						playerNote = ((noteData < keyCount) == section.mustHitSection);
-					else // assume psych 1.0
+					} else { // assume psych 1.0
 						playerNote = (noteData < keyCount);
+					}
 					
 					for (note in generateNotes(playerNote, noteTime, noteData % keyCount, noteKind, noteLength, stepCrochet)) song.notes.push(note);
 				}
@@ -198,6 +223,13 @@ class Song {
 		} catch(e:Exception) {
 			trace('Error when generating chart! -> <<< ${e.details()} >>>');
 		}
+
+		trace('loading song music...');
+		time = Sys.time();
+		song.loadMusic('data/${path}/');
+		song.loadMusic('songs/${path}/');
+		trace(song.instLoaded ? ('Music loaded in ${Math.round((Sys.time() - time) * 1000) / 1000}s!') : ('Music failed to load...'));
+
 		return song;
 	}
 	
@@ -228,12 +260,19 @@ class Song {
 		return notes;
 	}
 	
-	public function loadMusic(path:String) {
+	public function loadMusic(path:String, player:String = '', opponent:String = '') {
 		if (instLoaded) return true;
 		try {
-			vocalTrack.loadEmbedded(Paths.ogg('${path}Voices'));
-			vocalsLoaded = (vocalTrack.length > 0);
-			instTrack.loadEmbedded(Paths.ogg('${path}Inst'));
+			if (player == '' && opponent == '') {
+				vocalTrack.loadEmbedded(Paths.ogg('${path}Voices$audioSuffix'));
+				vocalsLoaded = (vocalTrack.length > 0);
+			} else {
+				oppVocalTrack.loadEmbedded(Paths.ogg('${path}Voices-$opponent$audioSuffix'));
+				oppVocalsLoaded = (oppVocalTrack.length > 0);
+				vocalTrack.loadEmbedded(Paths.ogg('${path}Voices-$player$audioSuffix'));
+				vocalsLoaded = (vocalTrack.length > 0);
+			}
+			instTrack.loadEmbedded(Paths.ogg('${path}Inst$audioSuffix'));
 			instLoaded = (instTrack.length > 0);
 			return true;
 		} catch(e:Dynamic)
@@ -249,17 +288,10 @@ class Song {
 	}
 }
 
-class SongEvent {
-	public var event:String;
-	public var msTime:Float;
-	public var values:Array<Dynamic>;
-	
-	public function new(event:String, time:Float = 0, values:Null<Array<Dynamic>>) {
-		this.event = event;
-		this.msTime = time;
-		if (values == null) this.values = [];
-		else this.values = values;
-	}
+typedef SongEvent = {
+	var name:String;
+	var msTime:Float;
+	var params:Map<String, Dynamic>;
 }
 
 typedef LegacySongSection = {
