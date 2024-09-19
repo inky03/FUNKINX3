@@ -92,22 +92,22 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	}
 	public function set_msTime(newTime:Float) {
 		if (msTime == newTime) return newTime;
-		Reflect.setField(this, 'beatTime', Conductor.convertMeasure(newTime, MS, BEAT));
+		Reflect.setField(this, 'beatTime', Conductor.metronome.convertMeasure(newTime, MS, BEAT));
 		return msTime = newTime;
 	}
 	public function set_beatTime(newTime:Float) {
 		if (beatTime == newTime) return newTime;
-		Reflect.setField(this, 'msTime', Conductor.convertMeasure(newTime, BEAT, MS));
+		Reflect.setField(this, 'msTime', Conductor.metronome.convertMeasure(newTime, BEAT, MS));
 		return beatTime = newTime;
 	}
 	public function set_msLength(newLength:Float) {
 		if (msLength == newLength) return newLength;
-		Reflect.setField(this, 'beatLength', Conductor.convertMeasure(msTime + newLength, MS, BEAT) - beatTime);
+		Reflect.setField(this, 'beatLength', Conductor.metronome.convertMeasure(msTime + newLength, MS, BEAT) - beatTime);
 		return msLength = newLength;
 	}
 	public function set_beatLength(newLength:Float) {
 		if (beatLength == newLength) return newLength;
-		Reflect.setField(this, 'msLength', Conductor.convertMeasure(beatTime + newLength, BEAT, MS) - msTime);
+		Reflect.setField(this, 'msLength', Conductor.metronome.convertMeasure(beatTime + newLength, BEAT, MS) - msTime);
 		return beatLength = newLength;
 	}
 	

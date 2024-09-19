@@ -66,7 +66,7 @@ class CharterState extends MusicBeatState {
 		FlxG.camera.zoom = FlxMath.lerp(FlxG.camera.zoom, .5, elapsed * 5);
 		
 		for (line in measureLines) {
-			line.y = FlxG.height * .5 + Note.msToDistance(Conductor.convertMeasure(line.startTime, BEAT, MS) - Conductor.songPosition, scrollSpeed);
+			line.y = FlxG.height * .5 + Note.msToDistance(Conductor.metronome.convertMeasure(line.startTime, BEAT, MS) - Conductor.songPosition, scrollSpeed);
 		}
 		
 		if (!paused)

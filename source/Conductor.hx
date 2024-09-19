@@ -6,7 +6,7 @@ class Conductor {
 	public static var stepCrochet(get, never):Float;
 	public static var metronome:Metronome = new Metronome();
 	
-	public static function get_crochet() return (metronome.getCrochet(metronome.bpm, metronome.denominator));
+	public static function get_crochet() return (metronome.getCrochet(metronome.bpm, metronome.timeSignature.denominator));
 	public static function get_stepCrochet() return (crochet * .25);
 	
 	public static function get_songPosition() return metronome.ms;
@@ -17,27 +17,6 @@ class Conductor {
 	public static function resetToDefault() {
 		metronome = new Metronome();
 	}
-	public static function convertMeasure(value:Float, input:MetronomeMeasure, output:MetronomeMeasure, ?baseMetronome:Metronome) {
-		baseMetronome = baseMetronome ?? Conductor.metronome;
-		var prevMS:Float = baseMetronome.ms;
-		var target:Float = 0;
-		switch (input) {
-			case STEP: baseMetronome.setStep(value);
-			case BEAT: baseMetronome.setBeat(value);
-			case BAR: baseMetronome.setBar(value);
-			case MS: baseMetronome.setMS(value);
-			default:
-		}
-		switch (output) {
-			case STEP: target = baseMetronome.step;
-			case BEAT: target = baseMetronome.beat;
-			case BAR: target = baseMetronome.bar;
-			case MS: target = baseMetronome.ms; //why
-			default:
-		}
-		baseMetronome.setMS(prevMS);
-		return target;
-	}
 }
 
 enum MetronomeMeasure {
@@ -47,7 +26,7 @@ enum MetronomeMeasure {
 	MS;
 }
 
-class Metronome {
+class Metronome { // TODO: move metronome, tempo change time signature shit to somewhere else (not conductor)
 	public var tempoChanges:Array<TempoChange>;
 	public var step:Float;
 	public var beat:Float;
@@ -55,18 +34,18 @@ class Metronome {
 	public var ms:Float;
 	
 	public var bpm:Float;
-	public var numerator:Int;
-	public var denominator:Int;
+	public var timeSignature:TimeSignature;
 	
-	inline public function getCrochet(bpm:Float, denominator:Int) return (60000 / bpm / denominator * 4);
+	inline public function getCrochet(bpm:Float, denominator:Int = 4) return (60000 / bpm / denominator * 4);
 	public function new(newBPM:Float = 100, newNum:Int = 4, newDenom:Int = 4) {
 		bpm = newBPM;
 		step = 0;
 		beat = 0;
 		bar = 0;
-		numerator = newNum;
-		denominator = newDenom;
-		tempoChanges = [new TempoChange(0, 100, 4, 4)];
+		timeSignature = new TimeSignature();
+		timeSignature.numerator = newNum;
+		timeSignature.denominator = newDenom;
+		tempoChanges = [new TempoChange(0, newBPM, new TimeSignature(newNum, newDenom))];
 	}
 	
 	public function setStep(newStep:Float) {
@@ -79,8 +58,8 @@ class Metronome {
 		
 		var firstChange:TempoChange = tempoChanges[0];
 		bpm = firstChange.bpm;
-		numerator = firstChange.numerator;
-		denominator = firstChange.denominator;
+		timeSignature.numerator = firstChange.timeSignature.numerator;
+		timeSignature.denominator = firstChange.timeSignature.denominator;
 		
 		var tempBeat:Float = 0;
 		var lastBeat:Float = 0;
@@ -92,21 +71,21 @@ class Metronome {
 			if (tempBeat > newBeat) break;
 			
 			lastBeat = tempBeat;
-			lastBar += (change.beatTime - lastBeat) / numerator;
-			lastMS += (change.beatTime - lastBeat) * getCrochet(bpm, denominator);
+			lastBar += (change.beatTime - lastBeat) / timeSignature.numerator;
+			lastMS += (change.beatTime - lastBeat) * getCrochet(bpm, timeSignature.denominator);
 			
 			if (change.changeBPM) bpm = change.bpm;
-			if (change.changeTimeSign) {
-				numerator = change.numerator;
-				denominator = change.denominator;
+			if (change.changeSign) {
+				timeSignature.numerator = change.timeSignature.numerator;
+				timeSignature.denominator = change.timeSignature.denominator;
 			}
 		}
 		
-		var crochet:Float = getCrochet(bpm, denominator);
+		var crochet:Float = getCrochet(bpm, timeSignature.denominator);
 		var relBeat = newBeat - lastBeat;
 		step = beat * 4;
 		ms = relBeat * crochet + lastMS;
-		bar = relBeat / numerator + lastBar;
+		bar = relBeat / timeSignature.numerator + lastBar;
 		
 		return beat = newBeat;
 	}
@@ -116,8 +95,8 @@ class Metronome {
 		
 		var firstChange:TempoChange = tempoChanges[0];
 		bpm = firstChange.bpm;
-		numerator = firstChange.numerator;
-		denominator = firstChange.denominator;
+		timeSignature.numerator = firstChange.timeSignature.numerator;
+		timeSignature.denominator = firstChange.timeSignature.denominator;
 		
 		var lastBeat:Float = 0;
 		var tempBar:Float = 0;
@@ -125,21 +104,21 @@ class Metronome {
 		var lastMS:Float = 0;
 		
 		for (change in tempoChanges) {
-			tempBar += (change.beatTime - lastBeat) / numerator;
+			tempBar += (change.beatTime - lastBeat) / timeSignature.numerator;
 			if (tempBar > newBar) break;
 			
 			lastBeat = change.beatTime;
-			lastMS += (change.beatTime - lastBeat) * getCrochet(bpm, denominator);
+			lastMS += (change.beatTime - lastBeat) * getCrochet(bpm, timeSignature.denominator);
 			
 			if (change.changeBPM) bpm = change.bpm;
-			if (change.changeTimeSign) {
-				numerator = change.numerator;
-				denominator = change.denominator;
+			if (change.changeSign) {
+				timeSignature.numerator = change.timeSignature.numerator;
+				timeSignature.denominator = change.timeSignature.denominator;
 			}
 		}
 		
-		var crochet:Float = getCrochet(bpm, denominator);
-		var relBeat = (newBar - lastBeat) * numerator;
+		var crochet:Float = getCrochet(bpm, timeSignature.denominator);
+		var relBeat = (newBar - lastBeat) * timeSignature.numerator;
 		step = bar * 4;
 		beat = relBeat + lastBeat;
 		ms = relBeat * crochet + lastMS;
@@ -152,8 +131,8 @@ class Metronome {
 		
 		var firstChange:TempoChange = tempoChanges[0];
 		bpm = firstChange.bpm;
-		numerator = firstChange.numerator;
-		denominator = firstChange.denominator;
+		timeSignature.numerator = firstChange.timeSignature.numerator;
+		timeSignature.denominator = firstChange.timeSignature.denominator;
 		
 		var lastBeat:Float = 0;
 		var lastBar:Float = 0;
@@ -161,59 +140,98 @@ class Metronome {
 		var tempMS:Float = 0;
 		
 		for (change in tempoChanges) {
-			tempMS += (change.beatTime - lastBeat) * getCrochet(bpm, denominator);
+			tempMS += (change.beatTime - lastBeat) * getCrochet(bpm, timeSignature.denominator);
 			if (tempMS > newMS) break;
 			
 			lastMS = tempMS;
-			lastBar += (change.beatTime - lastBeat) / numerator;
+			lastBar += (change.beatTime - lastBeat) / timeSignature.numerator;
 			lastBeat = change.beatTime;
 			
 			if (change.changeBPM) bpm = change.bpm;
-			if (change.changeTimeSign) {
-				numerator = change.numerator;
-				denominator = change.denominator;
+			if (change.changeSign) {
+				timeSignature.numerator = change.timeSignature.numerator;
+				timeSignature.denominator = change.timeSignature.denominator;
 			}
 		}
 		
-		var crochet:Float = getCrochet(bpm, denominator);
+		var crochet:Float = getCrochet(bpm, timeSignature.denominator);
 		var relBeat = (newMS - lastMS) / crochet;
 		beat = relBeat + lastBeat;
 		step = beat * 4;
-		bar = relBeat / numerator + lastBar;
+		bar = relBeat / timeSignature.numerator + lastBar;
 		
 		return ms = newMS;
+	}
+
+	public function convertMeasure(value:Float, input:MetronomeMeasure, output:MetronomeMeasure) {
+		var prevMS:Float = ms;
+		var target:Float = 0;
+		switch (input) { // uh. yeah.
+			case STEP: setStep(value);
+			case BEAT: setBeat(value);
+			case BAR: setBar(value);
+			case MS: setMS(value);
+			default:
+		}
+		switch (output) {
+			case STEP: target = step;
+			case BEAT: target = beat;
+			case BAR: target = bar;
+			case MS: target = ms;
+			default:
+		}
+		setMS(prevMS);
+		return target;
 	}
 }
 
 class TempoChange {
 	public var beatTime:Float;
 	
-	public var changeBPM(default, null):Bool = false;
-	public var bpm(default, set):Float;
+	public var changeBPM(get, never):Bool;
+	public var changeSign(get, never):Bool;
+
+	public var bpm:Null<Float>;
+	public var timeSignature:Null<TimeSignature>;
 	
-	public var changeTimeSign(default, null):Bool = false;
-	public var numerator(default, set):Int;
-	public var denominator(default, set):Int;
-	
-	public function new(beat:Float, bpm:Float = 0, numerator:Int = 0, denominator:Int = 0) {
+	public function new(beat:Float, bpm:Null<Float> = null, timeSignature:Null<TimeSignature> = null) {
 		this.bpm = bpm;
 		this.beatTime = beat;
-		setTimeSignature(numerator, denominator);
+		this.timeSignature = timeSignature;
 	}
-	public function set_bpm(newBPM:Float) {
-		this.changeBPM = (newBPM > 0);
-		return bpm = newBPM;
+	public function setTimeSignature(newNum:Int = 4, newDenom:Int = 4) {
+		if (timeSignature == null) return timeSignature = new TimeSignature(newNum, newDenom);
+		timeSignature.numerator = newNum;
+		timeSignature.denominator = newDenom;
+		return timeSignature;
+	}
+	public function get_changeBPM()
+		return (bpm != null);
+	public function get_changeSign()
+		return (timeSignature != null);
+}
+
+class TimeSignature { //should this be a class?
+	public var numerator(default, set):Int;
+	public var denominator(default, set):Int;
+
+	public function new(num:Int = 4, denom:Int = 4) {
+		numerator = num;
+		denominator = denom;
 	}
 	public function set_numerator(newNum:Int) {
-		this.changeTimeSign = (newNum > 0 && denominator > 0);
-		return numerator = newNum;
+		return numerator = Std.int(Math.max(newNum, 1));
 	}
 	public function set_denominator(newDenom:Int) {
-		this.changeTimeSign = (numerator > 0 && newDenom > 0);
-		return denominator = newDenom;
+		return denominator = Std.int(Math.max(newDenom, 1));
 	}
-	public function setTimeSignature(newNum:Int = 0, newDenom:Int = 0) {
-		this.numerator = newNum;
-		this.denominator = newDenom;
+	public function toString() {
+		return '$numerator/$denominator';
+	}
+	public function fromString(str:String) {
+		var split:Array<String> = str.split('/');
+		numerator = Std.parseInt(split[0] ?? '4');
+		denominator = Std.parseInt(split[1] ?? '4');
+		return this;
 	}
 }

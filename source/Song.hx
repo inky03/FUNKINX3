@@ -3,6 +3,7 @@ package;
 import Note;
 import Conductor.Metronome;
 import Conductor.TempoChange;
+import Conductor.TimeSignature;
 
 import haxe.Exception;
 import moonchart.formats.BasicFormat;
@@ -18,16 +19,16 @@ class Song {
 	public var keyCount:Int = 4;
 	public var notes:Array<Note> = [];
 	public var events:Array<SongEvent> = [];
-	public var tempoChanges:Array<TempoChange> = [new TempoChange(0, 100, 4, 4)];
+	public var tempoChanges:Array<TempoChange> = [new TempoChange(0, 100, new TimeSignature())];
 	public var scrollSpeed:Float = 1;
 
 	public var instLoaded:Bool;
 	public var vocalsLoaded:Bool;
-	public var audioSuffix:String;
 	public var instTrack:FlxSound;
 	public var vocalTrack:FlxSound;
 	public var oppVocalsLoaded:Bool;
 	public var oppVocalTrack:FlxSound;
+	public var audioSuffix:String = '';
 	
 	public function new(path:String, keyCount:Int = 4) {
 		this.path = path;
@@ -91,14 +92,13 @@ class Song {
 			song.scrollSpeed = meta.scrollSpeeds[difficulty] ?? 1;
 
 			var bpmChanges:Array<BasicBPMChange> = meta.bpmChanges;
-			var firstChange:BasicBPMChange = bpmChanges[0];
-			var tempMetronome:Metronome = new Metronome(firstChange.bpm);
-			song.initialBpm = tempMetronome.bpm;
-			song.tempoChanges = [new TempoChange(0, song.initialBpm, 4, 4)];
+			var tempMetronome:Metronome = new Metronome();
+			song.tempoChanges = [];
+			song.initialBpm = bpmChanges[0].bpm;
 			tempMetronome.tempoChanges = song.tempoChanges;
 			for (change in bpmChanges) {
-				var beat:Float = Conductor.convertMeasure(change.time, MS, BEAT, tempMetronome);
-				song.tempoChanges.push(new TempoChange(beat, change.bpm, Std.int(change.beatsPerMeasure), Std.int(change.stepsPerBeat)));
+				var beat:Float = tempMetronome.convertMeasure(change.time, MS, BEAT);
+				song.tempoChanges.push(new TempoChange(beat, change.bpm, new TimeSignature(Std.int(change.beatsPerMeasure), Std.int(change.stepsPerBeat))));
 			}
 
 			var events:Array<BasicEvent> = song.chart.getEvents();
@@ -112,7 +112,8 @@ class Song {
 			var notes:Array<BasicNote> = song.chart.getNotes(difficulty);
 			for (note in notes) {
 				tempMetronome.setMS(note.time + 1);
-				for (note in generateNotes(note.lane < 4, note.time, Std.int(note.lane % 4), '', note.length ?? 0, tempMetronome.getCrochet(tempMetronome.bpm, tempMetronome.denominator) * .25))
+				var stepCrochet:Float = tempMetronome.getCrochet(tempMetronome.bpm, tempMetronome.timeSignature.denominator) * .25;
+				for (note in generateNotes(note.lane < 4, note.time, Std.int(note.lane % 4), '', note.length, stepCrochet))
 					song.notes.push(note);
 			}
 			trace('Chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
@@ -147,7 +148,7 @@ class Song {
 		try {
 			song.name = song.json.song;
 			song.initialBpm = song.json.bpm;
-			song.tempoChanges = [new TempoChange(0, song.initialBpm, 4, 4)];
+			song.tempoChanges = [new TempoChange(0, song.initialBpm, new TimeSignature())];
 			song.scrollSpeed = song.json.speed;
 			
 			var ms:Float = 0;
@@ -186,13 +187,14 @@ class Song {
 					sectionNumerator *= 2;
 					sectionDenominator *= 2;
 				}
-				if (section.changeBPM || sectionNumerator != osectionNumerator) {
+				var changeSign:Bool = (sectionNumerator != osectionNumerator);
+				if (section.changeBPM || changeSign) {
 					osectionNumerator = sectionNumerator;
 					if (section.changeBPM) bpm = section.bpm;
 					crochet = 60000 / bpm / sectionDenominator * 4;
 					stepCrochet = crochet * .25;
 					
-					song.tempoChanges.push(new TempoChange(beat, section.changeBPM ? section.bpm : 0, Std.int(sectionNumerator), sectionDenominator));
+					song.tempoChanges.push(new TempoChange(beat, section.changeBPM ? section.bpm : null, changeSign ? new TimeSignature(Std.int(sectionNumerator), sectionDenominator) : null));
 				}
 				beat += sectionNumerator;
 				ms += sectionNumerator * crochet;
@@ -260,7 +262,7 @@ class Song {
 		return notes;
 	}
 	
-	public function loadMusic(path:String, player:String = '', opponent:String = '') {
+	public function loadMusic(path:String, player:String = '', opponent:String = '') { // this could be better
 		if (instLoaded) return true;
 		try {
 			if (player == '' && opponent == '') {
