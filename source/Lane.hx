@@ -197,14 +197,12 @@ class Lane extends FlxSpriteGroup {
 	public dynamic function hitNote(note:Note, kill:Bool = true) {
 		note.goodHit = true;
 		noteEvent.dispatch({note: note, lane: this, type: HIT});
-		// onNoteHit(note, this);
-		if (kill) killNote(note);
+		if (kill && !note.ignore) killNote(note);
 	}
 	public function killNote(note:Note) {
 		notes.remove(note, true);
 		note.kill();
 		noteEvent.dispatch({note: note, lane: this, type: DESPAWNED});
-		// onNoteDespawned(note, this);
 	}
 }
 

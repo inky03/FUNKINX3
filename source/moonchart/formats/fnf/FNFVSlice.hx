@@ -1,11 +1,15 @@
 package moonchart.formats.fnf;
 
+import moonchart.formats.fnf.legacy.FNFLegacy;
+import moonchart.backend.FormatData;
 import moonchart.backend.Util;
 import moonchart.backend.Timing;
 import moonchart.formats.BasicFormat;
 import moonchart.formats.fnf.legacy.FNFLegacy.FNFLegacyEvent;
 import moonchart.formats.fnf.legacy.FNFLegacy.FNFLegacyMetaValues;
 import haxe.Json;
+
+using StringTools;
 
 typedef FNFVSliceFormat =
 {
@@ -80,8 +84,43 @@ typedef FNFVSlicePlayData =
 	stage:String
 }
 
+enum abstract FNFVSliceMetaValues(String) from String to String
+{
+	var SONG_VARIATIONS = "FNF_SONG_VARIATIONS";
+}
+
+enum abstract FNFVSliceCamFocus(Int) from Int to Int
+{
+	var BF = 0;
+	var DAD = 1;
+	var GF = 2;
+}
+
 class FNFVSlice extends BasicFormat<FNFVSliceFormat, FNFVSliceMeta>
 {
+	public static function __getFormat():FormatData
+	{
+		return {
+			ID: FNF_VSLICE,
+			name: "FNF (V-Slice)",
+			description: "",
+			extension: "json",
+			hasMetaFile: TRUE,
+			metaFileExtension: "json",
+			specialValues: ['"scrollSpeed":', '"version":'],
+			findMeta: (files) ->
+			{
+				for (file in files)
+				{
+					if (Util.getText(file).contains('"playData":'))
+						return file;
+				}
+				return files[0];
+			},
+			handler: FNFVSlice
+		}
+	}
+
 	public static inline var VSLICE_FOCUS_EVENT:String = "FocusCamera";
 	public static inline var VSLICE_DEFAULT_NOTE:String = "normal";
 
@@ -95,6 +134,9 @@ class FNFVSlice extends BasicFormat<FNFVSliceFormat, FNFVSliceMeta>
 		this.data = data;
 		this.meta = meta;
 	}
+
+	// Could be useful converting erect mixes
+	public var defaultSongVariations:Array<String> = [];
 
 	override function fromBasicFormat(chart:BasicChart, ?diff:FormatDifficulty):FNFVSlice
 	{
@@ -118,13 +160,12 @@ class FNFVSlice extends BasicFormat<FNFVSliceFormat, FNFVSliceMeta>
 		}
 
 		timeChanges.sort((a, b) -> return Util.sortValues(a.t, b.t));
+		final lanesLength:Int = (meta.extraData.get(LANES_LENGTH) ?? 8) <= 7 ? 4 : 8;
 
 		for (chartDiff => chart in chartResolve)
 		{
-			var noteTimeChanges = timeChanges.copy();
-
-			var change = noteTimeChanges.shift();
-			var stepCrochet:Float = Timing.stepCrochet(change.bpm, 4);
+			var timeChangeIndex = 1;
+			var stepCrochet:Float = Timing.stepCrochet(timeChanges[0].bpm, 4);
 			var chartNotes:Array<FNFVSliceNote> = [];
 
 			for (note in chart)
@@ -133,16 +174,15 @@ class FNFVSlice extends BasicFormat<FNFVSliceFormat, FNFVSliceMeta>
 				var length = note.length;
 
 				// Find the last bpm change
-				while (noteTimeChanges.length > 0 && noteTimeChanges[0].t <= time)
+				while (timeChangeIndex < timeChanges.length && timeChanges[timeChangeIndex].t <= time)
 				{
-					change = noteTimeChanges.shift();
-					stepCrochet = Timing.stepCrochet(change.bpm, 4);
+					stepCrochet = Timing.stepCrochet(timeChanges[timeChangeIndex++].bpm, 4);
 				}
 
 				// Offset sustain length, vslice starts a step crochet later
 				chartNotes.push({
 					t: time,
-					d: note.lane,
+					d: (note.lane + 4 + lanesLength) % 8,
 					l: length > 0 ? length - stepCrochet : 0,
 					k: note.type
 				});
@@ -157,23 +197,19 @@ class FNFVSlice extends BasicFormat<FNFVSliceFormat, FNFVSliceMeta>
 		var events:Array<FNFVSliceEvent> = [];
 		for (event in chart.data.events)
 		{
-			events.push(switch (event.name)
-			{
-				case MUST_HIT_SECTION:
-					{
-						t: event.time,
-						e: VSLICE_FOCUS_EVENT,
-						v: {
-							char: (event.data.mustHitSection ?? true) ? 0 : 1
-						}
-					}
-				default:
-					{
-						t: event.time,
-						e: event.name,
-						v: event.data
-					}
-			});
+			var isFocus = isCamFocusEvent(event) && event.name != VSLICE_FOCUS_EVENT;
+			events.push(isFocus ? {
+				t: event.time,
+				e: VSLICE_FOCUS_EVENT,
+				v: {
+					char: resolveCamFocus(event),
+					ease: "CLASSIC"
+				}
+			} : {
+				t: event.time,
+				e: event.name,
+				v: event.data
+				});
 		}
 
 		this.data = {
@@ -223,7 +259,7 @@ class FNFVSlice extends BasicFormat<FNFVSliceFormat, FNFVSliceMeta>
 					opponent: p2,
 					girlfriend: extra.get(PLAYER_3) ?? "gf"
 				},
-				songVariations: [],
+				songVariations: extra.get(SONG_VARIATIONS) ?? defaultSongVariations,
 				noteStyle: "funkin"
 			},
 			songName: meta.title,
@@ -240,10 +276,42 @@ class FNFVSlice extends BasicFormat<FNFVSliceFormat, FNFVSliceMeta>
 		return this;
 	}
 
+	/**
+	 * This is the main place where you want to store ways to resolve FNF cam movement events
+	 * The resolve method should always return an integer of the target character index
+	 * Normally it goes (0: bf, 1: dad, 2: gf)
+	 */
+	public static final camFocusResolve:Map<String, BasicEvent->FNFVSliceCamFocus> = [
+		MUST_HIT_SECTION => (e) -> e.data.mustHitSection ? BF : DAD,
+		FNFVSlice.VSLICE_FOCUS_EVENT => (e) -> Std.parseInt(Std.string(e.data.char)),
+		FNFCodename.CODENAME_CAM_MOVEMENT => (e) ->
+		{
+			return switch (e.data.array[0])
+			{
+				case 0: DAD;
+				case 1: BF;
+				default: GF;
+			}
+		}
+	];
+
+	public static inline function filterEvents(events:Array<BasicEvent>)
+	{
+		return events.filter((e) -> return !isCamFocusEvent(e));
+	}
+
+	public static inline function isCamFocusEvent(event:BasicEvent):Bool
+	{
+		return camFocusResolve.exists(event.name);
+	}
+
+	public static inline function resolveCamFocus(event:BasicEvent):FNFVSliceCamFocus
+	{
+		return camFocusResolve.get(event.name)(event);
+	}
+
 	override function getNotes(?diff:String):Array<BasicNote>
 	{
-		var notes:Array<BasicNote> = [];
-
 		var chartNotes:Array<FNFVSliceNote> = Reflect.field(data.notes, diff);
 		if (chartNotes == null)
 		{
@@ -251,10 +319,14 @@ class FNFVSlice extends BasicFormat<FNFVSliceFormat, FNFVSliceMeta>
 			return null;
 		}
 
-		var timeChanges = meta.timeChanges.copy();
+		var notes:Array<BasicNote> = [];
 
-		var change = timeChanges.shift();
-		var stepCrochet = Timing.stepCrochet(change.bpm, 4);
+		var timeChanges = meta.timeChanges;
+		var stepCrochet = Timing.stepCrochet(timeChanges[0].bpm, 4);
+		var i:Int = 1;
+
+		// Make sure all notes are in order
+		chartNotes.sort((a, b) -> Util.sortValues(a.t, b.t));
 
 		for (note in chartNotes)
 		{
@@ -262,24 +334,32 @@ class FNFVSlice extends BasicFormat<FNFVSliceFormat, FNFVSliceMeta>
 			var length = note.l;
 			var type = note.k ?? "";
 
-			// Find last bpm change
-			while (timeChanges.length > 0 && timeChanges[0].t <= time)
+			// Find the current bpm change
+			while (i < timeChanges.length && timeChanges[i].t <= time)
 			{
-				change = timeChanges.shift();
-				stepCrochet = Timing.stepCrochet(change.bpm, 4);
+				stepCrochet = Timing.stepCrochet(timeChanges[i++].bpm, 4);
 			}
 
 			notes.push({
 				time: time,
-				lane: note.d,
+				lane: (note.d + 4) % 8,
 				length: length > 0 ? length + stepCrochet : 0,
-				type: type != VSLICE_DEFAULT_NOTE ? type : ""
+				type: resolveNoteType(type)
 			});
 		}
 
 		Timing.sortNotes(notes);
 
 		return notes;
+	}
+
+	function resolveNoteType(type:String):BasicNoteType
+	{
+		return switch (type)
+		{
+			case VSLICE_DEFAULT_NOTE: DEFAULT;
+			case _: type;
+		}
 	}
 
 	override function getEvents():Array<BasicEvent>
@@ -308,7 +388,7 @@ class FNFVSlice extends BasicFormat<FNFVSliceFormat, FNFVSliceMeta>
 				time: Math.max(change.t, 0), // Just making sure they all start at 0 lol
 				bpm: change.bpm,
 				beatsPerMeasure: change.n ?? 4,
-				stepsPerBeat: change.d ?? 4 // note: this is NOT STEPS PER BEAT
+				stepsPerBeat: change.d ?? 4
 			});
 		}
 
@@ -341,7 +421,9 @@ class FNFVSlice extends BasicFormat<FNFVSliceFormat, FNFVSliceMeta>
 				VOCALS_OFFSET => vocalsOffset,
 				NEEDS_VOICES => true,
 				SONG_ARTIST => meta.artist,
-				SONG_CHARTER => meta.charter
+				SONG_CHARTER => meta.charter,
+				SONG_VARIATIONS => meta.playData.songVariations ?? [],
+				LANES_LENGTH => 8
 			]
 		}
 	}

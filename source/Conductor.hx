@@ -58,8 +58,7 @@ class Metronome { // TODO: move metronome, tempo change time signature shit to s
 		
 		var firstChange:TempoChange = tempoChanges[0];
 		bpm = firstChange.bpm;
-		timeSignature.numerator = firstChange.timeSignature.numerator;
-		timeSignature.denominator = firstChange.timeSignature.denominator;
+		timeSignature.copyFrom(firstChange.timeSignature);
 		
 		var tempBeat:Float = 0;
 		var lastBeat:Float = 0;
@@ -75,10 +74,7 @@ class Metronome { // TODO: move metronome, tempo change time signature shit to s
 			lastMS += (change.beatTime - lastBeat) * getCrochet(bpm, timeSignature.denominator);
 			
 			if (change.changeBPM) bpm = change.bpm;
-			if (change.changeSign) {
-				timeSignature.numerator = change.timeSignature.numerator;
-				timeSignature.denominator = change.timeSignature.denominator;
-			}
+			if (change.changeSign) timeSignature.copyFrom(change.timeSignature);
 		}
 		
 		var crochet:Float = getCrochet(bpm, timeSignature.denominator);
@@ -95,8 +91,7 @@ class Metronome { // TODO: move metronome, tempo change time signature shit to s
 		
 		var firstChange:TempoChange = tempoChanges[0];
 		bpm = firstChange.bpm;
-		timeSignature.numerator = firstChange.timeSignature.numerator;
-		timeSignature.denominator = firstChange.timeSignature.denominator;
+		timeSignature.copyFrom(firstChange.timeSignature);
 		
 		var lastBeat:Float = 0;
 		var tempBar:Float = 0;
@@ -111,10 +106,7 @@ class Metronome { // TODO: move metronome, tempo change time signature shit to s
 			lastMS += (change.beatTime - lastBeat) * getCrochet(bpm, timeSignature.denominator);
 			
 			if (change.changeBPM) bpm = change.bpm;
-			if (change.changeSign) {
-				timeSignature.numerator = change.timeSignature.numerator;
-				timeSignature.denominator = change.timeSignature.denominator;
-			}
+			if (change.changeSign) timeSignature.copyFrom(change.timeSignature);
 		}
 		
 		var crochet:Float = getCrochet(bpm, timeSignature.denominator);
@@ -131,8 +123,7 @@ class Metronome { // TODO: move metronome, tempo change time signature shit to s
 		
 		var firstChange:TempoChange = tempoChanges[0];
 		bpm = firstChange.bpm;
-		timeSignature.numerator = firstChange.timeSignature.numerator;
-		timeSignature.denominator = firstChange.timeSignature.denominator;
+		timeSignature.copyFrom(firstChange.timeSignature);
 		
 		var lastBeat:Float = 0;
 		var lastBar:Float = 0;
@@ -148,10 +139,7 @@ class Metronome { // TODO: move metronome, tempo change time signature shit to s
 			lastBeat = change.beatTime;
 			
 			if (change.changeBPM) bpm = change.bpm;
-			if (change.changeSign) {
-				timeSignature.numerator = change.timeSignature.numerator;
-				timeSignature.denominator = change.timeSignature.denominator;
-			}
+			if (change.changeSign) timeSignature.copyFrom(change.timeSignature);
 		}
 		
 		var crochet:Float = getCrochet(bpm, timeSignature.denominator);
@@ -224,6 +212,12 @@ class TimeSignature { //should this be a class?
 	}
 	public function set_denominator(newDenom:Int) {
 		return denominator = Std.int(Math.max(newDenom, 1));
+	}
+	public function copyFrom(sign:Null<TimeSignature>) {
+		if (sign == null) return this;
+		numerator = sign.numerator;
+		denominator = sign.denominator;
+		return this;
 	}
 	public function toString() {
 		return '$numerator/$denominator';

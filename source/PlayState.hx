@@ -63,13 +63,21 @@ class PlayState extends MusicBeatState {
 		FlxG.drawFramerate = 240;
 		FlxG.updateFramerate = 240;
 		
-		paused = true; //setup the freaking song -- loadLegacySong for FNFLegacy and loadVSliceSong for FNFVSlice
+		paused = true;
+		// setup the freaking song
+		// for legacy / psych engine format ... Song.loadLegacySong('songName', 'difficulty')
+		// for modern (fnf 0.3.0+) format ... Song.loadVSliceSong('songName', 'difficulty', ?'suffix')
+		// for simfile (stepmania) ... Song.loadStepMania('songName', 'Difficulty')
 		
 		var tempNotes:Array<Note> = [];
-		song = Song.loadVSliceSong('darnell', 'hard', '-bf');
+		song = Song.loadVSliceSong('darnell', 'hard', 'bf');
 		for (event in song.events) events.push(event);
 		Conductor.metronome.tempoChanges = song.tempoChanges;
 		Conductor.metronome.setBeat(-5);
+
+		stepHit.add(stepHitEvent);
+		beatHit.add(beatHitEvent);
+		barHit.add(barHitEvent);
 		
 		camHUD = new FlxCamera();
 		camOther = new FlxCamera();
@@ -241,20 +249,23 @@ class PlayState extends MusicBeatState {
 		var params:Map<String, Dynamic> = event.params;
 		switch (event.name) {
 			case 'FocusCamera':
-				camFocusTarget.x = FlxG.width * .5 + (params['char'] == 0 ? 180 : -180);
+				camFocusTarget.x = FlxG.width * .5 + (params['x'] ?? 0);
+				camFocusTarget.y = FlxG.height * .5 + (params['y'] ?? 0);
 				switch (params['char']) {
-					case 0:
-
+					case 0: // player focus
+						camFocusTarget.x += 180;
+					case 1: // opponent focus
+						camFocusTarget.x -= 180;
+					case 2: // gf focus
+						camFocusTarget.y -= 30;
 				}
 		}
 	}
 	
-	override public function stepHit(step:Int) {
-		super.stepHit(step);
+	public function stepHitEvent(step:Int) {
 		syncMusic(true);
 	}
-	override public function beatHit(beat:Int) {
-		super.beatHit(beat);
+	public function beatHitEvent(beat:Int) {
 		player1.dance(beat);
 		switch (beat) {
 			case -4:
@@ -273,8 +284,7 @@ class PlayState extends MusicBeatState {
 			default:
 		}
 	}
-	override public function barHit(bar:Int) {
-		super.barHit(bar);
+	public function barHitEvent(bar:Int) {
 		FlxG.camera.zoom += .015;
 		camHUD.zoom += .03;
 	}
@@ -293,7 +303,7 @@ class PlayState extends MusicBeatState {
 		var keybind:Int = Controls.keybindFromArray(keybinds, key);
 		if (keybind >= 0) inputOff(keybind);
 	}
-	public function inputOn(keybind:Int) {
+	public function inputOn(keybind:Int) { // todo: lanes have the INPUTS and not PLAYSTATE
 		var oldTime:Float = Conductor.songPosition;
 		Conductor.songPosition = getSongPos();
 		var lane:Lane = playerStrumline.getLane(keybind);
@@ -342,7 +352,7 @@ class PlayState extends MusicBeatState {
 					accuracyDiv ++;
 					totalNotes ++;
 					totalHits ++;
-					if (window.breaksCombo) combo = 0;
+					if (window.breaksCombo) combo = 0; // maybe add the ghost note here?
 					else popCombo(++ combo);
 					if (note.ratingData.splash) lane.splash();
 				}
