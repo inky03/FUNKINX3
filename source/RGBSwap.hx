@@ -39,7 +39,7 @@ class RGBSwapShader extends FlxShader {
 				return color;
 			}
 
-			color.rgb = vec3(color.r * red + color.g * green + color.b * blue);
+			color.rgb = min(vec3(color.r * red + color.g * green + color.b * blue), color.a);
 			// float fullAlpha = (color.a / openfl_Alphav);
 			// color.a = pow(fullAlpha, 5) * openfl_Alphav;
 			return color;

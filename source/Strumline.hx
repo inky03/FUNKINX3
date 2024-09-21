@@ -114,13 +114,20 @@ class Strumline extends FlxSpriteGroup {
 				var note:Note = e.note;
 				var lane:Lane = e.lane;
 				lane.receptor.playAnimation('confirm', !note.isHoldPiece);
-				if (!note.isHoldPiece && note.msLength > 0) {
-					for (child in note.children) child.canHit = true;
-					lane.held = true;
+				if (!note.isHoldPiece) {
+					if (note.msLength > 0) {
+						for (child in note.children) child.canHit = true;
+						lane.held = true;
+					} else if (!lane.cpu) {
+						lane.receptor.grayBeat = note.beatTime + 1;
+					}
 				}
 				if (note.isHoldTail) {
 					lane.held = false;
-					if (!lane.cpu) lane.spark();
+					if (!lane.cpu) {
+						lane.spark();
+						lane.receptor.playAnimation('press', true);
+					}
 				}
 			}
 		});

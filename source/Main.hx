@@ -12,6 +12,8 @@ class Main extends Sprite {
 		#if hxdiscord_rpc
 		DiscordRPC.prepare();
 		#end
+		FlxG.maxElapsed = 1;
+		// FlxG.fixedTimestep = false;
 		addChild(new FlxGame(0, 0, PlayState));
 		addChild(new DebugDisplay(10, 3, 0xFFFFFF));
 	}

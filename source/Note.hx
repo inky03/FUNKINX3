@@ -3,9 +3,10 @@ package;
 import Lane;
 import Lane.Receptor;
 import Scoring.HitWindow;
+import Conductor.Metronome;
 import flixel.graphics.frames.FlxFrame;
-import flixel.graphics.frames.FlxFramesCollection;
 import flixel.addons.display.FlxTiledSprite;
+import flixel.graphics.frames.FlxFramesCollection;
 
 class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affect society
 	public static var directionNames:Array<String> = ['left', 'down', 'up', 'right'];
@@ -15,6 +16,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		[FlxColor.fromRGB(18, 250, 5), FlxColor.fromRGB(10, 68, 71)],
 		[FlxColor.fromRGB(249, 57, 63), FlxColor.fromRGB(101, 16, 56)],
 	];
+	public static var baseMetronome:Metronome = Conductor.metronome; // mostly charting stuff
 
 	public var children:Array<Note> = [];
 	public var parent:Note;
@@ -24,8 +26,8 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var ratingData:HitWindow;
 	public var goodHit:Bool = false;
 	public var lost:Bool = false;
-	public var clipHeight:Float;
 	public var noteOffset:FlxPoint;
+	public var clipHeight:Float = 0;
 	public var scrollDistance:Float = 0;
 	public var preventDespawn:Bool = false;
 	
@@ -36,10 +38,12 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var directionOffset:Float = 0;
 	public var hitPriority:Float = 1;
 	public var noteKind:String = '';
+	public var multAlpha:Float = 1;
 	public var player:Bool = false;
 	public var ignore:Bool = false;
 	public var canHit:Bool = true;
 	public var noteData:Int = 0;
+
 	public var endMs(get, never):Float;
 	public var endBeat(get, never):Float;
 	public var msTime(default, set):Float = 0;
@@ -49,8 +53,6 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	
 	public var isHoldPiece:Bool = false;
 	public var isHoldTail:Bool = false;
-	
-	public var multAlpha:Float = 1;
 	
 	public override function destroy() {
 		for (child in children)
@@ -63,8 +65,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		clipHeight = frameHeight;
 		super.revive();
 	}
-	public function get_endMs() return msTime + (isHoldPiece ? msLength : 0);
-	public function get_endBeat() return beatTime + (isHoldPiece ? beatLength : 0);
+
 	public function new(player:Bool, msTime:Float, noteData:Int, msLength:Float = 0, type:String = '', isHoldPiece:Bool = false) {
 		super();
 		this.player = player;
@@ -76,40 +77,48 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		this.isHoldTail = (isHoldPiece && msLength <= 0);
 		noteOffset = FlxPoint.get();
 
+		if (isHoldPiece) this.multAlpha = .6;
+
 		loadAtlas('notes');
-		var dirName:String = Note.directionNames[noteData];
-		
-		animation.addByPrefix('main', '${dirName} note', 24, false);
-		playAnimation('main');
+		reloadAnimations();
+	}
+
+	public function reloadAnimations() {
+		animation.destroyAnimations();
+		var dirName:String = directionNames[noteData];
+		animation.addByPrefix('hit', '$dirName note', 24, false);
+		playAnimation('hit', true);
 		if (isHoldPiece) {
-			animation.addByPrefix('hold', '${dirName} hold piece', 24, false);
-			animation.addByPrefix('tail', '${dirName} hold tail', 24, false);
-			playAnimation(this.isHoldTail ? 'tail' : 'hold');
-			multAlpha = .6;
+			animation.addByPrefix('hold', '$dirName hold piece', 24, false);
+			animation.addByPrefix('tail', '$dirName hold tail', 24, false);
+			playAnimation(this.isHoldTail ? 'tail' : 'hold', true);
 		}
 		updateHitbox();
 		clipHeight = frameHeight;
 	}
+
 	public function set_msTime(newTime:Float) {
 		if (msTime == newTime) return newTime;
-		@:bypassAccessor beatTime = Conductor.metronome.convertMeasure(newTime, MS, BEAT);
+		@:bypassAccessor beatTime = baseMetronome.convertMeasure(newTime, MS, BEAT);
 		return msTime = newTime;
 	}
 	public function set_beatTime(newTime:Float) {
 		if (beatTime == newTime) return newTime;
-		@:bypassAccessor msTime = Conductor.metronome.convertMeasure(newTime, BEAT, MS);
+		@:bypassAccessor msTime = baseMetronome.convertMeasure(newTime, BEAT, MS);
 		return beatTime = newTime;
 	}
 	public function set_msLength(newLength:Float) {
 		if (msLength == newLength) return newLength;
-		@:bypassAccessor beatLength = Conductor.metronome.convertMeasure(msTime + newLength, MS, BEAT) - beatTime;
+		@:bypassAccessor beatLength = baseMetronome.convertMeasure(msTime + newLength, MS, BEAT) - beatTime;
 		return msLength = newLength;
 	}
 	public function set_beatLength(newLength:Float) {
 		if (beatLength == newLength) return newLength;
-		@:bypassAccessor msLength = Conductor.metronome.convertMeasure(beatTime + newLength, BEAT, MS) - msTime;
+		@:bypassAccessor msLength = baseMetronome.convertMeasure(beatTime + newLength, BEAT, MS) - msTime;
 		return beatLength = newLength;
 	}
+	public function get_endMs() return msTime + (isHoldPiece ? msLength : 0);
+	public function get_endBeat() return beatTime + (isHoldPiece ? beatLength : 0);
 	
 	public static function distanceToMS(distance:Float, scrollSpeed:Float) {
 		return distance / (.45 * scrollSpeed);
@@ -157,7 +166,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 			var clipBottom:Float = 0;
 			if (parent != null && parent.tail != null) {
 				var tail:Note = parent.tail;
-				clipBottom = (isHoldTail ? 0 : Math.min(0, (Note.msToDistance(tail.msTime - msTime, scrollSpeed) - tail.frameHeight * tail.scale.x /* lmao */ - holdHeight) / scale.y));
+				clipBottom = (isHoldTail ? 0 : Math.min(0, (Note.msToDistance(tail.msTime - msTime, scrollSpeed) - tail.frameHeight * tail.scale.x - holdHeight) / scale.y));
 			}
 			
 			if (clipRect == null) clipRect = new FlxRect();
@@ -166,68 +175,5 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 			clipRect.height = clipHeight + clipBottom;
 			clipRect = clipRect; //refresh clip rect
 		}
-	}
-}
-
-class NoteBody extends FunkinSprite {
-	public function new() {
-		super();
-	}
-}
-
-class NoteTail extends FlxSpriteGroup {
-	var hold:FlxTiledSprite;
-	var tail:FunkinSprite;
-	var holdHeight(default, set):Float;
-	
-	public function new(strumIndex:Int) {
-		super();
-		var dirName:String = Note.directionNames[strumIndex];
-		
-		tail = new FunkinSprite();
-		tail.loadAtlas('NOTE_assets');
-		tail.animation.addByPrefix('tail', '${dirName} hold tail', 24, false);
-		tail.playAnimation('tail');
-		tail.updateHitbox();
-		add(tail);
-		
-		var pieceGraphic:FlxGraphic = null;
-		if (tail.frames != null) {
-			var pieceFrames:Array<FlxFrame> = tail.frames.getAllByPrefix('${dirName} hold piece');
-			if (pieceFrames.length > 0) {
-				pieceGraphic = FlxGraphic.fromFrame(pieceFrames[0]);
-			}
-		}
-		hold = new FlxTiledSprite(pieceGraphic, pieceGraphic.width, pieceGraphic.height, false, true);
-		add(hold);
-		
-		hold.origin.set(hold.width * .5, 0);
-		tail.origin.set(tail.width * .5, 0);
-		origin.set(width * .5, 0);
-		holdHeight = 500;
-	}
-	public function set_holdHeight(newHeight:Float) {
-		if (holdHeight == newHeight) return newHeight;
-		hold.height = newHeight - tail.offset.y;
-		refreshTailPos();
-		return holdHeight = newHeight;
-	}
-	public override function set_angle(newAngle:Float) {
-		if (angle == newAngle) return newAngle;
-		super.set_angle(newAngle);
-		hold.angle = newAngle;
-		tail.angle = newAngle;
-		refreshTailPos();
-		return newAngle;
-	}
-	public function refreshTailPos() {
-		var rad:Float = angle / 180 * Math.PI;
-		var target:Float = hold.height;
-		tail.x = Math.sin(rad) * target;
-		tail.y = Math.cos(rad) * target;
-	}
-	public override function draw() {
-		hold.draw();
-		tail.draw();
 	}
 }

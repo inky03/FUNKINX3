@@ -52,8 +52,6 @@ class PlayState extends MusicBeatState {
 	public var totalHits:Int = 0;
 	public var percent:Float = 0;
 	public var extraWindow:Float = 0; //mash mechanic
-	
-	public var testHold:Note.NoteTail;
 
 	public var hitsound:FlxSound;
 	
@@ -155,10 +153,6 @@ class PlayState extends MusicBeatState {
 
 		hitsound = new FlxSound().loadEmbedded(Paths.sound('hitsound'));
 		hitsound.volume = .7;
-		
-		//testHold = new Note.NoteTail(0);
-		//testHold.setPosition(20, 20);
-		//add(testHold);
 	}
 
 	override public function update(elapsed:Float) {
@@ -172,6 +166,7 @@ class PlayState extends MusicBeatState {
 			opponentStrumline.clearAllNotes();
 			playerStrumline.clearAllNotes();
 			events = [];
+			for (lane in opponentStrumline.lanes) lane.held = false;
 			for (note in song.notes) {
 				var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
 				var lane:Lane = strumline.getLane(note.noteData);
@@ -181,7 +176,6 @@ class PlayState extends MusicBeatState {
 			for (track in [song.instTrack, song.vocalTrack, song.oppVocalTrack]) {
 				track.time = 0;
 				track.pause();
-				//track.play(true);
 			}
 			resetMusic();
 			Conductor.metronome.setBeat(-5);
@@ -228,9 +222,9 @@ class PlayState extends MusicBeatState {
 		}
 	}
 	
-	public function syncMusic(forceSongpos:Bool = false) {
+	public function syncMusic(forceSongpos:Bool = false, forceTrackTime:Bool = false) {
 		if (song.instLoaded && song.instTrack.playing) {
-			if (song.vocalsLoaded && Math.abs(song.instTrack.time - song.vocalTrack.time) > 100) {
+			if (song.vocalsLoaded && (forceTrackTime || Math.abs(song.instTrack.time - song.vocalTrack.time) > 100)) {
 				song.vocalTrack.time = song.instTrack.time;
 				song.oppVocalTrack.time = song.instTrack.time;
 			}
@@ -271,18 +265,31 @@ class PlayState extends MusicBeatState {
 			case -4:
 				FlxG.sound.play(Paths.sound('intro3'));
 			case -3:
+				popCountdown('ready');
 				FlxG.sound.play(Paths.sound('intro2'));
 			case -2:
+				popCountdown('set');
 				FlxG.sound.play(Paths.sound('intro1'));
 			case -1:
+				popCountdown('go');
 				FlxG.sound.play(Paths.sound('introGo'));
 			case 0:
 				if (song.instLoaded) song.instTrack.play(true);
 				if (song.vocalsLoaded) song.vocalTrack.play(true);
 				if (song.oppVocalsLoaded) song.oppVocalTrack.play(true);
-				syncMusic();
+				syncMusic(true, true);
 			default:
 		}
+	}
+	public function popCountdown(image:String) {
+		var pop = new FunkinSprite().loadTexture(image);
+		pop.camera = camHUD;
+		pop.screenCenter();
+		add(pop);
+		FlxTween.tween(pop, {alpha: 0}, Conductor.crochet * .001, {ease: FlxEase.cubeInOut, onComplete: (tween:FlxTween) -> {
+			remove(pop);
+			pop.destroy();
+		}});
 	}
 	public function barHitEvent(bar:Int) {
 		FlxG.camera.zoom += .015;

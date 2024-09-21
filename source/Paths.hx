@@ -4,11 +4,12 @@ import flixel.graphics.FlxGraphic;
 import openfl.display.BitmapData;
 import flixel.graphics.frames.*;
 import openfl.utils.AssetType;
-import openfl.media.Sound;
 import openfl.utils.Assets;
-// TODO: maybe i should bring back the usage of Assets for html5 and stuff. lol.
+import openfl.media.Sound;
+import haxe.Exception;
 
 class Paths {
+	public static var workingDir:String = FileSystem.absolutePath('');
 	public static var graphicCache:Map<String, FlxGraphic> = [];
 	public static var soundCache:Map<String, Sound> = [];
 
@@ -54,13 +55,13 @@ class Paths {
 		return graphic;
 	}
 
-	inline static public function ogg(key:String):Sound {
+	inline static public function ogg(key:String, isMusic:Bool = false):Sound {
 		if (soundCache[key] != null) return soundCache[key];
 
 		var sndKey:String = '$key.ogg';
 
 		if (Assets.exists(sharedPath(sndKey), SOUND))
-			return Assets.getSound(sharedPath(sndKey));
+			return (isMusic ? Assets.getMusic : Assets.getSound)(sharedPath(sndKey));
 		
 		var assetKey:String = getPath(sndKey);
 		if (assetKey == null) return new Sound();

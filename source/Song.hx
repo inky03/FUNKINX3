@@ -94,6 +94,7 @@ class Song {
 
 			var tempMetronome:Metronome = new Metronome();
 			tempMetronome.tempoChanges = song.tempoChanges;
+			Note.baseMetronome = tempMetronome;
 			var notes:Array<BasicNote> = sm.getNotes(difficulty);
 			var dance:StepManiaDance = @:privateAccess sm.resolveDance(notes);
 			for (note in notes) {
@@ -103,6 +104,7 @@ class Song {
 				for (note in generateNotes(isPlayer, note.time, Std.int(note.lane % 4), '', note.length, stepCrochet))
 					song.notes.push(note);
 			}
+			Note.baseMetronome = Conductor.metronome;
 
 			trace('Chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch (e:Exception) {
@@ -145,13 +147,15 @@ class Song {
 
 			var tempMetronome:Metronome = new Metronome();
 			tempMetronome.tempoChanges = song.tempoChanges;
+			Note.baseMetronome = tempMetronome;
 			var notes:Array<BasicNote> = vslice.getNotes(difficulty);
 			for (note in notes) {
 				tempMetronome.setMS(note.time + 1);
 				var stepCrochet:Float = tempMetronome.getCrochet(tempMetronome.bpm, tempMetronome.timeSignature.denominator) * .25;
-				for (note in generateNotes(note.lane >= 4, note.time, Std.int(note.lane % 4), '', note.length, stepCrochet))
+				for (note in generateNotes(note.lane >= 4, note.time, Std.int(note.lane % 4), '', note.length - stepCrochet, stepCrochet))
 					song.notes.push(note);
 			}
+			Note.baseMetronome = Conductor.metronome;
 
 			trace('Chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 
@@ -209,7 +213,7 @@ class Song {
 		song.json = Song.loadJson(path, difficulty);
 		
 		if (song.json == null) return song;
-		var fromSong:Bool = (!song.json.song is String);
+		var fromSong:Bool = (!Std.isOfType(song.json.song, String));
 		if (fromSong) song.json = song.json.song;
 		
 		var time = Sys.time();
@@ -229,6 +233,7 @@ class Song {
 			var stepCrochet:Float = crochet * .25;
 			var focus:Int = -1;
 			
+			var prevMetronome:Metronome = Conductor.metronome;
 			var sections:Array<LegacySongSection> = song.json.notes;
 			if (song.json.events != null) { // todo: implement events.json
 				var eventBlobs:Array<Array<Dynamic>> = song.json.events;
@@ -240,6 +245,9 @@ class Song {
 					}
 				}
 			}
+			var tempMetronome:Metronome = new Metronome();
+			tempMetronome.tempoChanges = song.tempoChanges;
+			Note.baseMetronome = tempMetronome;
 			for (section in sections) {
 				var sectionFocus:Int = (section.gfSection ? 2 : (section.mustHitSection ? 0 : 1));
 				if (focus != sectionFocus) {
@@ -277,7 +285,7 @@ class Song {
 
 					var noteLength:Float = dataNote[2];
 					var noteKind:Dynamic = dataNote[3];
-					if (!noteKind is String) noteKind = '';
+					if (!Std.isOfType(noteKind, String)) noteKind = '';
 					var playerNote:Bool;
 					if (fromSong) {
 						playerNote = ((noteData < keyCount) == section.mustHitSection);
@@ -289,6 +297,8 @@ class Song {
 				}
 			}
 			song.sortNotes();
+			Note.baseMetronome = Conductor.metronome;
+
 			trace('Chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch(e:Exception) {
 			trace('Error when generating chart! -> <<< ${e.details()} >>>');
@@ -333,16 +343,17 @@ class Song {
 	public function loadMusic(path:String, player:String = '', opponent:String = '') { // this could be better
 		if (instLoaded) return true;
 		try {
+			if (true) return false;
 			if (player == '' && opponent == '') {
-				vocalTrack.loadEmbedded(Paths.ogg('${path}Voices$audioSuffix'));
+				vocalTrack.loadEmbedded(Paths.ogg('${path}Voices$audioSuffix', true));
 				vocalsLoaded = (vocalTrack.length > 0);
 			} else {
-				oppVocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix(Util.pathSuffix('Voices', opponent), audioSuffix)));
+				oppVocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix(Util.pathSuffix('Voices', opponent), audioSuffix), true));
 				oppVocalsLoaded = (oppVocalTrack.length > 0);
-				vocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix(Util.pathSuffix('Voices', player), audioSuffix)));
+				vocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix(Util.pathSuffix('Voices', player), audioSuffix), true));
 				vocalsLoaded = (vocalTrack.length > 0);
 			}
-			instTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix('Inst', audioSuffix)));
+			instTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix('Inst', audioSuffix), true));
 			instLoaded = (instTrack.length > 0);
 			return true;
 		} catch(e:Dynamic)
@@ -372,12 +383,4 @@ typedef LegacySongSection = {
 	var gfSection:Bool;
 	var changeBPM:Bool;
 	var bpm:Float;
-}
-
-typedef SongNote = { //IM STILL DEBATING IF I WANT TO DO THIS
-	var msTime:Float;
-	var msLength:Float;
-	var strumIndex:Int; //todo: change all "noteData" by strumIndex?
-	var strumlineIndex:Int;
-	var noteKind:String;
 }

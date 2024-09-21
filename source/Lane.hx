@@ -1,15 +1,17 @@
 package;
 
-import flixel.util.FlxSignal.FlxTypedSignal;
-import flixel.input.keyboard.FlxKey;
-import Strumline;
-import Scoring;
 import Note;
+import Scoring;
+import Strumline;
+import flixel.input.keyboard.FlxKey;
+import flixel.util.FlxSignal.FlxTypedSignal;
+import flixel.graphics.frames.FlxFramesCollection;
 
 using StringTools;
 
 class Lane extends FlxSpriteGroup {
 	public var rgbShader:RGBSwap;
+	public var splashRGB:RGBSwap;
 
 	public var noteData:Int;
 	public var cpu:Bool = true;
@@ -35,8 +37,9 @@ class Lane extends FlxSpriteGroup {
 		return scrollSpeed = newSpeed;
 	}
 	public function set_held(newHeld:Bool) {
+		if (held == newHeld) return newHeld;
 		if (newHeld) popCover();
-		else noteCover.visible = false;
+		else noteCover.kill();
 		return held = newHeld;
 	}
 	public function new(x:Float, y:Float, data:Int) {
@@ -46,6 +49,12 @@ class Lane extends FlxSpriteGroup {
 		rgbShader.green = 0xffffff;
 		rgbShader.red = Note.directionColors[data][0];
 		rgbShader.blue = Note.directionColors[data][1];
+
+		var splashCol:Array<FlxColor> = NoteSplash.makeSplashColors(rgbShader.red);
+		splashRGB = new RGBSwap();
+		splashRGB.green = 0xffffff;
+		splashRGB.red = splashCol[0];
+		splashRGB.blue = splashCol[1];
 
 		noteCover = new NoteCover(data);
 		receptor = new Receptor(0, 0, data);
@@ -62,7 +71,6 @@ class Lane extends FlxSpriteGroup {
 		this.add(noteSplashes);
 		noteEvent = new FlxTypedSignal<NoteEvent->Void>();
 
-		receptor.rgbShader = rgbShader;
 		noteCover.shader = rgbShader.shader;
 	}
 	
@@ -118,7 +126,7 @@ class Lane extends FlxSpriteGroup {
 	public function splash() {
 		var splash:NoteSplash = noteSplashes.recycle(NoteSplash, () -> new NoteSplash(noteData));
 		splash.camera = camera; //silly. freaking silly
-		splash.shader = rgbShader.shader;
+		splash.shader = splashRGB.shader;
 		splash.splashOnReceptor(receptor);
 	}
 	public function popCover() {
@@ -127,7 +135,7 @@ class Lane extends FlxSpriteGroup {
 	public function spark() {
 		var spark:NoteSpark = noteSparks.recycle(NoteSpark, () -> new NoteSpark(noteData));
 		spark.camera = camera;
-		spark.shader = rgbShader.shader;
+		spark.shader = splashRGB.shader;
 		spark.sparkOnReceptor(receptor);
 	}
 	
@@ -140,7 +148,6 @@ class Lane extends FlxSpriteGroup {
 		if (note.ignore) return;
 		if (Conductor.songPosition >= note.msTime && !note.lost && note.canHit && (cpu || held)) {
 			if (!note.goodHit) hitNote(note, false);
-			receptor.playAnimation('confirm', !note.isHoldPiece);
 			if (cpu) {
 				receptor.animation.finishCallback = (anim:String) -> {
 					receptor.playAnimation('static', true);
@@ -210,25 +217,54 @@ class Receptor extends FunkinSprite {
 	public var lane:Lane;
 	public var noteData:Int;
 	public var rgbShader:RGBSwap;
+	public var missColor:Array<FlxColor>;
+	public var glowColor:Array<FlxColor>;
 	public var rgbEnabled(default, set):Bool;
+	public var grayBeat:Null<Float>;
 	
 	public function new(x:Float, y:Float, data:Int) {
 		super(x, y);
 		loadAtlas('notes');
 		
 		this.noteData = data;
-		var dirName:String = Note.directionNames[data];
+
+		rgbShader = new RGBSwap();
+		rgbShader.green = 0xffffff;
+		rgbShader.red = Note.directionColors[data][0];
+		rgbShader.blue = Note.directionColors[data][1];
+		glowColor = [rgbShader.red, rgbShader.blue];
+		missColor = [makeGrayColor(rgbShader.red), FlxColor.fromRGB(32, 30, 49)];
+
+		loadAtlas('notes');
+		reloadAnimations();
+	}
+
+	public function reloadAnimations() {
+		animation.destroyAnimations();
+		var dirName:String = Note.directionNames[noteData];
 		animation.addByPrefix('static', '$dirName receptor', 24, true);
 		animation.addByPrefix('confirm', '$dirName confirm', 24, false);
 		animation.addByPrefix('press', '$dirName press', 24, false);
 		playAnimation('static', true);
 	}
+
+	public override function update(elapsed:Float) {
+		super.update(elapsed);
+		if (grayBeat != null && Conductor.metronome.beat >= grayBeat)
+			playAnimation('press');
+	}
 	
 	public override function playAnimation(anim:String, forced:Bool = false) {
-		if (anim == 'static')
+		if (anim == 'static') {
 			rgbEnabled = false;
-		else
+		} else {
+			var baseColor:Array<FlxColor> = (anim == 'press' ? missColor : glowColor);
+			rgbShader.blue = baseColor[1];
+			rgbShader.red = baseColor[0];
 			rgbEnabled = true;
+		}
+		if (anim != 'confirm')
+			grayBeat = null;
 		super.playAnimation(anim, forced);
 		centerOffsets();
 		centerOrigin();
@@ -237,6 +273,18 @@ class Receptor extends FunkinSprite {
 	public function set_rgbEnabled(newE:Bool) {
 		shader = (newE ? rgbShader.shader : null);
 		return rgbEnabled = newE;
+	}
+
+	public static function makeGrayColor(col:FlxColor) {
+		var pCol:FlxColor = col;
+		col.red = Std.int(FlxMath.bound(col.red - 40 - (col.blue - col.red) * .1 + Math.abs(col.red - col.blue) * .1 + Math.min(col.red - Math.pow(col.blue / 255, 2) * 255 * 3 + col.green * .4, 0) * .1, 0, 255));
+		col.green = Std.int(FlxMath.bound(col.green + (col.red + col.blue) * .15 + (col.green - col.blue) * .3, 0, 255));
+		col.blue = Std.int(FlxMath.bound(col.blue + (col.green - col.blue) * .04 + (col.red + col.blue) * .25 + Math.abs(col.red - (col.green - col.blue)) * .2 - (col.red - col.blue) * .3, 0, 255));
+
+		col.saturation = FlxMath.bound(col.saturation + (pCol.blueFloat + pCol.greenFloat - (pCol.blueFloat - pCol.redFloat)) * .05 - (1 - pCol.brightness) * .1, 0, 1) * .52;
+		col.brightness = FlxMath.bound(col.brightness - ((pCol.blueFloat + pCol.greenFloat - (pCol.blueFloat - pCol.redFloat)) * .04) + (1 - pCol.brightness) * .08, 0, 1) * .75;
+		
+		return col;
 	}
 }
 
@@ -268,6 +316,26 @@ class NoteSplash extends FunkinSprite {
 		updateHitbox();
 		spriteOffset.set(width * .5, height * .5);
 	}
+
+	public static function makeSplashColors(baseFill:FlxColor):Array<FlxColor> {
+		var fill:FlxColor = baseFill;
+		var f = 6.77; // literally just contrast
+		var m = Math.pow(1 - (fill.saturation * fill.brightness), 2);
+		fill.red = Std.int(FlxMath.lerp(FlxMath.bound(f * (fill.red - 128) + 128, 0, 255), fill.red, m));
+		fill.green = Std.int(FlxMath.lerp(FlxMath.bound(f * (fill.green - 128) + 128, 0, 255), fill.green, m));
+		fill.blue = Std.int(FlxMath.lerp(FlxMath.bound(f * (fill.blue - 128) + 128, 0, 255), fill.blue, m));
+		fill.saturation = fill.saturation * Math.min(fill.brightness / .25, 1);
+		fill.brightness = fill.brightness * .5 + .5;
+		
+		var ring:FlxColor = baseFill;
+		ring.red = Std.int(ring.red * .65);
+		ring.green = Std.int(ring.green * Math.max(.75 - ring.blue * .2, 0));
+		ring.blue = Std.int(Math.min((ring.blue + 80) * ring.brightness, 255));
+		ring.saturation = Math.min(1 - Math.pow(1 - ring.saturation * 1.4, 2), 1) * Math.min(ring.brightness / .125, 1);
+		ring.brightness = ring.brightness * .75 + .25;
+
+		return [fill, ring];
+	}
 }
 
 class NoteCover extends FunkinSprite {
@@ -283,7 +351,7 @@ class NoteCover extends FunkinSprite {
 		animation.finishCallback = (anim:String) -> {
 			playAnimation('loop');
 		};
-		visible = false;
+		kill();
 	}
 	
 	public function popOnReceptor(receptor:Receptor) {
@@ -292,7 +360,7 @@ class NoteCover extends FunkinSprite {
 	}
 	public function pop() {
 		playAnimation('start', true);
-		visible = true;
+		revive();
 		updateHitbox();
 		spriteOffset.set(width * .5 + 10, height * .5 - 46);
 	}
