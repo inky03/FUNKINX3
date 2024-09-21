@@ -343,7 +343,6 @@ class Song {
 	public function loadMusic(path:String, player:String = '', opponent:String = '') { // this could be better
 		if (instLoaded) return true;
 		try {
-			if (true) return false;
 			if (player == '' && opponent == '') {
 				vocalTrack.loadEmbedded(Paths.ogg('${path}Voices$audioSuffix', true));
 				vocalsLoaded = (vocalTrack.length > 0);

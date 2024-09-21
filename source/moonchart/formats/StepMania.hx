@@ -331,13 +331,12 @@ class StepManiaBasic<T:StepManiaFormat> extends BasicFormat<T, {}>
 
 		// TODO: this may have to apply for bpm changes too, change scroll speed event?
 		final speed:Float = bpmChanges[0].bpm * StepMania.STEPMANIA_SCROLL_SPEED;
-		final offset:Float = data.OFFSET is String ? Std.parseFloat(Std.string(data.OFFSET)) : data.OFFSET;
 		final isSingle:Bool = Util.mapFirst(data.NOTES).dance == SINGLE;
 
 		return {
 			title: data.TITLE,
 			bpmChanges: bpmChanges,
-			offset: offset * 1000,
+			offset: data.OFFSET * 1000,
 			scrollSpeeds: Util.fillMap(diffs, speed),
 			extraData: [SONG_ARTIST => data.ARTIST, LANES_LENGTH => isSingle ? 4 : 8]
 		}
