@@ -36,36 +36,35 @@ class Paths {
 		return ogg('sounds/$key');
 
 	static public function image(key:String) {
-		if (graphicCache[key] != null) return graphicCache[key];
+		var bmdKey:String = 'images/$key.png';
+		var assetKey:String = getPath(bmdKey);
+		if (graphicCache[assetKey] != null) return graphicCache[assetKey];
 
 		var bmd:BitmapData;
-		var bmdKey:String = 'images/$key.png';
 
 		if (Assets.exists(sharedPath(bmdKey), IMAGE))
 			bmd = Assets.getBitmapData(sharedPath(bmdKey));
 		else {
-			var assetKey:String = getPath(bmdKey);
 			if (assetKey == null) return null;
 			bmd = BitmapData.fromFile(assetKey);
 		}
 
-		var graphic:FlxGraphic = graphicCache[key] = FlxGraphic.fromBitmapData(bmd);
+		var graphic:FlxGraphic = graphicCache[assetKey] = FlxGraphic.fromBitmapData(bmd);
 		graphic.destroyOnNoUse = false;
 		graphic.persist = true;
 		return graphic;
 	}
 
-	inline static public function ogg(key:String, isMusic:Bool = false):Sound {
-		if (soundCache[key] != null) return soundCache[key];
-
+	inline static public function ogg(key:String, isMusic:Bool = false) {
 		var sndKey:String = '$key.ogg';
+		var assetKey:String = getPath(sndKey);
+		if (soundCache[assetKey] != null) return soundCache[assetKey];
 
 		if (Assets.exists(sharedPath(sndKey), SOUND))
 			return (isMusic ? Assets.getMusic : Assets.getSound)(sharedPath(sndKey));
 		
-		var assetKey:String = getPath(sndKey);
-		if (assetKey == null) return new Sound();
-		var snd:Sound = soundCache[key] = Sound.fromFile(assetKey);
+		if (assetKey == null) return null;
+		var snd:Sound = soundCache[assetKey] = Sound.fromFile(assetKey);
 		return snd;
 	}
 

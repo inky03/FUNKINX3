@@ -23,8 +23,8 @@ class Song {
 	public var name:String = '';
 	public var artist:String = '';
 
+	public var chart:Any; //BasicFormat?
 	public var json:Dynamic;
-	public var chart:Dynamic; //BasicFormat?
 	public var initialBpm:Float = 100;
 	public var keyCount:Int = 4;
 	public var notes:Array<Note> = [];
@@ -39,6 +39,10 @@ class Song {
 	public var oppVocalsLoaded:Bool;
 	public var oppVocalTrack:FlxSound;
 	public var audioSuffix:String = '';
+
+	public var player1:String = 'bf';
+	public var player2:String = 'dad';
+	public var player3:String = 'gf';
 	
 	public function new(path:String, keyCount:Int = 4) {
 		this.path = path;
@@ -64,31 +68,32 @@ class Song {
 			var jsonData:Dynamic = TJSON.parse(content);
 			return jsonData;
 		} else {
-			trace('Chart JSON not found... (chart not generated)');
-			trace('Verify path:');
-			trace('Chart: $jsonPath');
+			Sys.println('chart JSON not found... (chart not generated)');
+			Sys.println('verify path:');
+			Sys.println('- chart: $jsonPath');
 			return null;
 		}
 	}
 	
 	public static function loadStepMania(path:String, difficulty:String = 'Hard') { // TODO: this could just not be static
-		trace('Loading StepMania chart "$path"');
+		Sys.println('loading StepMania simfile "$path" with difficulty "$difficulty"');
 
 		var songPath:String = 'data/$path/$path';
 		var smPath:String = '$songPath.sm'; // technically its chartPath, but sm sound cooler
 		var song:Song = new Song(path, 4); // todo: sm multikey (implement multikey in the first place)
 
 		if (!Paths.exists(smPath)) {
-			trace('Chart SM not found... (chart not generated)');
-			trace('Verify path:');
-			trace('Chart: $smPath');
+			Sys.println('sm file not found... (chart not generated)');
+			Sys.println('verify path:');
+			Sys.println('- chart: $smPath');
 			return song;
 		}
 
 		var time = Sys.time();
+		var sm:StepMania;
 		try {
 			var smContent:String = Paths.text(smPath);
-			var sm:StepMania = new StepMania().fromStepMania(smContent);
+			sm = new StepMania().fromStepMania(smContent);
 			var meta:BasicMetaData = sm.getChartMeta();
 			song.loadGeneric(sm, difficulty);
 
@@ -106,24 +111,23 @@ class Song {
 			}
 			Note.baseMetronome = Conductor.metronome;
 
-			trace('Chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
+			Sys.println('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch (e:Exception) {
-			trace('Error when generating chart! -> <<< ${e.details()} >>>');
+			Sys.println('chart error... -> <<< ${e.details()} >>>');
 			return song;
 		}
 
-		trace('loading song music...');
 		time = Sys.time();
 		song.loadMusic('data/$path/');
 		song.loadMusic('songs/$path/');
-		trace(song.instLoaded ? ('Music loaded in ${Math.round((Sys.time() - time) * 1000) / 1000}s!') : ('Music failed to load...'));
+		Sys.println(song.instLoaded ? ('music loaded! (${Math.round((Sys.time() - time) * 1000) / 1000}s)') : ('music failed to load...'));
 
 		return song;
 	}
 
 	// suffix is for playable characters
-	public static function loadVSliceSong(path:String, difficulty:String = 'hard', suffix:String = '') {
-		trace('Loading VSlice chart "$path"');
+	public static function loadModernSong(path:String, difficulty:String = 'hard', suffix:String = '') {
+		Sys.println('loading modern FNF song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 
 		var songPath:String = 'data/$path/$path';
 		var chartPath:String = '${Util.pathSuffix('$songPath-chart', suffix)}.json';
@@ -131,18 +135,19 @@ class Song {
 		var song:Song = new Song(path, 4);
 
 		if (!Paths.exists(chartPath) || !Paths.exists(metaPath)) {
-			trace('Chart or Metadata JSON not found... (chart not generated)');
-			trace('Verify paths:');
-			trace('Chart: $chartPath');
-			trace('Metadata: $metaPath');
+			Sys.println('chart or metadata JSON not found... (chart not generated)');
+			Sys.println('verify paths:');
+			Sys.println('- chart: $chartPath');
+			Sys.println('- metadata: $metaPath');
 			return song;
 		}
 
 		var time = Sys.time();
+		var vslice:FNFVSlice;
 		try {
 			var chartContent:String = Paths.text(chartPath);
 			var metaContent:String = Paths.text(metaPath);
-			var vslice:FNFVSlice = new FNFVSlice().fromJson(chartContent, metaContent);
+			vslice = new FNFVSlice().fromJson(chartContent, metaContent);
 			song.loadGeneric(vslice, difficulty);
 
 			var tempMetronome:Metronome = new Metronome();
@@ -157,21 +162,21 @@ class Song {
 			}
 			Note.baseMetronome = Conductor.metronome;
 
-			trace('Chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
-
-			var meta:BasicMetaData = vslice.getChartMeta();
-			var p1:String = meta.extraData['FNF_P1'] ?? '';
-			var p2:String = meta.extraData['FNF_P2'] ?? '';
-			trace('loading song music...');
-			time = Sys.time();
-			song.audioSuffix = suffix;
-			song.loadMusic('data/$path/', p1, p2);
-			song.loadMusic('songs/$path/', p1, p2);
-			trace(song.instLoaded ? ('Music loaded in ${Math.round((Sys.time() - time) * 1000) / 1000}s!') : ('Music failed to load...'));
+			Sys.println('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch (e:Exception) {
-			trace('Error when generating chart! -> <<< ${e.details()} >>>');
+			Sys.println('chart error... -> <<< ${e.details()} >>>');
 			return song;
 		}
+
+		var meta:BasicMetaData = vslice.getChartMeta();
+		song.player1 = meta.extraData['FNF_P1'] ?? 'bf';
+		song.player2 = meta.extraData['FNF_P2'] ?? 'dad';
+		song.player3 = meta.extraData['FNF_P3'] ?? 'gf';
+		time = Sys.time();
+		song.audioSuffix = suffix;
+		song.loadMusic('data/$path/', song.player1, song.player2);
+		song.loadMusic('songs/$path/', song.player1, song.player2);
+		Sys.println(song.instLoaded ? ('music loaded! (${Math.round((Sys.time() - time) * 1000) / 1000}s)') : ('music failed to load...'));
 
 		return song;
 	}
@@ -198,8 +203,11 @@ class Song {
 			var events:Array<BasicEvent> = format.getEvents();
 			for (event in events) {
 				var newParams:Map<String, Dynamic> = [];
-				for (param in Reflect.fields(event.data))
-					newParams[param] = Reflect.field(event.data, param);
+				if (Reflect.isObject(event.data)) {
+					for (param in Reflect.fields(event.data))
+						newParams[param] = Reflect.field(event.data, param);
+				} else
+					newParams['value'] = event.data;
 				this.events.push({name: event.name, msTime: event.time, params: newParams});
 			}
 		}
@@ -207,14 +215,14 @@ class Song {
 	}
 	
 	public static function loadLegacySong(path:String, difficulty:String = 'normal', keyCount:Int = 4) { // move to moonchart format???
-		trace('Loading legacy chart "${path}"');
+		Sys.println('loading legacy FNF song "${path}" with difficulty "$difficulty"');
 		
 		var song = new Song(path, keyCount);
 		song.json = Song.loadJson(path, difficulty);
 		
 		if (song.json == null) return song;
 		var fromSong:Bool = (!Std.isOfType(song.json.song, String));
-		if (fromSong) song.json = song.json.song;
+		if (fromSong) song.json = song.json.song; // probably move song.json to song.chart?
 		
 		var time = Sys.time();
 		try {
@@ -299,16 +307,19 @@ class Song {
 			song.sortNotes();
 			Note.baseMetronome = Conductor.metronome;
 
-			trace('Chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
+			song.player1 = song.json.player1;
+			song.player2 = song.json.player2;
+			song.player3 = song.json.player3 ?? song.json.gfVersion ?? 'gf';
+
+			Sys.println('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch(e:Exception) {
-			trace('Error when generating chart! -> <<< ${e.details()} >>>');
+			Sys.println('chart error... -> <<< ${e.details()} >>>');
 		}
 
-		trace('loading song music...');
 		time = Sys.time();
 		song.loadMusic('data/$path/');
 		song.loadMusic('songs/$path/');
-		trace(song.instLoaded ? ('Music loaded in ${Math.round((Sys.time() - time) * 1000) / 1000}s!') : ('Music failed to load...'));
+		Sys.println(song.instLoaded ? ('music loaded! (${Math.round((Sys.time() - time) * 1000) / 1000}s)') : ('music failed to load...'));
 
 		return song;
 	}
@@ -343,19 +354,17 @@ class Song {
 	public function loadMusic(path:String, player:String = '', opponent:String = '') { // this could be better
 		if (instLoaded) return true;
 		try {
-			if (player == '' && opponent == '') {
-				vocalTrack.loadEmbedded(Paths.ogg('${path}Voices$audioSuffix', true));
-				vocalsLoaded = (vocalTrack.length > 0);
-			} else {
-				oppVocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix(Util.pathSuffix('Voices', opponent), audioSuffix), true));
-				oppVocalsLoaded = (oppVocalTrack.length > 0);
-				vocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix(Util.pathSuffix('Voices', player), audioSuffix), true));
-				vocalsLoaded = (vocalTrack.length > 0);
-			}
-			instTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix('Inst', audioSuffix), true));
+			instTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix('Inst', audioSuffix)));
+
+			vocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix('Voices', audioSuffix)));
+			oppVocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix(Util.pathSuffix('Voices', opponent), audioSuffix)));
+			if (vocalTrack.length == 0) vocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix(Util.pathSuffix('Voices', player), audioSuffix)));
+
 			instLoaded = (instTrack.length > 0);
+			vocalsLoaded = (vocalTrack.length > 0);
+			oppVocalsLoaded = (oppVocalTrack.length > 0);
 			return true;
-		} catch(e:Dynamic)
+		} catch (e:Any)
 			return false;
 	}
 	
@@ -371,11 +380,11 @@ class Song {
 typedef SongEvent = {
 	var name:String;
 	var msTime:Float;
-	var params:Map<String, Dynamic>;
+	var params:Map<String, Any>;
 }
 
 typedef LegacySongSection = {
-	var sectionNotes:Array<Array<Dynamic>>;
+	var sectionNotes:Array<Array<Any>>;
 	var sectionBeats:Float;
 	var lengthInSteps:Float;
 	var mustHitSection:Bool;

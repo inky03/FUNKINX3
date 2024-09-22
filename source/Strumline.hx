@@ -113,7 +113,7 @@ class Strumline extends FlxSpriteGroup {
 			if (e.type == HIT) {
 				var note:Note = e.note;
 				var lane:Lane = e.lane;
-				lane.receptor.playAnimation('confirm', !note.isHoldPiece);
+				lane.receptor.playAnimation('confirm', true);
 				if (!note.isHoldPiece) {
 					if (note.msLength > 0) {
 						for (child in note.children) child.canHit = true;

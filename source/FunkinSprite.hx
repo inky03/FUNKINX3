@@ -1,10 +1,12 @@
 package;
 
 import flixel.math.FlxPoint.FlxCallbackPoint;
+import flixel.graphics.frames.FlxAtlasFrames;
 
 class FunkinSprite extends FlxSprite {
 	public var extraData:Map<String, Dynamic> = new Map<String, Dynamic>();
 	public var offsets:Map<String, FlxPoint> = new Map<String, FlxPoint>();
+	public var smooth(default, set):Bool = true;
 	public var spriteOffset:FlxCallbackPoint;
 	public var animOffset:FlxCallbackPoint;
 	public var rotateOffsets:Bool = false;
@@ -13,14 +15,13 @@ class FunkinSprite extends FlxSprite {
 		super(x, y);
 		spriteOffset = new FlxCallbackPoint((point:FlxPoint) -> refreshOffset());
 		animOffset = new FlxCallbackPoint((point:FlxPoint) -> refreshOffset());
-		antialiasing = smooth && Settings.data.antialiasing;
+		this.smooth = smooth;
 	}
 	public override function destroy() {
 		spriteOffset.destroy();
 		animOffset.destroy();
 		super.destroy();
 	}
-	
 	public override function update(elapsed:Float) {
 		refreshOffset();
 		super.update(elapsed);
@@ -33,6 +34,13 @@ class FunkinSprite extends FlxSprite {
 	public function loadAtlas(path) {
 		frames = Paths.sparrowAtlas(path);
 		return this;
+	}
+	public function addAtlas(path, overwrite:Bool = false) {
+		if (frames == null) loadAtlas(path);
+		else {
+			var aFrames:FlxAtlasFrames = cast frames;
+			aFrames.addAtlas(Paths.sparrowAtlas(path), overwrite);
+		}
 	}
 	
 	public override function makeGraphic(width:Int, height:Int, color:FlxColor = FlxColor.WHITE, unique:Bool = false, ?key:String) {
@@ -47,6 +55,7 @@ class FunkinSprite extends FlxSprite {
 		super.centerOffsets(adjustPosition);
 		spriteOffset.set(offset.x / scale.x, offset.y / scale.y);
 	}
+
 	public function setOffset(x:Float, y:Float) spriteOffset.set(x / scale.x, y / scale.y);
 	public function hasAnimationPrefix(prefix:String) {
 		if (animation == null) return false;
@@ -55,7 +64,6 @@ class FunkinSprite extends FlxSprite {
 		animation.findByPrefix(frames, prefix);
 		return (frames.length > 0);
 	}
-	
 	inline public function refreshOffset() {
 		var xP:Float = (spriteOffset.x + animOffset.x) * scale.x;
 		var yP:Float = (spriteOffset.y + animOffset.y) * scale.y;
@@ -73,9 +81,15 @@ class FunkinSprite extends FlxSprite {
 			animation.play(anim, forced);
 			if (offsets.exists(anim)) {
 				var offset:FlxPoint = offsets[anim];
-				animOffset.set(offset.x, offset.y);
+				animOffset.x = offset.x;
+				animOffset.y = offset.y;
 			} else
 				animOffset.set(0, 0);
 		}
+	}
+
+	public function set_smooth(newSmooth:Bool) {
+		antialiasing = (newSmooth && Settings.data.antialiasing);
+		return (smooth = newSmooth);
 	}
 }

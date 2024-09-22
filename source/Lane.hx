@@ -169,11 +169,6 @@ class Lane extends FlxSpriteGroup {
 			if (Conductor.songPosition - hitWindow > note.msTime) {
 				note.lost = true;
 				noteEvent.dispatch({note: note, lane: this, type: LOST});
-				// onNoteLost.dispatch(note, this);
-			}
-			if (canDespawn && (note.msTime - Conductor.songPosition) > spawnRadius) {
-				queue.push(note);
-				killNote(note);
 			}
 		}
 	}

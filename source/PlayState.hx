@@ -64,11 +64,11 @@ class PlayState extends MusicBeatState {
 		paused = true;
 		// setup the freaking song
 		// for legacy / psych engine format ... Song.loadLegacySong('songName', 'difficulty')
-		// for modern (fnf 0.3.0+) format ... Song.loadVSliceSong('songName', 'difficulty', ?'suffix')
+		// for modern (fnf 0.3.0+) format ... Song.loadModernSong('songName', 'difficulty', ?'suffix')
 		// for simfile (stepmania) ... Song.loadStepMania('songName', 'Difficulty')
 		
 		var tempNotes:Array<Note> = [];
-		song = Song.loadVSliceSong('darnell', 'hard', 'bf');
+		song = Song.loadModernSong('spookeez', 'hard');
 		for (event in song.events) events.push(event);
 		Conductor.metronome.tempoChanges = song.tempoChanges;
 		Conductor.metronome.setBeat(-5);
@@ -84,7 +84,7 @@ class PlayState extends MusicBeatState {
 		FlxG.cameras.add(camHUD, false);
 		FlxG.cameras.add(camOther, false);
 		
-		camFocusTarget = new FlxPoint(FlxG.width * .5, FlxG.height * .5);
+		camFocusTarget = new FlxPoint(0, FlxG.height * .5);
 		camFocus = new FlxObject(camFocusTarget.x, camFocusTarget.y, 1, 1);
 		FlxG.camera.follow(camFocus, LOCKON, 1);
 		add(camFocus);
@@ -92,8 +92,10 @@ class PlayState extends MusicBeatState {
 		var strumlineBound:Float = (FlxG.width - 300) * .5;
 		var strumlineY:Float = 50;
 		
-		player1 = new Character(700, 300);
-		player1.useDefault();
+		player1 = new Character(250, 0, song.player1);
+		player2 = new Character(-250, 0, song.player2);
+		player2.x -= player2.width;
+		add(player2);
 		add(player1);
 		
 		var scrollDir:Float = (Settings.data.downscroll ? 270 : 90);
@@ -117,6 +119,7 @@ class PlayState extends MusicBeatState {
 		
 		keybinds = Settings.data.keybinds['4k'];
 		playerStrumline.assignKeys(Settings.data.keybinds['4k']);
+		opponentStrumline.addEvent(opponentNoteEvent);
 		playerStrumline.addEvent(playerNoteEvent);
 		for (note in song.notes) {
 			var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
@@ -138,7 +141,7 @@ class PlayState extends MusicBeatState {
 		healthBar.screenCenter(X);
 		healthBar.camera = camHUD;
 		add(healthBar);
-		scoreTxt = new FlxText(0, FlxG.height - 25, FlxG.width, 'Score: idk', 20);
+		scoreTxt = new FlxText(0, FlxG.height - 25, FlxG.width, 'Score: idk', 18);
 		scoreTxt.setFormat(Paths.font('vcr.ttf'), 20, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		scoreTxt.y -= scoreTxt.height * .5;
 		scoreTxt.borderSize = 1.25;
@@ -224,12 +227,12 @@ class PlayState extends MusicBeatState {
 	
 	public function syncMusic(forceSongpos:Bool = false, forceTrackTime:Bool = false) {
 		if (song.instLoaded && song.instTrack.playing) {
-			if (song.vocalsLoaded && (forceTrackTime || Math.abs(song.instTrack.time - song.vocalTrack.time) > 100)) {
-				song.vocalTrack.time = song.instTrack.time;
-				song.oppVocalTrack.time = song.instTrack.time;
-			}
 			if ((forceSongpos && Conductor.songPosition < song.instTrack.time) || Math.abs(song.instTrack.time - Conductor.songPosition) > 100)
 				Conductor.songPosition = song.instTrack.time;
+			if (song.vocalsLoaded && (forceTrackTime || Math.abs(song.instTrack.time - song.vocalTrack.time) > 100)) {
+				song.vocalTrack.time = song.instTrack.time;
+				if (song.oppVocalsLoaded) song.oppVocalTrack.time = song.instTrack.time;
+			}
 		}
 	}
 	public function getSongPos() {
@@ -243,15 +246,20 @@ class PlayState extends MusicBeatState {
 		var params:Map<String, Dynamic> = event.params;
 		switch (event.name) {
 			case 'FocusCamera':
-				camFocusTarget.x = FlxG.width * .5 + (params['x'] ?? 0);
-				camFocusTarget.y = FlxG.height * .5 + (params['y'] ?? 0);
-				switch (params['char']) {
+				camFocusTarget.x = (params['x'] ?? 0);
+				camFocusTarget.y = (params['y'] ?? 0);
+				var focusChara:Null<Character> = null;
+				switch (params['char'] ?? params['value']) {
 					case 0: // player focus
-						camFocusTarget.x += 180;
+						focusChara = player1;
 					case 1: // opponent focus
-						camFocusTarget.x -= 180;
+						focusChara = player2;
 					case 2: // gf focus
-						camFocusTarget.y -= 30;
+						camFocusTarget.y = FlxG.height * .5 - 50;
+				}
+				if (focusChara != null) {
+					camFocusTarget.x += focusChara.getMidpoint().x + focusChara.cameraOffset.x;
+					camFocusTarget.y += focusChara.getMidpoint().y + focusChara.cameraOffset.y;
 				}
 		}
 	}
@@ -261,6 +269,7 @@ class PlayState extends MusicBeatState {
 	}
 	public function beatHitEvent(beat:Int) {
 		player1.dance(beat);
+		player2.dance(beat);
 		switch (beat) {
 			case -4:
 				FlxG.sound.play(Paths.sound('intro3'));
@@ -337,6 +346,7 @@ class PlayState extends MusicBeatState {
 		var lane:Lane = e.lane;
 		switch (e.type) {
 			case HIT:
+				song.vocalTrack.volume = 1;
 				if (note.isHoldPiece) {
 					var anim:String = 'sing${singAnimations[note.noteData]}';
 					if (player1.animation.name != anim)
@@ -366,6 +376,7 @@ class PlayState extends MusicBeatState {
 				updateRating();
 			case LOST:
 				popRating('sadmiss');
+				song.vocalTrack.volume = 0;
 				player1.playAnimation('sing${singAnimations[note.noteData]}miss', true);
 				health -= note.healthLoss;
 				accuracyDiv ++;
@@ -374,6 +385,25 @@ class PlayState extends MusicBeatState {
 				combo = 0;
 				score -= 10;
 				updateRating();
+			default:
+		}
+	}
+	public function opponentNoteEvent(e:Lane.NoteEvent) {
+		var note:Note = e.note;
+		var lane:Lane = e.lane;
+		switch (e.type) {
+			case HIT:
+				song.oppVocalTrack.volume = 1;
+				if (note.isHoldPiece) {
+					var anim:String = 'sing${singAnimations[note.noteData]}';
+					if (player2.animation.name != anim)
+						player2.playAnimation(anim, true);
+					player2.timeAnimSteps(player2.singForSteps);
+				} else {
+					player2.playAnimation('sing${singAnimations[note.noteData]}', true);
+				}
+			case LOST:
+				song.oppVocalTrack.volume = 0;
 			default:
 		}
 	}
@@ -393,7 +423,7 @@ class PlayState extends MusicBeatState {
 		var i:Int = 0;
 		for (num in nums) {
 			var popNum:FunkinSprite = popRating('num$num', .5, 2);
-			popNum.setPosition(FlxG.width * .5 + (i + xOffset) * 43, FlxG.height * .5 + 80);
+			popNum.setPosition(popNum.x + (i + xOffset) * 43, FlxG.height * .5 + 80);
 			popNum.acceleration.y = FlxG.random.int(200, 300);
 			popNum.velocity.y = -FlxG.random.int(140, 160);
 			popNum.velocity.x = FlxG.random.float(-5, 5);
@@ -422,7 +452,7 @@ class PlayState extends MusicBeatState {
 		updateScore();
 	}
 	public function popRating(ratingString:String, scale:Float = .7, beats:Float = 1) {
-		var rating:FunkinSprite = new FunkinSprite(FlxG.width * .5, FlxG.height * .5);
+		var rating:FunkinSprite = new FunkinSprite(0, FlxG.height * .5);
 		rating.loadTexture(ratingString);
 		rating.scale.set(scale, scale);
 		rating.updateHitbox();
