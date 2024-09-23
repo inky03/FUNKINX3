@@ -4,14 +4,21 @@ class Character extends FunkinSprite {
 	public var sway:Bool = false;
 	public var animReset:Float = 0;
 	public var singForSteps:Float = 4;
+	public var sparrowsList:Array<String>;
+	public var fallbackCharacter:Null<String>;
 	public var character(default, set):Null<String>;
 	public var animationList:Map<String, CharacterAnim> = [];
 	public var startPos(default, never):FlxPoint = FlxPoint.get();
 	public var cameraOffset(default, never):FlxPoint = FlxPoint.get();
 	
-	public function new(x:Float, y:Float, character:Null<String> = null) {
+	public function new(x:Float, y:Float, ?character:String, ?fallback:String) {
 		super(x, y);
-		this.character = character;
+		sparrowsList = [];
+		this.fallbackCharacter = fallback;
+		if (character == null) // lol
+			this.fallback();
+		else
+			this.character = character;
 	}
 	public override function destroy() {
 		startPos.destroy();
@@ -33,9 +40,7 @@ class Character extends FunkinSprite {
 		animReset = steps * Conductor.stepCrochet * .001;
 	}
 	public override function playAnimation(anim:String, forced:Bool = false) {
-		if (animationList[anim] != null) {
-			// todo ig
-		}
+		preloadAnimAsset(anim);
 		if (anim.startsWith('sing') && (animation.exists(anim) && (forced || animation.name != anim))) timeAnimSteps(singForSteps);
 		super.playAnimation(anim, forced);
 	}
@@ -47,37 +52,60 @@ class Character extends FunkinSprite {
 			playAnimation('idle');
 		return true;
 	}
+	public function preloadAnimAsset(anim:String) { // preloads animation with a different spritesheet path
+		var animData:CharacterAnim = animationList[anim];
+		if (animData != null && animData.assetPath != null) {
+			addAtlas(animData.assetPath, true);
+			addAnimation(anim, animData.prefix, animData.fps, animData.loop, animData.frameIndices);
+		}
+	}
 
 	public function set_character(newChara:Null<String>) {
-		// if (character == newChara) return character;
+		if (character == newChara) return character;
 		if (newChara == null) {
-			useDefault();
+			fallback();
 		} else {
 			loadCharacter(newChara);
 		}
 		return character = newChara;
 	}
 
-	public function loadCharacter(character:String) {
-		var charPath:String = 'characters/$character.json';
+	public override function loadAtlas(path:String):FunkinSprite {
+		animationList.clear();
+		sparrowsList = [path];
+		super.loadAtlas(path);
+		return cast this;
+	}
+	public override function addAtlas(path:String, o:Bool = false):FunkinSprite {
+		if (sparrowsList.contains(path)) return this;
+		sparrowsList.push(path);
+		super.addAtlas(path, o);
+		return cast this; // kys
+	}
+
+	public function loadCharacter(?character:String) { // no character provided attempts to load fallback
+		var charLoad:String = character ?? fallbackCharacter;
+		var charPath:String = 'characters/$charLoad.json';
 		if (!Paths.exists(charPath)) {
-			Sys.println('failed to load character "$character"');
+			Sys.println('failed to load character "$charLoad"');
 			Sys.println('verify path:');
 			Sys.println('- $charPath');
+			fallback(character);
 			return this;
 		}
-		Sys.println('loading character "$character"');
+		if (character != null) Sys.println('loading character "$charLoad"');
 		var time:Float = Sys.time();
 		try {
+			frames = null;
 			var content:String = Paths.text(charPath);
 			var charData:PsychCharacterData = TJSON.parse(content);
 			var sparrows:Array<String> = charData.image.split(',');
-			for (sparrow in sparrows) {
-				addAtlas(sparrow.trim());
+			var animations:Array<PsychCharacterAnim> = charData.animations;
+			for (sparrow in sparrows) { // no choice with psych 1 multisparrow lmao
+				addAtlas(sparrow.trim(), true);
 			}
-			animationList.clear();
-			for (animation in charData.animations) {
-				addAnimation(animation.anim, animation.name, animation.fps, animation.loop, animation.indices);
+			for (animation in animations) {
+				addAnimation(animation.anim, animation.name, animation.fps, animation.loop, animation.indices, animation.assetPath);
 				offsets.set(animation.anim, FlxPoint.get(animation.offsets[0], animation.offsets[1]));
 			}
 			smooth = !charData.no_antialiasing;
@@ -85,13 +113,14 @@ class Character extends FunkinSprite {
 			scale.set(charData.scale, charData.scale);
 			changeBasePos(charData.position[0], charData.position[1]);
 			cameraOffset.set(charData.camera_position[0], charData.camera_position[1]);
-			sway = (animation.exists('danceLeft') && animation.exists('danceRight'));
+			sway = (animationList.exists('danceLeft') && animationList.exists('danceRight'));
 
 			@:bypassAccessor this.character = character;
 			setBaseSize();
 			dance();
 		} catch (e:haxe.Exception) {
-			Sys.println('error while loading character "$character"... -> ${e.details()}');
+			Sys.println('error while loading character "$charLoad"... -> ${e.details()}');
+			fallback(character);
 			return this;
 		}
 		Sys.println('character loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
@@ -110,10 +139,17 @@ class Character extends FunkinSprite {
 		animation.finish();
 		updateHitbox();
 	}
+	public function fallback(?attempted:String) {
+		if (fallbackCharacter == null || attempted == null) { // dont attempt if fallback failed to fall back :p
+			useDefault();
+		} else {
+			Sys.println('attempting to fall back to "$fallbackCharacter"...');
+			loadCharacter();
+		}
+	}
 	public function useDefault() {
-		animationList.clear();
 		loadAtlas('characters/bf');
-		animation.addByPrefix('idle', 'BF idle dance', 24, false);
+		addAnimation('idle', 'BF idle dance', 24, false);
 		var singAnimations:Array<String> = ['LEFT', 'DOWN', 'UP', 'RIGHT'];
 		for (ani in singAnimations) {
 			addAnimation('sing$ani', 'BF NOTE ${ani}0', 24, false);
@@ -137,10 +173,12 @@ class Character extends FunkinSprite {
 		dance();
 	}
 	public function addAnimation(name:String, prefix:String, fps:Float = 24, loop:Bool = false, frameIndices:Null<Array<Int>> = null, assetPath:Null<String> = null) {
-		if (frameIndices == null || frameIndices.length == 0) {
-			animation.addByPrefix(name, prefix, fps, loop);
-		} else {
-			animation.addByIndices(name, prefix, frameIndices, '', fps, loop);
+		if (assetPath == null) { // wait for the asset to be loaded
+			if (frameIndices == null || frameIndices.length == 0) {
+				animation.addByPrefix(name, prefix, fps, loop);
+			} else {
+				animation.addByIndices(name, prefix, frameIndices, '', fps, loop);
+			}
 		}
 		animationList[name] = {prefix: prefix, fps: fps, loop: loop, assetPath: assetPath, frameIndices: frameIndices};
 	}
@@ -177,4 +215,5 @@ typedef PsychCharacterAnim = {
 	var loop:Bool;
 	var indices:Array<Int>;
 	var offsets:Array<Int>;
+	@:optional var assetPath:String; // for quick tests
 }

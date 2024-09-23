@@ -13,6 +13,9 @@ class Util { // maybe these utils can be on their own specific purpose classes
 	public static function pathSuffix(str:String, suffix:String = '') {
 		return (suffix.trim().length == 0 ? str : '$str-$suffix');
 	}
+	public static function thousandSep(num:Float) {
+		return flixel.util.FlxStringUtil.formatMoney(num, false);
+	}
 
 	// math
 	public static function smoothLerp(a:Float, b:Float, t:Float) {

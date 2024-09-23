@@ -1,7 +1,8 @@
 package;
 
-import flixel.math.FlxPoint.FlxCallbackPoint;
+import flixel.graphics.frames.FlxFramesCollection;
 import flixel.graphics.frames.FlxAtlasFrames;
+import flixel.math.FlxPoint.FlxCallbackPoint;
 
 class FunkinSprite extends FlxSprite {
 	public var extraData:Map<String, Dynamic> = new Map<String, Dynamic>();
@@ -27,20 +28,22 @@ class FunkinSprite extends FlxSprite {
 		super.update(elapsed);
 	}
 	
-	public function loadTexture(path) {
+	public function loadTexture(path:String) {
 		loadGraphic(Paths.image(path));
 		return this;
 	}
-	public function loadAtlas(path) {
+	public function loadAtlas(path:String) {
 		frames = Paths.sparrowAtlas(path);
 		return this;
 	}
-	public function addAtlas(path, overwrite:Bool = false) {
+	public function addAtlas(path:String, overwrite:Bool = false) {
 		if (frames == null) loadAtlas(path);
 		else {
-			var aFrames:FlxAtlasFrames = cast frames;
+			var aFrames:FlxAtlasFrames = cast(frames, FlxAtlasFrames);
 			aFrames.addAtlas(Paths.sparrowAtlas(path), overwrite);
+			@:bypassAccessor frames = aFrames; // kys
 		}
+		return this;
 	}
 	
 	public override function makeGraphic(width:Int, height:Int, color:FlxColor = FlxColor.WHITE, unique:Bool = false, ?key:String) {

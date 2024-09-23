@@ -20,6 +20,7 @@ import Bar;
 class PlayState extends MusicBeatState {
 	public var player1:Character;
 	public var player2:Character;
+	public var player3:Character;
 	
 	public var healthBar:Bar;
 	public var scoreTxt:FlxText;
@@ -92,9 +93,12 @@ class PlayState extends MusicBeatState {
 		var strumlineBound:Float = (FlxG.width - 300) * .5;
 		var strumlineY:Float = 50;
 		
-		player1 = new Character(250, 0, song.player1);
-		player2 = new Character(-250, 0, song.player2);
+		player1 = new Character(250, 0, song.player1, 'bf');
+		player2 = new Character(-250, 0, song.player2, 'dad');
+		player3 = new Character(0, 0, song.player3, 'gf');
+		player3.x -= player3.width * .5;
 		player2.x -= player2.width;
+		add(player3);
 		add(player2);
 		add(player1);
 		
@@ -129,7 +133,7 @@ class PlayState extends MusicBeatState {
 		
 		if (Settings.data.middlescroll) {
 			playerStrumline.center(X);
-			opponentStrumline.fitToSize(playerStrumline.leftBound - 50 - opponentStrumline.leftBound, -1, Y);
+			opponentStrumline.fitToSize(playerStrumline.leftBound - 50 - opponentStrumline.leftBound, 0, Y);
 		}
 		
 		ratingGroup = new FlxTypedGroup<FunkinSprite>();
@@ -255,7 +259,7 @@ class PlayState extends MusicBeatState {
 					case 1: // opponent focus
 						focusChara = player2;
 					case 2: // gf focus
-						camFocusTarget.y = FlxG.height * .5 - 50;
+						focusChara = player3;
 				}
 				if (focusChara != null) {
 					camFocusTarget.x += focusChara.getMidpoint().x + focusChara.cameraOffset.x;
@@ -270,6 +274,7 @@ class PlayState extends MusicBeatState {
 	public function beatHitEvent(beat:Int) {
 		player1.dance(beat);
 		player2.dance(beat);
+		player3.dance(beat);
 		switch (beat) {
 			case -4:
 				FlxG.sound.play(Paths.sound('intro3'));
@@ -472,7 +477,7 @@ class PlayState extends MusicBeatState {
 	public function updateScore() {
 		var accuracyString:String = 'NA';
 		if (totalNotes > 0) accuracyString = '${Util.padDecimals(percent, 2)}%';
-		scoreTxt.text = 'Score: ${Std.int(score)} (${accuracyString}) | Misses: ${misses}';
+		scoreTxt.text = 'Score: ${Util.thousandSep(Std.int(score))} (${accuracyString}) | Misses: ${misses}';
 	}
 	public function set_combo(newCombo:Int) {
 		if (combo > 0) comboBroken(combo);

@@ -9,7 +9,7 @@
 			"fps": 24,
 			"anim": "idle",
 			"indices": [],
-			"name": "BF idle dance"
+			"name": "idle"
 		},
 		{
 			"offsets": [
@@ -20,7 +20,7 @@
 			"fps": 24,
 			"anim": "singLEFT",
 			"indices": [],
-			"name": "BF NOTE LEFT0"
+			"name": "left"
 		},
 		{
 			"offsets": [
@@ -31,7 +31,7 @@
 			"fps": 24,
 			"anim": "singDOWN",
 			"indices": [],
-			"name": "BF NOTE DOWN0"
+			"name": "down"
 		},
 		{
 			"offsets": [
@@ -42,7 +42,7 @@
 			"fps": 24,
 			"anim": "singUP",
 			"indices": [],
-			"name": "BF NOTE UP0"
+			"name": "up"
 		},
 		{
 			"offsets": [
@@ -53,7 +53,7 @@
 			"fps": 24,
 			"anim": "singRIGHT",
 			"indices": [],
-			"name": "BF NOTE RIGHT0"
+			"name": "right"
 		},
 		{
 			"offsets": [
@@ -64,7 +64,7 @@
 			"fps": 24,
 			"anim": "singLEFTmiss",
 			"indices": [],
-			"name": "BF NOTE LEFT MISS"
+			"name": "miss left"
 		},
 		{
 			"offsets": [
@@ -75,7 +75,7 @@
 			"fps": 24,
 			"anim": "singDOWNmiss",
 			"indices": [],
-			"name": "BF NOTE DOWN MISS"
+			"name": "miss down"
 		},
 		{
 			"offsets": [
@@ -86,7 +86,7 @@
 			"fps": 24,
 			"anim": "singUPmiss",
 			"indices": [],
-			"name": "BF NOTE UP MISS"
+			"name": "miss up"
 		},
 		{
 			"offsets": [
@@ -97,7 +97,7 @@
 			"fps": 24,
 			"anim": "singRIGHTmiss",
 			"indices": [],
-			"name": "BF NOTE RIGHT MISS"
+			"name": "miss right"
 		},
 		{
 			"offsets": [
@@ -106,10 +106,22 @@
 			],
 			"loop": false,
 			"fps": 24,
-			"anim": "hey",
+			"anim": "yeah",
 			"indices": [],
-			"name": "BF HEY"
+			"name": "Cheer",
+      "assetPath": "characters/bfCheer"
 		},
+    {
+      "offsets": [
+        -3,
+        5
+      ],
+      "loop": false,
+      "fps": 24,
+      "anim": "hey",
+      "indices": [],
+      "name": "hey"
+    },
 		{
 			"offsets": [
 				14,
@@ -119,7 +131,8 @@
 			"fps": 24,
 			"anim": "hurt",
 			"indices": [],
-			"name": "BF hit"
+			"name": "hurt",
+      "assetPath": "characters/bfCombat"
 		},
 		{
 			"offsets": [
@@ -130,7 +143,7 @@
 			"fps": 24,
 			"anim": "scared",
 			"indices": [],
-			"name": "BF idle shaking"
+			"name": "fear"
 		},
 		{
 			"offsets": [
@@ -141,7 +154,8 @@
 			"fps": 24,
 			"anim": "dodge",
 			"indices": [],
-			"name": "boyfriend dodge"
+      "name": "dodge",
+      "assetPath": "characters/bfCombat"
 		},
 		{
 			"offsets": [
@@ -152,7 +166,8 @@
 			"fps": 24,
 			"anim": "attack",
 			"indices": [],
-			"name": "boyfriend attack"
+      "name": "hit",
+      "assetPath": "characters/bfCombat"
 		},
 		{
 			"offsets": [
@@ -163,7 +178,8 @@
 			"fps": 24,
 			"anim": "pre-attack",
 			"indices": [],
-			"name": "bf pre attack"
+      "name": "prepare",
+      "assetPath": "characters/bfCombat"
 		}
 	],
 	"no_antialiasing": false,
