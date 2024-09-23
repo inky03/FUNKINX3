@@ -194,9 +194,16 @@ class Song {
 		this.tempoChanges = [];
 		this.initialBpm = bpmChanges[0].bpm;
 		tempMetronome.tempoChanges = this.tempoChanges;
-		for (change in bpmChanges) {
+		bpmChanges.sort((a, b) -> Std.int(a.time - b.time));
+		for (i => change in bpmChanges) {
 			var beat:Float = tempMetronome.convertMeasure(change.time, MS, BEAT);
-			this.tempoChanges.push(new TempoChange(beat, change.bpm, new TimeSignature(Std.int(change.beatsPerMeasure), Std.int(change.stepsPerBeat))));
+			var timeSig:Null<TimeSignature> = null;
+			if (change.beatsPerMeasure > 0 && change.stepsPerBeat > 0)
+				timeSig = new TimeSignature(Std.int(change.beatsPerMeasure), Std.int(change.stepsPerBeat));
+			else if (i == 0) // apply default time signature to first bpm change hehe
+				timeSig = new TimeSignature();
+			this.tempoChanges.push(new TempoChange(beat, change.bpm, timeSig));
+			trace('$beat -> ${change.bpm} bpm, ${timeSig == null ? '' : timeSig.toString()}');
 		}
 
 		if (parseEvents) {

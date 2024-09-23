@@ -1,9 +1,12 @@
 package;
 
 class Conductor {
-	@:isVar public static var songPosition(get, set):Float = 0;
+	public static var bpm(get, never):Float;
 	public static var crochet(get, never):Float;
 	public static var stepCrochet(get, never):Float;
+	public static var timeSignature(get, never):TimeSignature;
+	@:isVar public static var songPosition(get, set):Float = 0;
+
 	public static var metronome:Metronome = new Metronome();
 	
 	public static function get_crochet() return (metronome.getCrochet(metronome.bpm, metronome.timeSignature.denominator));
@@ -14,6 +17,9 @@ class Conductor {
 		metronome.setMS(newMS);
 		return songPosition = newMS;
 	}
+	public static function get_timeSignature() return metronome.timeSignature;
+	public static function get_bpm() return metronome.bpm;
+	
 	public static function resetToDefault() {
 		metronome = new Metronome();
 	}
@@ -182,7 +188,7 @@ class TempoChange {
 	public var bpm:Null<Float>;
 	public var timeSignature:Null<TimeSignature>;
 	
-	public function new(beat:Float, bpm:Null<Float> = null, timeSignature:Null<TimeSignature> = null) {
+	public function new(beat:Float, bpm:Null<Float> = null, ?timeSignature:TimeSignature) {
 		this.bpm = bpm;
 		this.beatTime = beat;
 		this.timeSignature = timeSignature;
