@@ -9,6 +9,7 @@ import haxe.Exception;
 import moonchart.formats.StepMania;
 import moonchart.formats.BasicFormat;
 import moonchart.formats.fnf.FNFVSlice;
+import moonchart.formats.StepManiaShark;
 import moonchart.parsers.StepManiaParser;
 
 /*
@@ -79,29 +80,36 @@ class Song {
 		Sys.println('loading StepMania simfile "$path" with difficulty "$difficulty"');
 
 		var songPath:String = 'data/$path/$path';
-		var smPath:String = '$songPath.sm'; // technically its chartPath, but sm sound cooler
+		var sscPath:String = '$songPath.ssc';
+		var smPath:String = '$songPath.sm';
+		var useShark:Bool = Paths.exists(sscPath);
 		var song:Song = new Song(path, 4); // todo: sm multikey (implement multikey in the first place)
 
-		if (!Paths.exists(smPath)) {
-			Sys.println('sm file not found... (chart not generated)');
+		if (!Paths.exists(smPath) && !useShark) {
+			Sys.println('sm or ssc file not found... (chart not generated)');
 			Sys.println('verify path:');
-			Sys.println('- chart: $smPath');
+			Sys.println('- chart: $smPath OR $sscPath');
 			return song;
 		}
 
 		var time = Sys.time();
-		var sm:StepMania;
+		var shark:StepManiaShark;
 		try {
-			var smContent:String = Paths.text(smPath);
-			sm = new StepMania().fromStepMania(smContent);
-			var meta:BasicMetaData = sm.getChartMeta();
-			song.loadGeneric(sm, difficulty);
+			if (useShark) { // goofy but who cares (hint: also me)
+				var sscContent:String = Paths.text(sscPath);
+				shark = new StepManiaShark().fromStepManiaShark(sscContent);
+			} else {
+				var smContent:String = Paths.text(smPath);
+				var sm:StepMania = new StepMania().fromStepMania(smContent);
+				shark = new StepManiaShark().fromFormat(sm);
+			}
+			song.loadGeneric(shark, difficulty);
 
 			var tempMetronome:Metronome = new Metronome();
 			tempMetronome.tempoChanges = song.tempoChanges;
 			Note.baseMetronome = tempMetronome;
-			var notes:Array<BasicNote> = sm.getNotes(difficulty);
-			var dance:StepManiaDance = @:privateAccess sm.resolveDance(notes);
+			var notes:Array<BasicNote> = shark.getNotes(difficulty);
+			var dance:StepManiaDance = @:privateAccess shark.resolveDance(notes);
 			for (note in notes) {
 				tempMetronome.setMS(note.time + 1);
 				var isPlayer:Bool = (dance == SINGLE ? note.lane < 4 : note.lane >= 4);
