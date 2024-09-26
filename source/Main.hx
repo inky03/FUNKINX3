@@ -12,10 +12,14 @@ class Main extends Sprite {
 		#if hxdiscord_rpc
 		DiscordRPC.prepare();
 		#end
-		FlxG.maxElapsed = 1;
 		Sys.println('WE REALLY OUT HERE - GAME STARTED ON ${Date.now().toString()}');
-		// FlxG.fixedTimestep = false;
+		
 		addChild(new FlxGame(0, 0, PlayState));
 		addChild(new DebugDisplay(10, 3, 0xFFFFFF));
+
+		FlxG.maxElapsed = 1;
+		FlxG.drawFramerate = 240;
+		FlxG.updateFramerate = 240;
+		// FlxG.fixedTimestep = false;
 	}
 }

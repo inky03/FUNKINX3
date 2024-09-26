@@ -24,6 +24,7 @@ class PlayState extends MusicBeatState {
 	
 	public var healthBar:Bar;
 	public var scoreTxt:FlxText;
+	public var debugTxt:FlxText;
 	public var opponentStrumline:Strumline;
 	public var playerStrumline:Strumline;
 	public var ratingGroup:FlxTypedGroup<FunkinSprite>;
@@ -59,14 +60,11 @@ class PlayState extends MusicBeatState {
 	override public function create() {
 		super.create();
 		
-		FlxG.drawFramerate = 240;
-		FlxG.updateFramerate = 240;
-		
 		paused = true;
 		// setup the freaking song
 		// for legacy / psych engine format ... Song.loadLegacySong('songName', 'difficulty')
 		// for modern (fnf 0.3.0+) format ... Song.loadModernSong('songName', 'difficulty', ?'suffix')
-		// for simfile (stepmania) ... Song.loadStepMania('songName', 'Difficulty')
+		// for simfile (stepmania) ... Song.loadStepMania('songName', 'difficulty')
 		
 		var tempNotes:Array<Note> = [];
 		song = Song.loadModernSong('spookeez', 'hard');
@@ -145,12 +143,16 @@ class PlayState extends MusicBeatState {
 		healthBar.screenCenter(X);
 		healthBar.camera = camHUD;
 		add(healthBar);
-		scoreTxt = new FlxText(0, FlxG.height - 25, FlxG.width, 'Score: idk', 18);
-		scoreTxt.setFormat(Paths.font('vcr.ttf'), 20, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		scoreTxt = new FlxText(0, FlxG.height - 25, FlxG.width, 'Score: idk');
+		scoreTxt.setFormat(Paths.font('vcr.ttf'), 18, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		scoreTxt.y -= scoreTxt.height * .5;
 		scoreTxt.borderSize = 1.25;
 		scoreTxt.camera = camHUD;
 		add(scoreTxt);
+		debugTxt = new FlxText(0, 12, FlxG.width, '');
+		debugTxt.setFormat(Paths.font('vcr.ttf'), 16, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		debugTxt.camera = camHUD;
+		add(debugTxt);
 		
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
@@ -188,6 +190,21 @@ class PlayState extends MusicBeatState {
 			Conductor.metronome.setBeat(-5);
 			resetScore();
 		}
+		if (FlxG.keys.pressed.SHIFT) {
+			if (FlxG.keys.justPressed.B) {
+				playerStrumline.cpu = !playerStrumline.cpu;
+			}
+			if (FlxG.keys.justPressed.RIGHT) {
+				Conductor.songPosition += 5000;
+				song.instTrack.time = Conductor.songPosition + 5000;
+				syncMusic(false, true);
+			}
+			if (FlxG.keys.justPressed.LEFT) {
+				Conductor.songPosition -= 5000;
+				song.instTrack.time = Conductor.songPosition - 5000;
+				syncMusic(false, true);
+			}
+		}
 		
 		if (FlxG.keys.justPressed.Z) {
 			var strumlineY:Float = 50;
@@ -200,16 +217,22 @@ class PlayState extends MusicBeatState {
 		}
 		if (FlxG.keys.justPressed.ENTER) {
 			paused = !paused;
+			if (!paused) {
+				if (song.instLoaded) song.instTrack.play(true, Conductor.songPosition);
+				if (song.vocalsLoaded) song.vocalTrack.play(true, Conductor.songPosition);
+				if (song.oppVocalsLoaded) song.oppVocalTrack.play(true, Conductor.songPosition);
+				syncMusic(false, true);
+			}
 			for (track in [song.instTrack, song.vocalTrack, song.oppVocalTrack]) {
 				if (paused || Conductor.songPosition < 0)
 					track.pause();
-				else
-					track.play(true, Conductor.songPosition);
 			}
 		}
 		
 		super.update(elapsed);
 		if (paused) return;
+
+		debugTxt.text = 'BPM: ${Conductor.bpm}  |  Time Signature: ${Conductor.timeSignature.toString()}\nBeat: $curBeat | Measure: $curBar';
 		
 		extraWindow = Math.max(extraWindow - elapsed * 200, 0);
 		
@@ -354,9 +377,8 @@ class PlayState extends MusicBeatState {
 				song.vocalTrack.volume = 1;
 				if (note.isHoldPiece) {
 					var anim:String = 'sing${singAnimations[note.noteData]}';
-					if (player1.animation.name != anim)
+					if (player1.animation.name != anim && !player1.animationIsLooping(anim))
 						player1.playAnimation(anim, true);
-					player1.timeAnimSteps(player1.singForSteps);
 					if (note.isHoldTail)
 						FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
 				} else {
@@ -366,6 +388,10 @@ class PlayState extends MusicBeatState {
 					var window:HitWindow = Scoring.judgeLegacy(hitWindows, note.hitWindow, note.msTime - Conductor.songPosition);
 					window.count ++;
 					
+					while (ratingGroup.members.length > 0) {
+						var memb:FunkinSprite = ratingGroup.members.shift();
+						memb.destroy();
+					}
 					note.ratingData = window;
 					popRating(window.rating);
 					score += window.score;
@@ -378,6 +404,7 @@ class PlayState extends MusicBeatState {
 					else popCombo(++ combo);
 					if (note.ratingData.splash) lane.splash();
 				}
+				player1.timeAnimSteps(player1.singForSteps);
 				updateRating();
 			case LOST:
 				popRating('sadmiss');
@@ -401,12 +428,12 @@ class PlayState extends MusicBeatState {
 				song.oppVocalTrack.volume = 1;
 				if (note.isHoldPiece) {
 					var anim:String = 'sing${singAnimations[note.noteData]}';
-					if (player2.animation.name != anim)
+					if (player2.animation.name != anim && !player2.animationIsLooping(anim))
 						player2.playAnimation(anim, true);
-					player2.timeAnimSteps(player2.singForSteps);
 				} else {
 					player2.playAnimation('sing${singAnimations[note.noteData]}', true);
 				}
+				player2.timeAnimSteps(player2.singForSteps);
 			case LOST:
 				song.oppVocalTrack.volume = 0;
 			default:
@@ -480,7 +507,7 @@ class PlayState extends MusicBeatState {
 		scoreTxt.text = 'Score: ${Util.thousandSep(Std.int(score))} (${accuracyString}) | Misses: ${misses}';
 	}
 	public function set_combo(newCombo:Int) {
-		if (combo > 0) comboBroken(combo);
+		if (combo > 0 && newCombo == 0) comboBroken(combo);
 		return combo = newCombo;
 	}
 	

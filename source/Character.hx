@@ -19,6 +19,10 @@ class Character extends FunkinSprite {
 			this.fallback();
 		else
 			this.character = character;
+		this.animation.finishCallback = (anim:String) -> {
+			playAnimation('$anim-loop');
+			playAnimation('$anim-hold');
+		};
 	}
 	public override function destroy() {
 		startPos.destroy();
@@ -39,9 +43,13 @@ class Character extends FunkinSprite {
 	public function timeAnimSteps(steps:Float = 4) {
 		animReset = steps * Conductor.stepCrochet * .001;
 	}
+	public function animationIsLooping(anim:String) {
+		return (animation.name == '$anim-loop' || animation.name == '$anim-hold');
+	}
 	public override function playAnimation(anim:String, forced:Bool = false) {
+		if (!forced && animationIsLooping(anim))
+			return;
 		preloadAnimAsset(anim);
-		if (anim.startsWith('sing') && (animation.exists(anim) && (forced || animation.name != anim))) timeAnimSteps(singForSteps);
 		super.playAnimation(anim, forced);
 	}
 	public function dance(beat:Int = 0) {

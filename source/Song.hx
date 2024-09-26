@@ -76,7 +76,8 @@ class Song {
 		}
 	}
 	
-	public static function loadStepMania(path:String, difficulty:String = 'Hard') { // TODO: this could just not be static
+	public static function loadStepMania(path:String, difficulty:String = 'Hard') { // TODO: these could just not be static
+		difficulty = difficulty.toLowerCase();
 		Sys.println('loading StepMania simfile "$path" with difficulty "$difficulty"');
 
 		var songPath:String = 'data/$path/$path';
@@ -135,6 +136,7 @@ class Song {
 
 	// suffix is for playable characters
 	public static function loadModernSong(path:String, difficulty:String = 'hard', suffix:String = '') {
+		difficulty = difficulty.toLowerCase();
 		Sys.println('loading modern FNF song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 
 		var songPath:String = 'data/$path/$path';
@@ -202,7 +204,6 @@ class Song {
 		this.tempoChanges = [];
 		this.initialBpm = bpmChanges[0].bpm;
 		tempMetronome.tempoChanges = this.tempoChanges;
-		bpmChanges.sort((a, b) -> Std.int(a.time - b.time));
 		for (i => change in bpmChanges) {
 			var beat:Float = tempMetronome.convertMeasure(change.time, MS, BEAT);
 			var timeSig:Null<TimeSignature> = null;
@@ -211,7 +212,6 @@ class Song {
 			else if (i == 0) // apply default time signature to first bpm change hehe
 				timeSig = new TimeSignature();
 			this.tempoChanges.push(new TempoChange(beat, change.bpm, timeSig));
-			trace('$beat -> ${change.bpm} bpm, ${timeSig == null ? '' : timeSig.toString()}');
 		}
 
 		if (parseEvents) {
@@ -230,6 +230,7 @@ class Song {
 	}
 	
 	public static function loadLegacySong(path:String, difficulty:String = 'normal', keyCount:Int = 4) { // move to moonchart format???
+		difficulty = difficulty.toLowerCase();
 		Sys.println('loading legacy FNF song "${path}" with difficulty "$difficulty"');
 		
 		var song = new Song(path, keyCount);
