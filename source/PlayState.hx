@@ -273,10 +273,12 @@ class PlayState extends MusicBeatState {
 		var params:Map<String, Dynamic> = event.params;
 		switch (event.name) {
 			case 'FocusCamera':
-				camFocusTarget.x = (params['x'] ?? 0);
-				camFocusTarget.y = (params['y'] ?? 0);
+				if (params.exists('x')) camFocusTarget.x = Util.parseFloat(params['x']);
+				if (params.exists('y')) camFocusTarget.y = Util.parseFloat(params['y']);
 				var focusChara:Null<Character> = null;
-				switch (params['char'] ?? params['value']) {
+				var focusCharaInt:Int = 2;
+				if (params.exists('char')) focusCharaInt = Util.parseInt(params['char']);
+				switch (focusCharaInt ?? params['value']) {
 					case 0: // player focus
 						focusChara = player1;
 					case 1: // opponent focus
@@ -388,10 +390,6 @@ class PlayState extends MusicBeatState {
 					var window:HitWindow = Scoring.judgeLegacy(hitWindows, note.hitWindow, note.msTime - Conductor.songPosition);
 					window.count ++;
 					
-					while (ratingGroup.members.length > 0) {
-						var memb:FunkinSprite = ratingGroup.members.shift();
-						memb.destroy();
-					}
 					note.ratingData = window;
 					popRating(window.rating);
 					score += window.score;

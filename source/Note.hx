@@ -68,17 +68,19 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 
 	public function new(player:Bool, msTime:Float, noteData:Int, msLength:Float = 0, type:String = '', isHoldPiece:Bool = false) {
 		super();
+		
 		this.player = player;
 		this.msTime = msTime;
-		this.noteData = noteData;
-		this.msLength = msLength;
 		this.noteKind = type;
+		this.noteData = noteData;
+		this.msLength = Math.max(msLength, 0);
+		
 		this.isHoldPiece = isHoldPiece;
 		this.isHoldTail = (isHoldPiece && msLength <= 0);
 		noteOffset = FlxPoint.get();
-
+		
 		if (isHoldPiece) this.multAlpha = .6;
-
+		
 		loadAtlas('notes');
 		reloadAnimations();
 	}

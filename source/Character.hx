@@ -47,8 +47,6 @@ class Character extends FunkinSprite {
 		return (animation.name == '$anim-loop' || animation.name == '$anim-hold');
 	}
 	public override function playAnimation(anim:String, forced:Bool = false) {
-		if (!forced && animationIsLooping(anim))
-			return;
 		preloadAnimAsset(anim);
 		super.playAnimation(anim, forced);
 	}

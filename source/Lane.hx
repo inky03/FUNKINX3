@@ -126,6 +126,7 @@ class Lane extends FlxSpriteGroup {
 	public function splash() {
 		var splash:NoteSplash = noteSplashes.recycle(NoteSplash, () -> new NoteSplash(noteData));
 		splash.camera = camera; //silly. freaking silly
+		splash.alpha = alpha * .7;
 		splash.shader = splashRGB.shader;
 		splash.splashOnReceptor(receptor);
 	}
@@ -294,7 +295,6 @@ class NoteSplash extends FunkinSprite {
 		var dirName:String = Note.directionNames[data];
 		animation.addByPrefix('splash1', 'notesplash $dirName 1', 24, false);
 		animation.addByPrefix('splash2', 'notesplash $dirName 2', 24, false);
-		alpha = .7;
 		
 		animation.finishCallback = (anim:String) -> {
 			kill();

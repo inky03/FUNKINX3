@@ -16,6 +16,16 @@ class Util { // maybe these utils can be on their own specific purpose classes
 	public static function thousandSep(num:Float) {
 		return flixel.util.FlxStringUtil.formatMoney(num, false);
 	}
+	public static function parseFloat(v:Dynamic):Float {
+		if (Std.isOfType(v, Float) || Std.isOfType(v, Int)) return cast v;
+		if (Std.isOfType(v, String)) return Std.parseFloat(v);
+		return 0;
+	}
+	public static function parseInt(v:Dynamic):Int {
+		if (Std.isOfType(v, Float) || Std.isOfType(v, Int)) return cast v;
+		if (Std.isOfType(v, String)) return Std.parseInt(v);
+		return 0;
+	}
 
 	// math
 	public static function smoothLerp(a:Float, b:Float, t:Float) {
