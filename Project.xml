@@ -30,9 +30,10 @@
 	<!-- _____________________________ Path Settings ____________________________ -->
 
 	<set name="BUILD_DIR" value="export" />
+	<assets path="alsoft.ini"/>
 	<source path="source" />
 	<assets path="assets" />
-	<assets path="alsoft.ini"/>
+	<assets path="mods" />
 
 	<!-- _______________________________ i forgot _______________________________ -->
 

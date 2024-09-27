@@ -13,7 +13,8 @@ class Main extends Sprite {
 		DiscordRPC.prepare();
 		#end
 		Sys.println('WE REALLY OUT HERE - GAME STARTED ON ${Date.now().toString()}');
-		
+
+		Mods.refresh();
 		addChild(new FlxGame(0, 0, PlayState));
 		addChild(new DebugDisplay(10, 3, 0xFFFFFF));
 

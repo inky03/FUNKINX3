@@ -10,8 +10,8 @@ class Util { // maybe these utils can be on their own specific purpose classes
 		if (num.indexOf('.') < 0) num += '.';
 		return num.rpad('0', len);
 	}
-	public static function pathSuffix(str:String, suffix:String = '') {
-		return (suffix.trim().length == 0 ? str : '$str-$suffix');
+	public static function pathSuffix(str:String, suffix:String = '', sep:String = '-') {
+		return (suffix.trim().length == 0 ? str : '$str$sep$suffix');
 	}
 	public static function thousandSep(num:Float) {
 		return flixel.util.FlxStringUtil.formatMoney(num, false);

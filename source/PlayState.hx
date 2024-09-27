@@ -273,12 +273,11 @@ class PlayState extends MusicBeatState {
 		var params:Map<String, Dynamic> = event.params;
 		switch (event.name) {
 			case 'FocusCamera':
-				if (params.exists('x')) camFocusTarget.x = Util.parseFloat(params['x']);
-				if (params.exists('y')) camFocusTarget.y = Util.parseFloat(params['y']);
+				var focusCharaInt:Int;
 				var focusChara:Null<Character> = null;
-				var focusCharaInt:Int = 2;
 				if (params.exists('char')) focusCharaInt = Util.parseInt(params['char']);
-				switch (focusCharaInt ?? params['value']) {
+				else focusCharaInt = Util.parseInt(params['value']);
+				switch (focusCharaInt) {
 					case 0: // player focus
 						focusChara = player1;
 					case 1: // opponent focus
@@ -286,10 +285,16 @@ class PlayState extends MusicBeatState {
 					case 2: // gf focus
 						focusChara = player3;
 				}
+
 				if (focusChara != null) {
-					camFocusTarget.x += focusChara.getMidpoint().x + focusChara.cameraOffset.x;
-					camFocusTarget.y += focusChara.getMidpoint().y + focusChara.cameraOffset.y;
+					camFocusTarget.x = focusChara.getMidpoint().x + focusChara.cameraOffset.x;
+					camFocusTarget.y = focusChara.getMidpoint().y + focusChara.cameraOffset.y;
+				} else {
+					camFocusTarget.x = 0;
+					camFocusTarget.y = 0;
 				}
+				if (params.exists('x')) camFocusTarget.x += Util.parseFloat(params['x']);
+				if (params.exists('y')) camFocusTarget.y += Util.parseFloat(params['y']);
 		}
 	}
 	
