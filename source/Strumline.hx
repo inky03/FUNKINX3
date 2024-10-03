@@ -43,7 +43,7 @@ class Strumline extends FlxSpriteGroup {
 			lane.destroy();
 		}
 		for (i in laneCount...newCount) {
-			var lane:Lane = new Lane(i * laneSpacing, 0, i);
+			var lane:Lane = new Lane(i * laneSpacing * scale.x, 0, i);
 			lane.strumline = this;
 			lanes.add(lane);
 		}

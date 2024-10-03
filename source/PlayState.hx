@@ -18,6 +18,7 @@ import Song;
 import Bar;
 
 class PlayState extends MusicBeatState {
+	public var basicBG:FunkinSprite;
 	public var player1:Character;
 	public var player2:Character;
 	public var player3:Character;
@@ -88,9 +89,12 @@ class PlayState extends MusicBeatState {
 		FlxG.camera.follow(camFocus, LOCKON, 1);
 		add(camFocus);
 		
-		var strumlineBound:Float = (FlxG.width - 300) * .5;
-		var strumlineY:Float = 50;
-		
+		basicBG = new FunkinSprite().loadTexture('bg');
+		basicBG.setPosition(-basicBG.width * .5, (FlxG.height - basicBG.height) * .5 + 75);
+		basicBG.scrollFactor.set(.95, .95);
+		basicBG.scale.set(2.25, 2.25);
+		add(basicBG);
+
 		player1 = new Character(250, 0, song.player1, 'bf');
 		player2 = new Character(-250, 0, song.player2, 'dad');
 		player3 = new Character(0, 0, song.player3, 'gf');
@@ -101,6 +105,8 @@ class PlayState extends MusicBeatState {
 		add(player1);
 		
 		var scrollDir:Float = (Settings.data.downscroll ? 270 : 90);
+		var strumlineBound:Float = (FlxG.width - 300) * .5;
+		var strumlineY:Float = 50;
 		
 		opponentStrumline = new Strumline(4, scrollDir, song.scrollSpeed);
 		opponentStrumline.fitToSize(strumlineBound, opponentStrumline.height * .7);
@@ -126,7 +132,8 @@ class PlayState extends MusicBeatState {
 		for (note in song.notes) {
 			var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
 			var lane:Lane = strumline.getLane(note.noteData);
-			lane.queue.push(note);
+			if (lane != null)
+				lane.queue.push(note);
 		}
 		
 		if (Settings.data.middlescroll) {
