@@ -106,7 +106,7 @@
 			],
 			"loop": false,
 			"fps": 24,
-			"anim": "yeah",
+			"anim": "cheer",
 			"indices": [],
 			"name": "Cheer",
       "assetPath": "characters/bfCheer"

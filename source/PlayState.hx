@@ -6,6 +6,7 @@ import flixel.input.keyboard.FlxKey;
 import flixel.FlxState;
 
 import Scoring.HitWindow;
+import lib.DiscordRPC;
 import Song.SongEvent;
 import Conductor;
 import Character;
@@ -24,10 +25,13 @@ class PlayState extends MusicBeatState {
 	public var player3:Character;
 	
 	public var healthBar:Bar;
+	public var iconP1:HealthIcon;
+	public var iconP2:HealthIcon;
 	public var scoreTxt:FlxText;
 	public var debugTxt:FlxText;
 	public var opponentStrumline:Strumline;
 	public var playerStrumline:Strumline;
+	public var uiGroup:FlxSpriteGroup;
 	public var ratingGroup:FlxTypedGroup<FunkinSprite>;
 	
 	public var singAnimations:Array<String> = ['LEFT', 'DOWN', 'UP', 'RIGHT'];
@@ -68,7 +72,7 @@ class PlayState extends MusicBeatState {
 		// for simfile (stepmania) ... Song.loadStepMania('songName', 'difficulty')
 		
 		var tempNotes:Array<Note> = [];
-		song = Song.loadModernSong('spookeez', 'hard');
+		song = Song.loadLegacySong('sauces-moogus', 'hard');
 		for (event in song.events) events.push(event);
 		Conductor.metronome.tempoChanges = song.tempoChanges;
 		Conductor.metronome.setBeat(-5);
@@ -141,6 +145,10 @@ class PlayState extends MusicBeatState {
 			opponentStrumline.fitToSize(playerStrumline.leftBound - 50 - opponentStrumline.leftBound, 0, Y);
 		}
 		
+		uiGroup = new FlxSpriteGroup();
+		uiGroup.camera = camHUD;
+		add(uiGroup);
+		
 		ratingGroup = new FlxTypedGroup<FunkinSprite>();
 		add(ratingGroup);
 		
@@ -148,18 +156,23 @@ class PlayState extends MusicBeatState {
 		healthBar.bounds.max = maxHealth;
 		healthBar.y -= healthBar.height;
 		healthBar.screenCenter(X);
-		healthBar.camera = camHUD;
-		add(healthBar);
+		uiGroup.add(healthBar);
+		iconP1 = new HealthIcon(player1.healthIcon);
+		iconP1.origin.x = 0;
+		iconP1.flipX = true; // fuck you
+		uiGroup.add(iconP1);
+		iconP2 = new HealthIcon(player2.healthIcon);
+		iconP2.origin.x = iconP2.width;
+		uiGroup.add(iconP2);
+		
 		scoreTxt = new FlxText(0, FlxG.height - 25, FlxG.width, 'Score: idk');
 		scoreTxt.setFormat(Paths.font('vcr.ttf'), 18, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		scoreTxt.y -= scoreTxt.height * .5;
 		scoreTxt.borderSize = 1.25;
-		scoreTxt.camera = camHUD;
-		add(scoreTxt);
+		uiGroup.add(scoreTxt);
 		debugTxt = new FlxText(0, 12, FlxG.width, '');
 		debugTxt.setFormat(Paths.font('vcr.ttf'), 16, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		debugTxt.camera = camHUD;
-		add(debugTxt);
+		uiGroup.add(debugTxt);
 		
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
@@ -169,6 +182,11 @@ class PlayState extends MusicBeatState {
 
 		hitsound = new FlxSound().loadEmbedded(Paths.sound('hitsound'));
 		hitsound.volume = .7;
+		
+		#if hxdiscord_rpc
+		DiscordRPC.presence.details = '${song.name} [${song.difficulty.toUpperCase()}]';
+		DiscordRPC.update();
+		#end
 	}
 
 	override public function update(elapsed:Float) {
@@ -202,13 +220,13 @@ class PlayState extends MusicBeatState {
 				playerStrumline.cpu = !playerStrumline.cpu;
 			}
 			if (FlxG.keys.justPressed.RIGHT) {
-				Conductor.songPosition += 5000;
-				song.instTrack.time = Conductor.songPosition + 5000;
+				Conductor.songPosition += 2000;
+				song.instTrack.time = Conductor.songPosition + 2000;
 				syncMusic(false, true);
 			}
 			if (FlxG.keys.justPressed.LEFT) {
-				Conductor.songPosition -= 5000;
-				song.instTrack.time = Conductor.songPosition - 5000;
+				Conductor.songPosition -= 2000;
+				song.instTrack.time = Conductor.songPosition - 2000;
 				syncMusic(false, true);
 			}
 		}
@@ -236,10 +254,15 @@ class PlayState extends MusicBeatState {
 			}
 		}
 		
+		debugTxt.text = 'BPM: ${Conductor.bpm}  |  Time Signature: ${Conductor.timeSignature.toString()}\nBeat: $curBeat | Measure: $curBar${playerStrumline.cpu ? '\nBOTPLAY ENABLED' : ''}';
+		
 		super.update(elapsed);
+		iconP1.updateBop(elapsed);
+		iconP2.updateBop(elapsed);
+		iconP1.setPosition(healthBar.barCenter.x + 60 - iconP1.width * .5, healthBar.barCenter.y - iconP1.height * .5);
+		iconP2.setPosition(healthBar.barCenter.x - 60 - iconP2.width * .5, healthBar.barCenter.y - iconP2.height * .5);
+		
 		if (paused) return;
-
-		debugTxt.text = 'BPM: ${Conductor.bpm}  |  Time Signature: ${Conductor.timeSignature.toString()}\nBeat: $curBeat | Measure: $curBar';
 		
 		extraWindow = Math.max(extraWindow - elapsed * 200, 0);
 		
@@ -302,6 +325,21 @@ class PlayState extends MusicBeatState {
 				}
 				if (params.exists('x')) camFocusTarget.x += Util.parseFloat(params['x']);
 				if (params.exists('y')) camFocusTarget.y += Util.parseFloat(params['y']);
+			case 'PlayAnimation':
+				var focusChara:Null<Character> = null;
+				switch (params['target']) {
+					case 'girlfriend', 'gf': focusChara = player3;
+					case 'boyfriend', 'bf': focusChara = player1;
+					case 'dad': focusChara = player2;
+				}
+				if (focusChara != null) {
+					var anim:String = params['anim'];
+					focusChara.playAnimation(anim, true);
+					if (focusChara.animation.exists(anim)) {
+						focusChara.specialAnim = params['force'] ?? false;
+						focusChara.animReset = 0;
+					}
+				}
 		}
 	}
 	
@@ -309,6 +347,8 @@ class PlayState extends MusicBeatState {
 		syncMusic(true);
 	}
 	public function beatHitEvent(beat:Int) {
+		iconP1.bop();
+		iconP2.bop();
 		player1.dance(beat);
 		player2.dance(beat);
 		player3.dance(beat);
@@ -392,12 +432,12 @@ class PlayState extends MusicBeatState {
 				if (note.isHoldPiece) {
 					var anim:String = 'sing${singAnimations[note.noteData]}';
 					if (player1.animation.name != anim && !player1.animationIsLooping(anim))
-						player1.playAnimation(anim, true);
+						player1.playAnimationSoft(anim, true);
 					if (note.isHoldTail)
 						FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
 				} else {
 					hitsound.play(true);
-					player1.playAnimation('sing${singAnimations[note.noteData]}', true);
+					player1.playAnimationSoft('sing${singAnimations[note.noteData]}', true);
 					
 					var window:HitWindow = Scoring.judgeLegacy(hitWindows, note.hitWindow, note.msTime - Conductor.songPosition);
 					window.count ++;
@@ -419,7 +459,7 @@ class PlayState extends MusicBeatState {
 			case LOST:
 				popRating('sadmiss');
 				song.vocalTrack.volume = 0;
-				player1.playAnimation('sing${singAnimations[note.noteData]}miss', true);
+				player1.playAnimationSoft('sing${singAnimations[note.noteData]}miss', true);
 				health -= note.healthLoss;
 				accuracyDiv ++;
 				totalNotes ++;
@@ -439,9 +479,9 @@ class PlayState extends MusicBeatState {
 				if (note.isHoldPiece) {
 					var anim:String = 'sing${singAnimations[note.noteData]}';
 					if (player2.animation.name != anim && !player2.animationIsLooping(anim))
-						player2.playAnimation(anim, true);
+						player2.playAnimationSoft(anim, true);
 				} else {
-					player2.playAnimation('sing${singAnimations[note.noteData]}', true);
+					player2.playAnimationSoft('sing${singAnimations[note.noteData]}', true);
 				}
 				player2.timeAnimSteps(player2.singForSteps);
 			case LOST:
@@ -482,6 +522,16 @@ class PlayState extends MusicBeatState {
 	}
 	public function set_health(newHealth:Float) {
 		newHealth = FlxMath.bound(newHealth, 0, maxHealth);
+		if (newHealth >= healthBar.bounds.max - .15) {
+			if (iconP1.animation.name != 'winning') iconP1.playAnimation('winning');
+			if (iconP2.animation.name != 'losing') iconP2.playAnimation('losing');
+		} else if (newHealth <= healthBar.bounds.min + .15) {
+			if (iconP1.animation.name != 'losing') iconP1.playAnimation('losing');
+			if (iconP2.animation.name != 'winning') iconP2.playAnimation('winning');
+		} else {
+			if (iconP1.animation.name != 'neutral') iconP1.playAnimation('neutral');
+			if (iconP2.animation.name != 'neutral') iconP2.playAnimation('neutral');
+		}
 		return health = newHealth;
 	}
 	public function resetScore() {

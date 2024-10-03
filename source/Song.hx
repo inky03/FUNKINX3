@@ -12,6 +12,8 @@ import moonchart.formats.fnf.FNFVSlice;
 import moonchart.formats.StepManiaShark;
 import moonchart.parsers.StepManiaParser;
 
+using StringTools;
+
 /*
 important note (moonchart):
 stepsPerBeat is INCORRECT
@@ -23,6 +25,7 @@ class Song {
 	public var path:String = '';
 	public var name:String = '';
 	public var artist:String = '';
+	public var difficulty:String = '';
 
 	public var chart:Any; //BasicFormat?
 	public var json:Dynamic;
@@ -192,6 +195,7 @@ class Song {
 	}
 
 	public function loadGeneric(format:Dynamic, difficulty:String, parseEvents:Bool = true) {
+		this.difficulty = difficulty;
 		this.chart = format;
 
 		var meta:BasicMetaData = format.getChartMeta();
@@ -235,6 +239,7 @@ class Song {
 		
 		var song = new Song(path, keyCount);
 		song.json = Song.loadJson(path, difficulty);
+		song.difficulty = difficulty;
 		
 		if (song.json == null) return song;
 		var fromSong:Bool = (!Std.isOfType(song.json.song, String));
@@ -372,9 +377,9 @@ class Song {
 		try {
 			instTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix('Inst', audioSuffix)));
 
-			vocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix('Voices', audioSuffix)));
-			oppVocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix(Util.pathSuffix('Voices', opponent), audioSuffix)));
-			if (vocalTrack.length == 0) vocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix(Util.pathSuffix('Voices', player), audioSuffix)));
+			vocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix(Util.pathSuffix('Voices', player), audioSuffix)));
+			if (opponent.trim() != '') oppVocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix(Util.pathSuffix('Voices', opponent), audioSuffix)));
+			if (player.trim() != '' && vocalTrack.length == 0) vocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix('Voices', audioSuffix)));
 
 			instLoaded = (instTrack.length > 0);
 			vocalsLoaded = (vocalTrack.length > 0);

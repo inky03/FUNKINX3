@@ -3,7 +3,10 @@ using StringTools;
 class Character extends FunkinSprite {
 	public var sway:Bool = false;
 	public var animReset:Float = 0;
+	public var bopFrequency:Int = 2;
 	public var singForSteps:Float = 4;
+	public var specialAnim:Bool = false;
+	public var healthIcon:String = 'bf';
 	public var sparrowsList:Array<String>;
 	public var fallbackCharacter:Null<String>;
 	public var character(default, set):Null<String>;
@@ -33,7 +36,14 @@ class Character extends FunkinSprite {
 		super.update(elapsed);
 		if (animReset > 0) {
 			animReset -= elapsed;
-			if (animReset <= 0) {
+			if (animReset <= 0 && !specialAnim) {
+				animReset = 0;
+				dance();
+			}
+		}
+		if (specialAnim) {
+			if (animation.finished && animReset <= 0) {
+				specialAnim = false;
 				animReset = 0;
 				dance();
 			}
@@ -46,12 +56,16 @@ class Character extends FunkinSprite {
 	public function animationIsLooping(anim:String) {
 		return (animation.name == '$anim-loop' || animation.name == '$anim-hold');
 	}
+	public function playAnimationSoft(anim:String, forced:Bool = false) {
+		if (!specialAnim)
+			playAnimation(anim, forced);
+	}
 	public override function playAnimation(anim:String, forced:Bool = false) {
 		preloadAnimAsset(anim);
 		super.playAnimation(anim, forced);
 	}
 	public function dance(beat:Int = 0) {
-		if (animReset > 0) return false;
+		if (animReset > 0 || bopFrequency <= 0) return false;
 		if (sway)
 			playAnimation(beat % 2 == 0 ? 'danceLeft' : 'danceRight');
 		else if (beat % 2 == 0)
@@ -103,27 +117,14 @@ class Character extends FunkinSprite {
 		var time:Float = Sys.time();
 		try {
 			frames = null;
-			var content:String = Paths.text(charPath);
-			var charData:PsychCharacterData = TJSON.parse(content);
-			var sparrows:Array<String> = charData.image.split(',');
-			var animations:Array<PsychCharacterAnim> = charData.animations;
-			for (sparrow in sparrows) { // no choice with psych 1 multisparrow lmao
-				addAtlas(sparrow.trim(), true);
-			}
-			for (animation in animations) {
-				addAnimation(animation.anim, animation.name, animation.fps, animation.loop, animation.indices, animation.assetPath);
-				offsets.set(animation.anim, FlxPoint.get(animation.offsets[0], animation.offsets[1]));
-			}
-			smooth = !charData.no_antialiasing;
-			singForSteps = charData.sing_duration;
-			scale.set(charData.scale, charData.scale);
-			changeBasePos(charData.position[0], charData.position[1]);
-			cameraOffset.set(charData.camera_position[0], charData.camera_position[1]);
-			sway = (animationList.exists('danceLeft') && animationList.exists('danceRight'));
-
 			@:bypassAccessor this.character = character;
-			setBaseSize();
-			dance();
+			var content:String = Paths.text(charPath);
+			var json:Dynamic = TJSON.parse(content);
+			if (json.healthbar_colors != null) { // most recognizable Psych engine feature :fire: {
+				loadPsychCharData(json);
+			} else {
+				loadModernCharData(json);
+			}
 		} catch (e:haxe.Exception) {
 			Sys.println('error while loading character "$charLoad"... -> ${e.details()}');
 			fallback(character);
@@ -131,6 +132,53 @@ class Character extends FunkinSprite {
 		}
 		Sys.println('character loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		return this;
+	}
+	public function loadModernCharData(charData:ModernCharacterData) {
+		if (charData.renderType != 'sparrow' && charData.renderType != 'multisparrow')
+			throw new haxe.Exception('Render type "${charData.renderType}" is currently not supported!!');
+		addAtlas(charData.assetPath, true);
+		var animations:Array<ModernCharacterAnim> = charData.animations;
+		for (animation in animations) {
+			addAnimation(animation.name, animation.prefix, animation.frameRate ?? 24, animation.looped ?? false, animation.frameIndices, animation.assetPath);
+			offsets.set(animation.name, FlxPoint.get(animation.offsets[0], animation.offsets[1]));
+		}
+		smooth = !charData.isPixel;
+		bopFrequency = charData.danceEvery ?? 1;
+		healthIcon = charData?.healthIcon?.id ?? character;
+		singForSteps = Math.max(charData.singTime, 1);
+		var scale:Float = charData.scale ?? 1;
+		this.scale.set(scale, scale);
+		if (charData.offsets != null) changeBasePos(charData.offsets[0] ?? 0, charData.offsets[1] ?? 0);
+		if (charData.cameraOffsets != null) cameraOffset.set(charData.cameraOffsets[0] ?? 0, charData.cameraOffsets[1] ?? 0);
+		
+		sway = (animationList.exists('danceLeft') && animationList.exists('danceRight'));
+		setBaseSize();
+		if (charData.startingAnimation != null) {
+			dance();
+		} else {
+			playAnimation(charData.startingAnimation);
+		}
+	}
+	public function loadPsychCharData(charData:PsychCharacterData) {
+		var sparrows:Array<String> = charData.image.split(',');
+		var animations:Array<PsychCharacterAnim> = charData.animations;
+		for (sparrow in sparrows) { // no choice with psych 1 multisparrow lmao
+			addAtlas(sparrow.trim(), true);
+		}
+		for (animation in animations) {
+			addAnimation(animation.anim, animation.name, animation.fps, animation.loop, animation.indices, animation.assetPath);
+			offsets.set(animation.anim, FlxPoint.get(animation.offsets[0], animation.offsets[1]));
+		}
+		healthIcon = charData.healthicon;
+		smooth = !charData.no_antialiasing;
+		singForSteps = charData.sing_duration;
+		scale.set(charData.scale, charData.scale);
+		changeBasePos(charData.position[0], charData.position[1]);
+		cameraOffset.set(charData.camera_position[0], charData.camera_position[1]);
+		
+		sway = (animationList.exists('danceLeft') && animationList.exists('danceRight'));
+		setBaseSize();
+		dance();
 	}
 
 	public function changeBasePos(x:Float = 0, y:Float = 0) {
@@ -222,4 +270,39 @@ typedef PsychCharacterAnim = {
 	var indices:Array<Int>;
 	var offsets:Array<Int>;
 	@:optional var assetPath:String; // for quick tests
+}
+
+typedef ModernCharacterData = {
+	var flipX:Bool;
+	var name:String;
+	var isPixel:Bool;
+	var version:String;
+	var singTime:Float;
+	var assetPath:String;
+	var renderType:String;
+	var animations:Array<ModernCharacterAnim>;
+	@:optional var scale:Float;
+	@:optional var danceEvery:Int;
+	@:optional var offsets:Array<Float>;
+	@:optional var cameraOffsets:Array<Float>;
+	@:optional var startingAnimation:String;
+	@:optional var healthIcon:ModernCharacterIcon;
+}
+typedef ModernCharacterIcon = {
+	var id:String;
+	var flipX:Bool;
+	@:optional var scale:Float;
+	@:optional var isPixel:Bool;
+	@:optional var offsets:Array<Int>;
+}
+typedef ModernCharacterAnim = {
+	var name:String;
+	var prefix:String;
+	var offsets:Array<Float>;
+	@:optional var flipX:Bool; // todo
+	@:optional var flipY:Bool;
+	@:optional var looped:Bool;
+	@:optional var frameRate:Float;
+	@:optional var assetPath:String;
+	@:optional var frameIndices:Array<Int>;
 }

@@ -79,7 +79,7 @@ class Paths {
 		if (assetKey == sharedPath(sndKey) && Assets.exists(assetKey, SOUND)) {
 			return (isMusic ? Assets.getMusic : Assets.getSound)(assetKey);
 		} else if (assetKey == null) {
-			return null;
+			return new Sound();
 		}
 		
 		var snd:Sound = soundCache[assetKey] = Sound.fromFile(assetKey);

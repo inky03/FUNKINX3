@@ -1,4 +1,4 @@
-package;
+package lib;
 
 import hxdiscord_rpc.Discord;
 import hxdiscord_rpc.Types;
@@ -63,6 +63,10 @@ class DiscordRPC {
 			Sys.println('Discord: Connected to user $username#$discriminator ($globalName)');
 		else
 			Sys.println('Discord: Connected to user @$username ($globalName)');
+		
+		presence.largeImageKey = 'banner';
+		// presence.largeImageText = 'uhh idk!';
+		update();
 	}
 	private static function onDisconnected(errorCode:Int, message:cpp.ConstCharStar):Void {
 		Sys.println('Discord: Disconnected ($errorCode:$message)');
