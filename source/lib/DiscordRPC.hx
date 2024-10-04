@@ -1,12 +1,17 @@
 package lib;
 
+#if hxdiscord_rpc
 import hxdiscord_rpc.Discord;
 import hxdiscord_rpc.Types;
 import sys.thread.Thread;
+#end
 
 class DiscordRPC {
+	public static var dirty:Bool = false;
 	public static var initialized:Bool = false;
 	public static var clientID(default, set):String = '1285413579893506118';
+	
+	#if hxdiscord_rpc
 	public static var presence:DiscordRichPresence = DiscordRichPresence.create();
 	
 	public static function prepare() {
@@ -34,8 +39,14 @@ class DiscordRPC {
 		});
 		initialized = true;
 	}
-	public static function update() {
+	public static function refresh() {
 		if (initialized) Discord.UpdatePresence(cpp.RawConstPointer.addressOf(presence));
+	}
+	public static function update() {
+		if (dirty) {
+			refresh();
+			dirty = false;
+		}
 	}
 	public static function shutdown() {
 		if (initialized) {
@@ -65,7 +76,6 @@ class DiscordRPC {
 			Sys.println('Discord: Connected to user @$username ($globalName)');
 		
 		presence.largeImageKey = 'banner';
-		// presence.largeImageText = 'uhh idk!';
 		update();
 	}
 	private static function onDisconnected(errorCode:Int, message:cpp.ConstCharStar):Void {
@@ -74,4 +84,14 @@ class DiscordRPC {
 	private static function onError(errorCode:Int, message:cpp.ConstCharStar):Void {
 		Sys.println('Discord: Error ($errorCode:$message)');
 	}
+	#else
+	public static var presence:Dynamic = {};
+	
+	public static function prepare() {}
+	public static function update() {}
+	public static function refresh() {}
+	public static function shutdown() {}
+	public static function initialize() {}
+	private static function set_clientID(newID:String) return newID;
+	#end
 }

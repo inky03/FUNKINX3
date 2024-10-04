@@ -108,6 +108,10 @@ class PlayState extends MusicBeatState {
 		add(player2);
 		add(player1);
 		
+		uiGroup = new FlxSpriteGroup();
+		uiGroup.camera = camHUD;
+		add(uiGroup);
+		
 		var scrollDir:Float = (Settings.data.downscroll ? 270 : 90);
 		var strumlineBound:Float = (FlxG.width - 300) * .5;
 		var strumlineY:Float = 50;
@@ -145,10 +149,6 @@ class PlayState extends MusicBeatState {
 			opponentStrumline.fitToSize(playerStrumline.leftBound - 50 - opponentStrumline.leftBound, 0, Y);
 		}
 		
-		uiGroup = new FlxSpriteGroup();
-		uiGroup.camera = camHUD;
-		add(uiGroup);
-		
 		ratingGroup = new FlxTypedGroup<FunkinSprite>();
 		add(ratingGroup);
 		
@@ -183,13 +183,11 @@ class PlayState extends MusicBeatState {
 		hitsound = new FlxSound().loadEmbedded(Paths.sound('hitsound'));
 		hitsound.volume = .7;
 		
-		#if hxdiscord_rpc
 		DiscordRPC.presence.details = '${song.name} [${song.difficulty.toUpperCase()}]';
-		DiscordRPC.update();
-		#end
 	}
 
 	override public function update(elapsed:Float) {
+		DiscordRPC.update();
 		if (FlxG.keys.justPressed.Q) {
 			Conductor.songPosition -= 350;
 		}
@@ -475,7 +473,8 @@ class PlayState extends MusicBeatState {
 		var lane:Lane = e.lane;
 		switch (e.type) {
 			case HIT:
-				song.oppVocalTrack.volume = 1;
+				if (song.oppVocalsLoaded) song.oppVocalTrack.volume = 1;
+				else song.vocalTrack.volume = 1;
 				if (note.isHoldPiece) {
 					var anim:String = 'sing${singAnimations[note.noteData]}';
 					if (player2.animation.name != anim && !player2.animationIsLooping(anim))

@@ -23,11 +23,12 @@ class HealthIcon extends FunkinSprite {
 	
 	public function set_icon(newIcon:String) {
 		if (icon == newIcon) return icon;
-		var iconPath:String = 'icons/$newIcon';
-		loadTexture(iconPath);
-		loadGraphic(Paths.image(iconPath), true, Std.int(width * .5), Std.int(height));
+		loadTexture('icons/$newIcon');
+		if (graphic == null) loadTexture('icons/icon-$newIcon');
+		var wFrameRatio:Int = Math.round(width / height);
+		loadGraphic(graphic ?? Paths.image('icons/face'), true, Std.int(width / wFrameRatio), Std.int(height));
 		animation.add('neutral', [0]);
-		animation.add('winning', [0]);
+		animation.add('winning', [animation.numFrames >= 2 ? 2 : 0]);
 		animation.add('losing', [1]);
 		playAnimation('neutral');
 		updateHitbox();

@@ -45,7 +45,8 @@ class Paths {
 		} else if (assetKey == null) {
 			return null;
 		}
-
+		
+		trace(assetKey);
 		return File.getContent(assetKey);
 	}
 
@@ -53,28 +54,34 @@ class Paths {
 		return ogg('sounds/$key');
 
 	static public function image(key:String) {
-		var bmdKey:String = 'images/$key.png';
-		var assetKey:String = getPath(bmdKey);
-		if (graphicCache[assetKey] != null) return graphicCache[assetKey];
+		if (graphicCache[key] != null) return graphicCache[key];
 
-		var bmd:BitmapData = null;
-		if (assetKey == sharedPath(bmdKey) && Assets.exists(assetKey, IMAGE)) {
-			bmd = Assets.getBitmapData(assetKey);
-		} else {
-			if (assetKey == null) return null;
-			bmd = BitmapData.fromFile(assetKey);
-		}
-
-		var graphic:FlxGraphic = graphicCache[assetKey] = FlxGraphic.fromBitmapData(bmd);
+		var bmd:BitmapData = bmd(key);
+		if (bmd == null) return null;
+		
+		var graphic:FlxGraphic = graphicCache[key] = FlxGraphic.fromBitmapData(bmd);
 		graphic.destroyOnNoUse = false;
 		graphic.persist = true;
 		return graphic;
+	}
+	
+	static public function bmd(key:String) {
+		var bmdKey:String = 'images/$key.png';
+		var assetKey:String = getPath(bmdKey);
+
+		var bmd:BitmapData = null;
+		if (assetKey == sharedPath(bmdKey) && Assets.exists(assetKey, IMAGE)) {
+			return Assets.getBitmapData(assetKey);
+		} else {
+			if (assetKey == null) return null;
+			return BitmapData.fromFile(assetKey);
+		}
 	}
 
 	static public function ogg(key:String, isMusic:Bool = false) {
 		var sndKey:String = '$key.ogg';
 		var assetKey:String = getPath(sndKey);
-		if (soundCache[assetKey] != null) return soundCache[assetKey];
+		if (soundCache[key] != null) return soundCache[key];
 
 		if (assetKey == sharedPath(sndKey) && Assets.exists(assetKey, SOUND)) {
 			return (isMusic ? Assets.getMusic : Assets.getSound)(assetKey);
@@ -82,7 +89,7 @@ class Paths {
 			return new Sound();
 		}
 		
-		var snd:Sound = soundCache[assetKey] = Sound.fromFile(assetKey);
+		var snd:Sound = soundCache[key] = Sound.fromFile(key);
 		return snd;
 	}
 
