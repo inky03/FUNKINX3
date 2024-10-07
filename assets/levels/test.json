@@ -1,0 +1,24 @@
+{
+	"freeplay": [
+		{
+			"displayName": "Pico",
+			"songPath": "pico",
+			"icon": "pico",
+			"difficulties": ["Easy", "Normal", "Hard", "Erect", "Nightmare"]
+		},
+		{
+			"displayName": "Philly Nice",
+			"songPath": "philly-nice",
+			"icon": "pico",
+			"difficulties": ["Easy", "Normal", "Hard", "Erect", "Nightmare"]
+		},
+		{
+			"displayName": "Spookeez",
+			"songPath": "spookeez",
+			"icon": "spooky",
+			"difficulties": ["Easy", "Normal", "Hard", "Erect", "Nightmare"]
+		}
+	]
+	"storyMode": [
+	]
+}

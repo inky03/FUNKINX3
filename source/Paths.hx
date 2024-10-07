@@ -7,6 +7,9 @@ import openfl.utils.AssetType;
 import openfl.utils.Assets;
 import openfl.media.Sound;
 import haxe.Exception;
+import haxe.io.Path;
+
+using StringTools;
 
 class Paths {
 	public static var workingDir:String = FileSystem.absolutePath('');
@@ -17,12 +20,12 @@ class Paths {
 		if (allowMods) {
 			var currentMod:String = Mods.currentMod;
 			if (currentMod != '') {
-				var path:String = 'mods/$currentMod/$key';
+				var path:String = modPath(key, currentMod);
 				if (FileSystem.exists(path)) return path;
 			}
 			for (mod in Mods.get()) {
 				if (!mod.global) continue;
-				var path:String = 'mods/${mod.directory}/$key';
+				var path:String = modPath(key, mod.directory);
 				if (FileSystem.exists(path)) return path;
 			}
 			if (FileSystem.exists(globalModPath(key))) return globalModPath(key);
@@ -31,12 +34,14 @@ class Paths {
 
 		return null;
 	}
+	inline static public function modPath(key:String, mod:String = '')
+		return mod.trim() == '' ? globalModPath(key) : 'mods/$mod/$key';
 	inline static public function globalModPath(key:String)
 		return 'mods/$key';
 	inline static public function sharedPath(key:String)
 		return 'assets/$key';
-	inline static public function exists(key:String, ignoreMods:Bool = false)
-		return (getPath(key, ignoreMods) != null);
+	inline static public function exists(key:String, allowMods:Bool = true)
+		return (getPath(key, allowMods) != null);
 
 	static public function text(key:String) {
 		var assetKey:String = getPath(key);
@@ -46,7 +51,6 @@ class Paths {
 			return null;
 		}
 		
-		trace(assetKey);
 		return File.getContent(assetKey);
 	}
 
@@ -89,7 +93,7 @@ class Paths {
 			return new Sound();
 		}
 		
-		var snd:Sound = soundCache[key] = Sound.fromFile(key);
+		var snd:Sound = soundCache[key] = Sound.fromFile(assetKey);
 		return snd;
 	}
 

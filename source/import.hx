@@ -5,6 +5,7 @@ import Controls;
 import Settings;
 import FunkinSprite;
 import MusicBeatState;
+import lib.DiscordRPC;
 
 //libraries
 import openfl.media.Sound;
@@ -26,6 +27,7 @@ import flixel.math.FlxMath;
 import flixel.math.FlxRect;
 import flixel.math.FlxPoint;
 import flixel.util.FlxColor;
+import flixel.util.FlxTimer;
 import flixel.sound.FlxSound;
 import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;

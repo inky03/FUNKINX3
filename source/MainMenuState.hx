@@ -2,8 +2,10 @@ package;
 
 class MainMenuState extends MusicBeatState {
 	public var target:FlxObject;
+	public var buttonNames:Array<String> = ['campaign', 'freeplay', 'mods', 'options', 'credits'];
 	public var menuButtons:Array<FunkinSprite> = [];
-	public var curSelected:Int = 0;
+	public var inputEnabled:Bool = true;
+	public var selection:Int = 0;
 	
 	override public function create() {
 		super.create();
@@ -15,18 +17,9 @@ class MainMenuState extends MusicBeatState {
 		bg.screenCenter();
 		add(bg);
 		
-		var watermark:FlxText = new FlxText(10, FlxG.height + 8, FlxG.width, 'funkin\' mess ${Main.engineVersion}\nengine by emi3', 20);
-		watermark.setFormat(Paths.font('vcr.ttf'), 18, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		watermark.updateHitbox();
-		watermark.y -= watermark.height;
-		watermark.borderSize = 1.25;
-		watermark.scrollFactor.set();
-		
-		var i:Int = 0;
 		var buttonSpacing:Float = 152;
-		var buttons:Array<String> = ['campaign', 'freeplay', 'mods', 'options', 'credits'];
-		for (buttonName in buttons) {
-			var button:FunkinSprite = new FunkinSprite(FlxG.width * .5, FlxG.height * .5 + (i - buttons.length * .5 + .5) * buttonSpacing).loadAtlas('mainmenu/button-${buttonName}');
+		for (i => buttonName in buttonNames) {
+			var button:FunkinSprite = new FunkinSprite(FlxG.width * .5, FlxG.height * .5 + (i - buttonNames.length * .5 + .5) * buttonSpacing).loadAtlas('mainmenu/button-${buttonName}');
 			button.animation.addByPrefix('unselected', '${buttonName} unselected', 24, true);
 			button.animation.addByPrefix('selected', '${buttonName} selected', 24, true);
 			button.playAnimation('unselected', true);
@@ -35,32 +28,51 @@ class MainMenuState extends MusicBeatState {
 			add(button);
 			button.updateHitbox();
 			button.setOffset(button.width * .5, button.height * .5);
-			i ++;
 		}
 		
-		add(watermark);
 		FlxG.camera.target = target = new FlxObject();
 		FlxG.camera.followLerp = 9 / 60;
 		target.x = FlxG.width * .5;
 		select();
+		
+		DiscordRPC.presence.details = 'In the main menu!';
+		DiscordRPC.dirty = true;
 	}
 	
 	override public function update(elapsed:Float) {
 		super.update(elapsed);
+		DiscordRPC.update();
+		if (!inputEnabled) return;
+		
 		if (FlxG.keys.justPressed.UP) select(-1);
 		if (FlxG.keys.justPressed.DOWN) select(1);
+		if (FlxG.keys.justPressed.ENTER) {
+			inputEnabled = false;
+			FlxG.sound.play(Paths.sound('confirmMenu'));
+			
+			new FlxTimer().start(1, (timer:FlxTimer) -> menuRedirect(selection));
+		}
+	}
+	
+	public function menuRedirect(selection:Int) {
+		switch (buttonNames[selection]) {
+			case 'freeplay':
+				FlxG.switchState(() -> new FreeplayState());
+			default:
+				inputEnabled = true;
+		}
 	}
 	
 	public function select(mod:Int = 0) {
-		FlxG.sound.play(Paths.sound('scrollMenu'), .8);
+		if (mod != 0) FlxG.sound.play(Paths.sound('scrollMenu'), .8);
 		
-		var button:FunkinSprite = menuButtons[curSelected];
+		var button:FunkinSprite = menuButtons[selection];
 		button.playAnimation('unselected', true);
 		button.updateHitbox();
 		button.setOffset(button.width * .5, button.height * .5);
 		
-		curSelected = FlxMath.wrap(curSelected + mod, 0, menuButtons.length - 1);
-		button = menuButtons[curSelected];
+		selection = FlxMath.wrap(selection + mod, 0, menuButtons.length - 1);
+		button = menuButtons[selection];
 		button.playAnimation('selected', true);
 		button.updateHitbox();
 		button.setOffset(button.width * .5, button.height * .5);

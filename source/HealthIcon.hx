@@ -6,8 +6,8 @@ class HealthIcon extends FunkinSprite {
 	public var bopIntensity:Float = .2;
 	public var bopSpeed:Float = 1;
 	
-	public function new(icon:String) {
-		super();
+	public function new(x:Float = 0, y:Float = 0, icon:String = 'face') {
+		super(x, y);
 		this.icon = icon;
 		origin.set(width * .5, height * .5);
 	}

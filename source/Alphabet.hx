@@ -77,6 +77,7 @@ class Alphabet extends FlxSpriteGroup {
 		}
 		
 		recalculateLetters();
+		updateHitbox();
 		return text = newText;
 	}
 }

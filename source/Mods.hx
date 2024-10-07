@@ -1,7 +1,7 @@
 package;
 
 class Mods {
-	public static var currentMod(default, null):String = '';
+	public static var currentMod:String = '';
 	private static var list:Array<Mod> = [];
 
 	inline public static function get() return list;
@@ -22,8 +22,9 @@ class Mods {
 	}
 }
 
-typedef Mod = {
-	var directory:String;
-	var global:Bool;
-	var name:String;
+@:structInit
+class Mod {
+	public var global:Bool = false;
+	public var directory:String = '';
+	public var name:String = 'Unknown';
 }

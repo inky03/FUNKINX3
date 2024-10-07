@@ -14,9 +14,15 @@ class Character extends FunkinSprite {
 	public var startPos(default, never):FlxPoint = FlxPoint.get();
 	public var cameraOffset(default, never):FlxPoint = FlxPoint.get();
 	
+	public var vocalsLoaded(default, null):Bool = false;
+	public var volume(default, set):Float = 1;
+	public var vocals:FlxSound;
+	
 	public function new(x:Float, y:Float, ?character:String, ?fallback:String) {
 		super(x, y);
 		sparrowsList = [];
+		vocals = new FlxSound();
+		FlxG.sound.list.add(vocals);
 		this.fallbackCharacter = fallback;
 		if (character == null) // lol
 			this.fallback();
@@ -30,6 +36,35 @@ class Character extends FunkinSprite {
 	public override function destroy() {
 		startPos.destroy();
 		super.destroy();
+	}
+	
+	public function set_volume(newVolume:Float) {
+		vocals.volume = newVolume;
+		return volume = newVolume;
+	}
+	public function loadVocals(songPath:String, suffix:String = '', ?chara:String) {
+		vocalsLoaded = false;
+		var paths:Array<String> = ['data/$songPath/', 'songs/$songPath/'];
+		if (chara == null) chara = character;
+		try {
+			for (path in paths) {
+				if (Paths.exists(path)) {
+					var vocalsPath:String = path + Util.pathSuffix(Util.pathSuffix('Voices', chara), suffix);
+					Sys.println('attempting to load vocals from $vocalsPath...');
+					vocals.loadEmbedded(Paths.ogg(vocalsPath));
+					if (vocals.length > 0) {
+						vocalsLoaded = true;
+						vocals.volume = volume;
+						Sys.println('vocals loaded!!');
+						return true;
+					}
+				}
+			}
+		} catch (e:haxe.Exception) {
+			Sys.println('error when loading vocals -> ${e.message}');
+			vocals.volume = 0;
+		}
+		return false;
 	}
 	
 	public override function update(elapsed:Float) {
@@ -134,7 +169,8 @@ class Character extends FunkinSprite {
 		return this;
 	}
 	public function loadModernCharData(charData:ModernCharacterData) {
-		if (charData.renderType != 'sparrow' && charData.renderType != 'multisparrow')
+		var renderType:String = charData.renderType ?? 'multisparrow';
+		if (renderType != 'sparrow' && renderType != 'multisparrow')
 			throw new haxe.Exception('Render type "${charData.renderType}" is currently not supported!!');
 		addAtlas(charData.assetPath, true);
 		var animations:Array<ModernCharacterAnim> = charData.animations;
@@ -142,10 +178,11 @@ class Character extends FunkinSprite {
 			addAnimation(animation.name, animation.prefix, animation.frameRate ?? 24, animation.looped ?? false, animation.frameIndices, animation.assetPath);
 			offsets.set(animation.name, FlxPoint.get(animation.offsets[0], animation.offsets[1]));
 		}
+		flipX = charData.flipX;
 		smooth = !charData.isPixel;
 		bopFrequency = charData.danceEvery ?? 1;
 		healthIcon = charData?.healthIcon?.id ?? character;
-		singForSteps = Math.max(charData.singTime, 1);
+		singForSteps = Math.max(charData.singTime ?? 8, 1);
 		var scale:Float = charData.scale ?? 1;
 		this.scale.set(scale, scale);
 		if (charData.offsets != null) changeBasePos(charData.offsets[0] ?? 0, charData.offsets[1] ?? 0);
@@ -277,12 +314,12 @@ typedef ModernCharacterData = {
 	var name:String;
 	var isPixel:Bool;
 	var version:String;
-	var singTime:Float;
 	var assetPath:String;
-	var renderType:String;
 	var animations:Array<ModernCharacterAnim>;
 	@:optional var scale:Float;
 	@:optional var danceEvery:Int;
+	@:optional var singTime:Float;
+	@:optional var renderType:String;
 	@:optional var offsets:Array<Float>;
 	@:optional var cameraOffsets:Array<Float>;
 	@:optional var startingAnimation:String;

@@ -6,7 +6,6 @@ import flixel.input.keyboard.FlxKey;
 import flixel.FlxState;
 
 import Scoring.HitWindow;
-import lib.DiscordRPC;
 import Song.SongEvent;
 import Conductor;
 import Character;
@@ -44,7 +43,8 @@ class PlayState extends MusicBeatState {
 	public var camFocus:FlxObject;
 	public var camFocusTarget:FlxPoint;
 	
-	public var song:Song;
+	public static var song:Song;
+	public var syncVocals:Array<FlxSound> = [];
 	public var events:Array<SongEvent> = [];
 	public var noteSpawnOffset:Float;
 	
@@ -65,14 +65,6 @@ class PlayState extends MusicBeatState {
 	override public function create() {
 		super.create();
 		
-		paused = true;
-		// setup the freaking song
-		// for legacy / psych engine format ... Song.loadLegacySong('songName', 'difficulty')
-		// for modern (fnf 0.3.0+) format ... Song.loadModernSong('songName', 'difficulty', ?'suffix')
-		// for simfile (stepmania) ... Song.loadStepMania('songName', 'difficulty')
-		
-		var tempNotes:Array<Note> = [];
-		song = Song.loadLegacySong('sauces-moogus', 'hard');
 		for (event in song.events) events.push(event);
 		Conductor.metronome.tempoChanges = song.tempoChanges;
 		Conductor.metronome.setBeat(-5);
@@ -107,6 +99,18 @@ class PlayState extends MusicBeatState {
 		add(player3);
 		add(player2);
 		add(player1);
+		
+		song.loadMusic('data/${song.path}/', false);
+		song.loadMusic('songs/${song.path}/', false);
+		for (chara in [player1, player2, player3]) {
+			chara.loadVocals(song.path, song.audioSuffix);
+			syncVocals.push(chara.vocals);
+		}
+		if (!player1.vocalsLoaded && player1.character != song.player1) player1.loadVocals(song.path, song.audioSuffix, song.player1);
+		if (!player2.vocalsLoaded && player2.character != song.player2) player2.loadVocals(song.path, song.audioSuffix, song.player2);
+		if (!player1.vocalsLoaded && !player2.vocalsLoaded) {
+			player1.loadVocals(song.path, song.audioSuffix, '');
+		}
 		
 		uiGroup = new FlxSpriteGroup();
 		uiGroup.camera = camHUD;
@@ -157,11 +161,11 @@ class PlayState extends MusicBeatState {
 		healthBar.y -= healthBar.height;
 		healthBar.screenCenter(X);
 		uiGroup.add(healthBar);
-		iconP1 = new HealthIcon(player1.healthIcon);
+		iconP1 = new HealthIcon(0, 0, player1.healthIcon);
 		iconP1.origin.x = 0;
 		iconP1.flipX = true; // fuck you
 		uiGroup.add(iconP1);
-		iconP2 = new HealthIcon(player2.healthIcon);
+		iconP2 = new HealthIcon(0, 0, player2.healthIcon);
 		iconP2.origin.x = iconP2.width;
 		uiGroup.add(iconP2);
 		
@@ -184,6 +188,7 @@ class PlayState extends MusicBeatState {
 		hitsound.volume = .7;
 		
 		DiscordRPC.presence.details = '${song.name} [${song.difficulty.toUpperCase()}]';
+		DiscordRPC.dirty = true;
 	}
 
 	override public function update(elapsed:Float) {
@@ -205,7 +210,9 @@ class PlayState extends MusicBeatState {
 				lane.queue.push(note);
 			}
 			for (event in song.events) events.push(event);
-			for (track in [song.instTrack, song.vocalTrack, song.oppVocalTrack]) {
+			song.instTrack.time = 0;
+			song.instTrack.pause();
+			for (track in syncVocals) {
 				track.time = 0;
 				track.pause();
 			}
@@ -240,15 +247,14 @@ class PlayState extends MusicBeatState {
 		}
 		if (FlxG.keys.justPressed.ENTER) {
 			paused = !paused;
-			if (!paused) {
+			var pauseVocals:Bool = (paused || Conductor.songPosition < 0);
+			if (pauseVocals) {
+				song.instTrack.pause();
+				for (track in syncVocals) track.pause();
+			} else {
 				if (song.instLoaded) song.instTrack.play(true, Conductor.songPosition);
-				if (song.vocalsLoaded) song.vocalTrack.play(true, Conductor.songPosition);
-				if (song.oppVocalsLoaded) song.oppVocalTrack.play(true, Conductor.songPosition);
+				for (track in syncVocals) track.play(true, Conductor.songPosition);
 				syncMusic(false, true);
-			}
-			for (track in [song.instTrack, song.vocalTrack, song.oppVocalTrack]) {
-				if (paused || Conductor.songPosition < 0)
-					track.pause();
 			}
 		}
 		
@@ -278,15 +284,19 @@ class PlayState extends MusicBeatState {
 			triggerEvent(event);
 			limit --;
 		}
+		
+		if (Conductor.songPosition >= song.songLength || FlxG.keys.justPressed.ESCAPE) {
+			FlxG.switchState(() -> new FreeplayState());
+		}
 	}
 	
 	public function syncMusic(forceSongpos:Bool = false, forceTrackTime:Bool = false) {
 		if (song.instLoaded && song.instTrack.playing) {
-			if ((forceSongpos && Conductor.songPosition < song.instTrack.time) || Math.abs(song.instTrack.time - Conductor.songPosition) > 100)
+			var disparity:Float = Math.abs(song.instTrack.time - Conductor.songPosition);
+			if ((forceSongpos && Conductor.songPosition < song.instTrack.time) || disparity > 100)
 				Conductor.songPosition = song.instTrack.time;
-			if (song.vocalsLoaded && (forceTrackTime || Math.abs(song.instTrack.time - song.vocalTrack.time) > 100)) {
-				song.vocalTrack.time = song.instTrack.time;
-				if (song.oppVocalsLoaded) song.oppVocalTrack.time = song.instTrack.time;
+			if (forceTrackTime || disparity > 100) {
+				for (track in syncVocals) track.time = song.instTrack.time;
 			}
 		}
 	}
@@ -364,8 +374,7 @@ class PlayState extends MusicBeatState {
 				FlxG.sound.play(Paths.sound('introGo'));
 			case 0:
 				if (song.instLoaded) song.instTrack.play(true);
-				if (song.vocalsLoaded) song.vocalTrack.play(true);
-				if (song.oppVocalsLoaded) song.oppVocalTrack.play(true);
+				for (track in syncVocals) track.play(true);
 				syncMusic(true, true);
 			default:
 		}
@@ -426,7 +435,7 @@ class PlayState extends MusicBeatState {
 		var lane:Lane = e.lane;
 		switch (e.type) {
 			case HIT:
-				song.vocalTrack.volume = 1;
+				player1.volume = 1;
 				if (note.isHoldPiece) {
 					var anim:String = 'sing${singAnimations[note.noteData]}';
 					if (player1.animation.name != anim && !player1.animationIsLooping(anim))
@@ -456,7 +465,7 @@ class PlayState extends MusicBeatState {
 				updateRating();
 			case LOST:
 				popRating('sadmiss');
-				song.vocalTrack.volume = 0;
+				player1.volume = 0;
 				player1.playAnimationSoft('sing${singAnimations[note.noteData]}miss', true);
 				health -= note.healthLoss;
 				accuracyDiv ++;
@@ -473,8 +482,7 @@ class PlayState extends MusicBeatState {
 		var lane:Lane = e.lane;
 		switch (e.type) {
 			case HIT:
-				if (song.oppVocalsLoaded) song.oppVocalTrack.volume = 1;
-				else song.vocalTrack.volume = 1;
+				player2.volume = 1;
 				if (note.isHoldPiece) {
 					var anim:String = 'sing${singAnimations[note.noteData]}';
 					if (player2.animation.name != anim && !player2.animationIsLooping(anim))
@@ -484,7 +492,7 @@ class PlayState extends MusicBeatState {
 				}
 				player2.timeAnimSteps(player2.singForSteps);
 			case LOST:
-				song.oppVocalTrack.volume = 0;
+				player2.volume = 0;
 			default:
 		}
 	}

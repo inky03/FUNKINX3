@@ -21,6 +21,13 @@ denominator indicates the value of a note: x/4 means every beat has the time of 
 steps are not a thing in music theory in the definition friday night funkin' / fl studio uses.
 */
 
+/*
+LOADING A SONG:
+for legacy / psych engine format ... Song.loadLegacySong('songName', 'difficulty')
+for modern (fnf 0.3.0+) format ... Song.loadModernSong('songName', 'difficulty', ?'suffix')
+for simfile (stepmania) ... Song.loadStepMania('songName', 'difficulty')
+*/
+
 class Song {
 	public var path:String = '';
 	public var name:String = '';
@@ -37,11 +44,8 @@ class Song {
 	public var scrollSpeed:Float = 1;
 
 	public var instLoaded:Bool;
-	public var vocalsLoaded:Bool;
 	public var instTrack:FlxSound;
-	public var vocalTrack:FlxSound;
-	public var oppVocalsLoaded:Bool;
-	public var oppVocalTrack:FlxSound;
+	public var songLength:Float = 0;
 	public var audioSuffix:String = '';
 
 	public var player1:String = 'bf';
@@ -54,11 +58,7 @@ class Song {
 		
 		instLoaded = false;
 		instTrack = new FlxSound();
-		vocalTrack = new FlxSound();
-		oppVocalTrack = new FlxSound();
 		FlxG.sound.list.add(instTrack);
-		FlxG.sound.list.add(vocalTrack);
-		FlxG.sound.list.add(oppVocalTrack);
 	}
 	
 	public static function loadJson(path:String, difficulty:String = 'normal') {
@@ -79,12 +79,41 @@ class Song {
 		}
 	}
 	
-	public static function loadStepMania(path:String, difficulty:String = 'Hard') { // TODO: these could just not be static
+	public static function loadAutoDetect(path:String, difficulty:String = 'hard', suffix:String = '') {
 		difficulty = difficulty.toLowerCase();
-		Sys.println('loading StepMania simfile "$path" with difficulty "$difficulty"');
+		Sys.println('detecting format from song "$path"');
+		
+		var songPath:String = 'data/$path/$path';
+		var modernChartPath:String = Util.pathSuffix('$songPath-chart', suffix) + '.json';
+		var modernMetaPath:String = Util.pathSuffix('$songPath-metadata', suffix) + '.json';
+		var sharkChartPath:String = Util.pathSuffix(songPath, suffix) + '.ssc';
+		var smChartPath:String = Util.pathSuffix(songPath, suffix) + '.sm';
+		var legacyChartPath:String = Util.pathSuffix(Util.pathSuffix(songPath, difficulty), suffix) + '.json';
+		if (Paths.exists(modernChartPath) && Paths.exists(modernMetaPath)) {
+			return loadModernSong(path, difficulty, suffix);
+		} else if (Paths.exists(sharkChartPath) || Paths.exists(smChartPath)) {
+			return loadStepMania(path, difficulty, suffix);
+		} else if (Paths.exists(legacyChartPath)) {
+			return loadLegacySong(path, difficulty, suffix);
+		} else {
+			Sys.println('chart files of any type not found... (chart not generated)');
+			Sys.println('verify paths:');
+			Sys.println('- modern:');
+			Sys.println('  - chart: $modernChartPath');
+			Sys.println('  - metadata: $modernMetaPath');
+			Sys.println('- stepmania sm: $smChartPath');
+			Sys.println('- stepmania ssc: $sharkChartPath');
+			Sys.println('- legacy: $legacyChartPath');
+			return new Song(path, 4);
+		}
+	}
+	
+	public static function loadStepMania(path:String, difficulty:String = 'Hard', suffix:String = '') { // TODO: these could just not be static
+		difficulty = difficulty.toLowerCase();
+		Sys.println('loading StepMania simfile "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 
 		var songPath:String = 'data/$path/$path';
-		var sscPath:String = '$songPath.ssc';
+		var sscPath:String = '${Util.pathSuffix(songPath, suffix)}.ssc';
 		var smPath:String = '$songPath.sm';
 		var useShark:Bool = Paths.exists(sscPath);
 		var song:Song = new Song(path, 4); // todo: sm multikey (implement multikey in the first place)
@@ -128,12 +157,7 @@ class Song {
 			Sys.println('chart error... -> <<< ${e.details()} >>>');
 			return song;
 		}
-
-		time = Sys.time();
-		song.loadMusic('data/$path/');
-		song.loadMusic('songs/$path/');
-		Sys.println(song.instLoaded ? ('music loaded! (${Math.round((Sys.time() - time) * 1000) / 1000}s)') : ('music failed to load...'));
-
+		
 		return song;
 	}
 
@@ -187,9 +211,6 @@ class Song {
 		song.player3 = meta.extraData['FNF_P3'] ?? 'gf';
 		time = Sys.time();
 		song.audioSuffix = suffix;
-		song.loadMusic('data/$path/', song.player1, song.player2);
-		song.loadMusic('songs/$path/', song.player1, song.player2);
-		Sys.println(song.instLoaded ? ('music loaded! (${Math.round((Sys.time() - time) * 1000) / 1000}s)') : ('music failed to load...'));
 
 		return song;
 	}
@@ -230,12 +251,14 @@ class Song {
 				this.events.push({name: event.name, msTime: event.time, params: newParams});
 			}
 		}
+		
+		this.songLength = (notes[notes.length - 1]?.endMs ?? 0) + 500;
 		return this;
 	}
 	
-	public static function loadLegacySong(path:String, difficulty:String = 'normal', keyCount:Int = 4) { // move to moonchart format???
+	public static function loadLegacySong(path:String, difficulty:String = 'normal', suffix:String = '', keyCount:Int = 4) { // move to moonchart format???
 		difficulty = difficulty.toLowerCase();
-		Sys.println('loading legacy FNF song "${path}" with difficulty "$difficulty"');
+		Sys.println('loading legacy FNF song "${path}" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 		
 		var song = new Song(path, keyCount);
 		song.json = Song.loadJson(path, difficulty);
@@ -327,6 +350,7 @@ class Song {
 			}
 			song.sortNotes();
 			Note.baseMetronome = Conductor.metronome;
+			song.songLength = (song.notes[song.notes.length - 1]?.endMs ?? 0) + 500;
 
 			song.player1 = song.json.player1;
 			song.player2 = song.json.player2;
@@ -336,12 +360,7 @@ class Song {
 		} catch(e:Exception) {
 			Sys.println('chart error... -> <<< ${e.details()} >>>');
 		}
-
-		time = Sys.time();
-		song.loadMusic('data/$path/');
-		song.loadMusic('songs/$path/');
-		Sys.println(song.instLoaded ? ('music loaded! (${Math.round((Sys.time() - time) * 1000) / 1000}s)') : ('music failed to load...'));
-
+		
 		return song;
 	}
 	
@@ -372,21 +391,23 @@ class Song {
 		return notes;
 	}
 	
-	public function loadMusic(path:String, player:String = '', opponent:String = '') { // this could be better
-		if (instLoaded) return true;
+	public function loadMusic(path:String, overwrite:Bool = true) { // this could be better
+		if (instLoaded && !overwrite) return true;
+		var instPath:String = path + Util.pathSuffix('Inst', audioSuffix);
+		Sys.println('attempting to load instrumental from $instPath...');
 		try {
-			instTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix('Inst', audioSuffix)));
-
-			vocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix(Util.pathSuffix('Voices', player), audioSuffix)));
-			if (opponent.trim() != '') oppVocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix(Util.pathSuffix('Voices', opponent), audioSuffix)));
-			if (player.trim() != '' && vocalTrack.length == 0) vocalTrack.loadEmbedded(Paths.ogg(path + Util.pathSuffix('Voices', audioSuffix)));
-
-			instLoaded = (instTrack.length > 0);
-			vocalsLoaded = (vocalTrack.length > 0);
-			oppVocalsLoaded = (oppVocalTrack.length > 0);
-			return true;
-		} catch (e:Any)
-			return false;
+			instTrack.loadEmbedded(Paths.ogg(instPath));
+			if (instTrack.length > 0) {
+				Sys.println('instrumental loaded!!');
+				songLength = instTrack.length;
+				instLoaded = true;
+				return true;
+			}
+		} catch (e:Exception) {
+			Sys.println('error when loading instrumental -> ${e.message}');
+			instLoaded = false;
+		}
+		return false;
 	}
 	
 	public function sortNotes() {

@@ -45,7 +45,7 @@ class DebugDisplay extends TextField {
 		
 		if (oldFPS != currentFPS || oldMem != mem) {
 			maxMem = Math.max(mem, maxMem);
-			text = 'FPS: ${currentFPS}'+
+			text = 'FPS: ${Math.min(currentFPS, FlxG.drawFramerate)}'+
 			'\nGC MEM: ${DebugDisplay.formatBytes(mem)} / ${DebugDisplay.formatBytes(maxMem)}';
 		}
 	}
