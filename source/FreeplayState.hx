@@ -67,6 +67,7 @@ class FreeplayState extends MusicBeatState {
 	}
 	
 	public function select(mod:Int = 0) {
+		if (items.length == 0) return;
 		if (mod != 0) FlxG.sound.play(Paths.sound('scrollMenu'), .8);
 		
 		items.members[selection].highlight(false);

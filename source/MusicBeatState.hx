@@ -15,6 +15,8 @@ class MusicBeatState extends FlxUIState {
 	public var barHit:FlxTypedSignal<Int->Void> = new FlxTypedSignal<Int->Void>();
 	
 	override function create() {
+		Paths.clearStored();
+		Paths.clearUnused();
 		super.create();
 	}
 	

@@ -1,12 +1,13 @@
 package;
 
+import openfl.utils.Assets as OFLAssets;
+import lime.utils.Assets as LimeAssets;
 import flixel.graphics.FlxGraphic;
 import openfl.display.BitmapData;
 import flixel.graphics.frames.*;
 import openfl.utils.AssetType;
-import openfl.utils.Assets;
 import openfl.media.Sound;
-import haxe.Exception;
+import openfl.Assets;
 import haxe.io.Path;
 
 using StringTools;
@@ -15,7 +16,56 @@ class Paths {
 	public static var workingDir:String = FileSystem.absolutePath('');
 	public static var graphicCache:Map<String, FlxGraphic> = [];
 	public static var soundCache:Map<String, Sound> = [];
+	public static var trackedAssets:Array<String> = [];
+	public static var excludeClear:Array<String> = [];
 
+	static public function clearUnused() { // adapted from psych
+		var cleared:Int = 0;
+		@:privateAccess
+		for (key => graphic in graphicCache) {
+			if (!trackedAssets.contains(key) && !excludeClear.contains(key)) {
+				if (graphic != null) {
+					FlxG.bitmap._cache.remove(key);
+					Assets.cache.removeBitmapData(key);
+					graphic.destroyOnNoUse = true;
+					graphic.persist = false;
+					graphic.destroy();
+				}
+				graphicCache.remove(key);
+				cleared ++;
+			}
+		}
+		Sys.println('clearUnused: cleared $cleared assets');
+		runGC();
+	}
+	static public function clearStored() {
+		var cleared:Int = 0;
+		@:privateAccess
+		for (key => bmd in FlxG.bitmap._cache) {
+			if (bmd != null && !graphicCache.exists(key) && !excludeClear.contains(key)) {
+				Assets.cache.removeBitmapData(key);
+				FlxG.bitmap._cache.remove(key);
+				bmd.destroy();
+				cleared ++;
+			}
+		}
+		for (key => snd in soundCache) {
+			if (snd != null) {
+				LimeAssets.cache.clear(key);
+				cleared ++;
+			}
+			soundCache.remove(key);
+		}
+		trackedAssets.resize(0);
+		Sys.println('clearStored: cleared $cleared assets');
+		runGC();
+	}
+	static public function runGC() {
+		openfl.system.System.gc();
+		#if hl
+		hl.Gc.major();
+		#end
+	}
 	static public function getPath(key:String, allowMods:Bool = true) {
 		if (allowMods) {
 			var currentMod:String = Mods.currentMod;
@@ -31,6 +81,7 @@ class Paths {
 			if (FileSystem.exists(globalModPath(key))) return globalModPath(key);
 		}
 		if (FileSystem.exists(sharedPath(key))) return sharedPath(key);
+		if (FileSystem.exists(key)) return key;
 
 		return null;
 	}
@@ -45,8 +96,8 @@ class Paths {
 
 	static public function text(key:String) {
 		var assetKey:String = getPath(key);
-		if (assetKey == sharedPath(key) && Assets.exists(assetKey, TEXT)) {
-			return Assets.getText(sharedPath(key));
+		if (assetKey == sharedPath(key) && OFLAssets.exists(assetKey, TEXT)) {
+			return OFLAssets.getText(sharedPath(key));
 		} else if (assetKey == null) {
 			return null;
 		}
@@ -58,14 +109,21 @@ class Paths {
 		return ogg('sounds/$key');
 
 	static public function image(key:String) {
-		if (graphicCache[key] != null) return graphicCache[key];
+		var bmdKey:String = 'images/$key.png';
+		var assetKey:String = getPath(bmdKey);
+		if (graphicCache[assetKey] != null) {
+			if (!trackedAssets.contains(assetKey)) trackedAssets.push(assetKey);
+			return graphicCache[assetKey];
+		}
 
 		var bmd:BitmapData = bmd(key);
 		if (bmd == null) return null;
 		
-		var graphic:FlxGraphic = graphicCache[key] = FlxGraphic.fromBitmapData(bmd);
+		var graphic:FlxGraphic = graphicCache[assetKey] = FlxGraphic.fromBitmapData(bmd, false, assetKey);
+		trackedAssets.push(assetKey);
 		graphic.destroyOnNoUse = false;
 		graphic.persist = true;
+		// graphic.dump();
 		return graphic;
 	}
 	
@@ -74,8 +132,8 @@ class Paths {
 		var assetKey:String = getPath(bmdKey);
 
 		var bmd:BitmapData = null;
-		if (assetKey == sharedPath(bmdKey) && Assets.exists(assetKey, IMAGE)) {
-			return Assets.getBitmapData(assetKey);
+		if (assetKey == sharedPath(bmdKey) && OFLAssets.exists(assetKey, IMAGE)) {
+			return OFLAssets.getBitmapData(assetKey);
 		} else {
 			if (assetKey == null) return null;
 			return BitmapData.fromFile(assetKey);
@@ -85,15 +143,19 @@ class Paths {
 	static public function ogg(key:String, isMusic:Bool = false) {
 		var sndKey:String = '$key.ogg';
 		var assetKey:String = getPath(sndKey);
-		if (soundCache[key] != null) return soundCache[key];
+		if (soundCache[assetKey] != null)  {
+			if (!trackedAssets.contains(assetKey)) trackedAssets.push(assetKey);
+			return soundCache[assetKey];
+		}
 
-		if (assetKey == sharedPath(sndKey) && Assets.exists(assetKey, SOUND)) {
-			return (isMusic ? Assets.getMusic : Assets.getSound)(assetKey);
+		if (assetKey == sharedPath(sndKey) && OFLAssets.exists(assetKey, SOUND)) {
+			return (isMusic ? OFLAssets.getMusic : OFLAssets.getSound)(assetKey);
 		} else if (assetKey == null) {
 			return new Sound();
 		}
 		
-		var snd:Sound = soundCache[key] = Sound.fromFile(assetKey);
+		trackedAssets.push(assetKey);
+		var snd:Sound = soundCache[assetKey] = Sound.fromFile(assetKey);
 		return snd;
 	}
 

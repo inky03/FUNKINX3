@@ -65,7 +65,6 @@ class PlayState extends MusicBeatState {
 	override public function create() {
 		super.create();
 		
-		for (event in song.events) events.push(event);
 		Conductor.metronome.tempoChanges = song.tempoChanges;
 		Conductor.metronome.setBeat(-5);
 
@@ -177,6 +176,11 @@ class PlayState extends MusicBeatState {
 		debugTxt = new FlxText(0, 12, FlxG.width, '');
 		debugTxt.setFormat(Paths.font('vcr.ttf'), 16, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		uiGroup.add(debugTxt);
+
+		for (event in song.events) {
+			events.push(event);
+			pushedEvent(event);
+		}
 		
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
@@ -258,7 +262,7 @@ class PlayState extends MusicBeatState {
 			}
 		}
 		
-		debugTxt.text = 'BPM: ${Conductor.bpm}  |  Time Signature: ${Conductor.timeSignature.toString()}\nBeat: $curBeat | Measure: $curBar${playerStrumline.cpu ? '\nBOTPLAY ENABLED' : ''}';
+		// debugTxt.text = 'BPM: ${Conductor.bpm}  |  Time Signature: ${Conductor.timeSignature.toString()}\nBeat: $curBeat | Measure: $curBar${playerStrumline.cpu ? '\nBOTPLAY ENABLED' : ''}';
 		
 		super.update(elapsed);
 		iconP1.updateBop(elapsed);
@@ -306,6 +310,19 @@ class PlayState extends MusicBeatState {
 		else
 			return Conductor.songPosition;
 	}
+
+	public function pushedEvent(event:SongEvent) {
+		var params:Map<String, Dynamic> = event.params;
+		switch (event.name) {
+			case 'PlayAnimation':
+				var focusChara:Null<Character> = null;
+				switch (params['target']) {
+					case 'girlfriend', 'gf': focusChara = player3;
+					case 'boyfriend', 'bf': focusChara = player1;
+					case 'dad': focusChara = player2;
+				} if (focusChara != null) focusChara.preloadAnimAsset(params['anim']);
+		}
+	}
 	
 	public function triggerEvent(event:SongEvent) {
 		var params:Map<String, Dynamic> = event.params;
@@ -345,7 +362,7 @@ class PlayState extends MusicBeatState {
 					focusChara.playAnimation(anim, true);
 					if (focusChara.animation.exists(anim)) {
 						focusChara.specialAnim = params['force'] ?? false;
-						focusChara.animReset = 0;
+						focusChara.animReset = focusChara.specialAnim ? 0 : 8;
 					}
 				}
 		}

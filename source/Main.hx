@@ -27,10 +27,11 @@ class Main extends Sprite {
 		
 		watermark = new FlxText(10, FlxG.height + 5, FlxG.width, 'funkin\' mess $engineVersion\nengine by emi3');
 		watermark.setFormat(Paths.font('vcr.ttf'), 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		watermark.alpha = .7;
 		watermark.updateHitbox();
 		watermark.borderSize = 1.25;
 		watermark.scrollFactor.set();
-		watermark.alpha = .7;
+		Paths.excludeClear.push(watermark.graphic.key);
 		
 		FlxG.plugins.drawOnTop = true;
 		FlxG.plugins.addPlugin(watermark);
