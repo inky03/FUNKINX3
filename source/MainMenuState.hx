@@ -37,6 +37,8 @@ class MainMenuState extends MusicBeatState {
 		
 		DiscordRPC.presence.details = 'In the main menu!';
 		DiscordRPC.dirty = true;
+
+		Paths.clean();
 	}
 	
 	override public function update(elapsed:Float) {

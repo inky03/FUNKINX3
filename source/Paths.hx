@@ -16,49 +16,40 @@ class Paths {
 	public static var workingDir:String = FileSystem.absolutePath('');
 	public static var graphicCache:Map<String, FlxGraphic> = [];
 	public static var soundCache:Map<String, Sound> = [];
-	public static var trackedAssets:Array<String> = [];
-	public static var excludeClear:Array<String> = [];
 
-	static public function clearUnused() { // adapted from psych
-		var cleared:Int = 0;
+	public static var trackedAssets:Array<String> = [];
+	static var excludeSprites:Array<FlxSprite> = [];
+	static var excludeKeys:Array<String> = [];
+
+	static public function clean() { // adapted from psych
+		/*var exclusions:Array<String> = excludedGraphicKeys();
 		@:privateAccess
 		for (key => graphic in graphicCache) {
-			if (!trackedAssets.contains(key) && !excludeClear.contains(key)) {
+			if (!trackedAssets.contains(key) && !exclusions.contains(key)) {
 				if (graphic != null) {
-					FlxG.bitmap._cache.remove(key);
-					Assets.cache.removeBitmapData(key);
-					graphic.destroyOnNoUse = true;
-					graphic.persist = false;
 					graphic.destroy();
+					trace('graphic $key removed');
 				}
 				graphicCache.remove(key);
-				cleared ++;
-			}
-		}
-		Sys.println('clearUnused: cleared $cleared assets');
-		runGC();
-	}
-	static public function clearStored() {
-		var cleared:Int = 0;
-		@:privateAccess
-		for (key => bmd in FlxG.bitmap._cache) {
-			if (bmd != null && !graphicCache.exists(key) && !excludeClear.contains(key)) {
-				Assets.cache.removeBitmapData(key);
-				FlxG.bitmap._cache.remove(key);
-				bmd.destroy();
-				cleared ++;
 			}
 		}
 		for (key => snd in soundCache) {
-			if (snd != null) {
-				LimeAssets.cache.clear(key);
-				cleared ++;
+			if (!trackedAssets.contains(key) && !excludeKeys.contains(key)) {
+				if (snd != null) {
+					LimeAssets.cache.clear(key);
+					trace('sound $key removed');
+				}
+				soundCache.remove(key);
 			}
-			soundCache.remove(key);
 		}
-		trackedAssets.resize(0);
-		Sys.println('clearStored: cleared $cleared assets');
-		runGC();
+		FlxG.bitmap.clearUnused();
+		runGC();*/
+	}
+	inline static public function excludedGraphicKeys():Array<String> {
+		var exclusions:Array<String> = excludeKeys.copy();
+		while (excludeSprites.contains(null)) excludeSprites.remove(null);
+		for (spr in excludeSprites) exclusions.push(spr.graphic.key);
+		return exclusions;
 	}
 	static public function runGC() {
 		openfl.system.System.gc();
@@ -66,6 +57,7 @@ class Paths {
 		hl.Gc.major();
 		#end
 	}
+
 	static public function getPath(key:String, allowMods:Bool = true) {
 		if (allowMods) {
 			var currentMod:String = Mods.currentMod;
@@ -119,7 +111,7 @@ class Paths {
 		var bmd:BitmapData = bmd(key);
 		if (bmd == null) return null;
 		
-		var graphic:FlxGraphic = graphicCache[assetKey] = FlxGraphic.fromBitmapData(bmd, false, assetKey);
+		var graphic:FlxGraphic = graphicCache[assetKey] = FlxGraphic.fromBitmapData(bmd);
 		trackedAssets.push(assetKey);
 		graphic.destroyOnNoUse = false;
 		graphic.persist = true;

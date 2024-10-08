@@ -15,9 +15,10 @@ class MusicBeatState extends FlxUIState {
 	public var barHit:FlxTypedSignal<Int->Void> = new FlxTypedSignal<Int->Void>();
 	
 	override function create() {
-		Paths.clearStored();
-		Paths.clearUnused();
+		Paths.trackedAssets.resize(0);
 		super.create();
+		// var stats = hl.Gc.stats();
+		// Sys.println('mem: ${DebugDisplay.formatBytes(stats.currentMemory)} / allocated: ${DebugDisplay.formatBytes(stats.totalAllocated)} / alloc count: ${DebugDisplay.formatBytes(stats.allocationCount)}');
 	}
 	
 	public function resetMusic() {
