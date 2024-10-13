@@ -7,6 +7,7 @@ class FreeplayState extends MusicBeatState {
 	override public function create() {
 		super.create();
 		
+		playMusic('title');
 		var bg:FunkinSprite = new FunkinSprite().loadTexture('menuBGBlue');
 		bg.setGraphicSize(bg.width * 1.1);
 		bg.scrollFactor.set();
@@ -50,11 +51,12 @@ class FreeplayState extends MusicBeatState {
 		if (FlxG.keys.justPressed.UP) select(-1);
 		if (FlxG.keys.justPressed.DOWN) select(1);
 		if (FlxG.keys.justPressed.ENTER) {
+			FlxG.sound.playMusic(Paths.music('titleShoot'), 1, false);
 			FlxG.sound.play(Paths.sound('confirmMenu'), .8);
 			Main.showWatermark = false;
 			inputEnabled = false;
 			
-			new FlxTimer().start(1, (timer:FlxTimer) -> {
+			new FlxTimer().start(2, (timer:FlxTimer) -> {
 				var selectedItem:SongItem = items.members[selection];
 				Mods.currentMod = selectedItem.mod;
 				PlayState.song = Song.loadAutoDetect(selectedItem.songPath, 'hard');

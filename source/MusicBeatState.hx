@@ -15,6 +15,7 @@ class MusicBeatState extends FlxUIState {
 	public var barHit:FlxTypedSignal<Int->Void> = new FlxTypedSignal<Int->Void>();
 	
 	override function create() {
+		HScriptBackend.stopAllScripts();
 		Paths.trackedAssets.resize(0);
 		super.create();
 		// var stats = hl.Gc.stats();
@@ -27,8 +28,13 @@ class MusicBeatState extends FlxUIState {
 		curStep = -1;
 		Conductor.songPosition = 0;
 	}
+	public function resetState() {
+		FlxG.resetState();
+	}
 	
 	override function update(elapsed:Float) {
+		if (FlxG.keys.justPressed.F5) resetState();
+		
 		super.update(elapsed);
 		if (paused) return;
 		
@@ -49,5 +55,12 @@ class MusicBeatState extends FlxUIState {
 		if (prevBar != curBar) barHit.dispatch(curBar);
 		if (prevBeat != curBeat) beatHit.dispatch(curBeat);
 		if (prevStep != curStep) stepHit.dispatch(curStep);
+	}
+	
+	public function playMusic(mus:String) {
+		@:privateAccess
+		if (FlxG.sound.music == null || FlxG.sound.music._sound != Paths.music(mus)) {
+			FlxG.sound.playMusic(Paths.music(mus));
+		}
 	}
 }

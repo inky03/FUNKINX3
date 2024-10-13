@@ -28,7 +28,7 @@ class HealthIcon extends FunkinSprite {
 		var wFrameRatio:Int = Math.round(width / height);
 		loadGraphic(graphic ?? Paths.image('icons/face'), true, Std.int(width / wFrameRatio), Std.int(height));
 		animation.add('neutral', [0]);
-		animation.add('winning', [animation.numFrames >= 2 ? 2 : 0]);
+		animation.add('winning', [animation.numFrames > 2 ? 2 : 0]);
 		animation.add('losing', [1]);
 		playAnimation('neutral');
 		updateHitbox();

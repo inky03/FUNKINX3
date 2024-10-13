@@ -17,6 +17,8 @@ import Note;
 import Song;
 import Bar;
 
+using StringTools;
+
 class PlayState extends MusicBeatState {
 	public var basicBG:FunkinSprite;
 	public var player1:Character;
@@ -39,9 +41,17 @@ class PlayState extends MusicBeatState {
 	private var heldKeys:Array<FlxKey> = [];
 	
 	public var camHUD:FlxCamera;
+	public var camGame:FlxCamera;
 	public var camOther:FlxCamera;
 	public var camFocus:FlxObject;
 	public var camFocusTarget:FlxPoint;
+	
+	public var camZoomIntensity:Float = 1;
+	public var HUDZoomIntensity:Float = 1;
+	public var defaultHUDZoom:Float = 1;
+	public var defaultCamZoom:Float = 1;
+	public var camZoomLerp:Bool = true;
+	public var HUDZoomLerp:Bool = true;
 	
 	public static var song:Song;
 	public var syncVocals:Array<FlxSound> = [];
@@ -65,6 +75,9 @@ class PlayState extends MusicBeatState {
 	override public function create() {
 		super.create();
 		
+		HScriptBackend.loadFromFolder('scripts');
+		HScriptBackend.loadFromFolder('data/${song.path}');
+		
 		Conductor.metronome.tempoChanges = song.tempoChanges;
 		Conductor.metronome.setBeat(-5);
 
@@ -73,15 +86,24 @@ class PlayState extends MusicBeatState {
 		barHit.add(barHitEvent);
 		
 		camHUD = new FlxCamera();
+		camGame = new FlxCamera();
 		camOther = new FlxCamera();
 		camHUD.bgColor.alpha = 0;
+		camGame.bgColor.alpha = 0;
 		camOther.bgColor.alpha = 0;
+		FlxG.cameras.add(camGame, false);
 		FlxG.cameras.add(camHUD, false);
 		FlxG.cameras.add(camOther, false);
 		
+		@:privateAccess {
+			FlxG.cameras.defaults.resize(0);
+			FlxG.cameras.defaults.push(camGame);
+		}
+		// FlxG.cameras.setDefaultDrawTarget(camGame, true);
+		
 		camFocusTarget = new FlxPoint(0, FlxG.height * .5);
 		camFocus = new FlxObject(camFocusTarget.x, camFocusTarget.y, 1, 1);
-		FlxG.camera.follow(camFocus, LOCKON, 1);
+		camGame.follow(camFocus, LOCKON, 1);
 		add(camFocus);
 		
 		basicBG = new FunkinSprite().loadTexture('bg');
@@ -89,6 +111,8 @@ class PlayState extends MusicBeatState {
 		basicBG.scrollFactor.set(.95, .95);
 		basicBG.scale.set(2.25, 2.25);
 		add(basicBG);
+		
+		HScriptBackend.run('create');
 
 		player1 = new Character(250, 0, song.player1, 'bf');
 		player2 = new Character(-250, 0, song.player2, 'dad');
@@ -99,6 +123,7 @@ class PlayState extends MusicBeatState {
 		add(player2);
 		add(player1);
 		
+		song.instLoaded = false;
 		song.loadMusic('data/${song.path}/', false);
 		song.loadMusic('songs/${song.path}/', false);
 		for (chara in [player1, player2, player3]) {
@@ -140,12 +165,22 @@ class PlayState extends MusicBeatState {
 		playerStrumline.assignKeys(Settings.data.keybinds['4k']);
 		opponentStrumline.addEvent(opponentNoteEvent);
 		playerStrumline.addEvent(playerNoteEvent);
+		
+		var noteKinds:Array<String> = [];
 		for (note in song.notes) {
 			var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
 			var lane:Lane = strumline.getLane(note.noteData);
 			if (lane != null)
 				lane.queue.push(note);
+			if (note.noteKind.trim() != '' && !noteKinds.contains(note.noteKind))
+				noteKinds.push(note.noteKind);
 		}
+		for (noteKind in noteKinds) {
+			for (path in Paths.getPaths('notekinds/$noteKind.hx')) {
+				HScriptBackend.loadFromFile(path);
+			}
+		}
+		trace(Paths.getPaths('images/characters/bf.png'));
 		
 		if (Settings.data.middlescroll) {
 			playerStrumline.center(X);
@@ -193,9 +228,22 @@ class PlayState extends MusicBeatState {
 		
 		DiscordRPC.presence.details = '${song.name} [${song.difficulty.toUpperCase()}]';
 		DiscordRPC.dirty = true;
+		
+		HScriptBackend.run('createPost');
 	}
 
+	override public function resetState() {
+		// prevent destroying notes??
+		opponentStrumline.clearAllNotes();
+		playerStrumline.clearAllNotes();
+		super.resetState();
+	}
 	override public function update(elapsed:Float) {
+		if (FlxG.keys.justPressed.ESCAPE) {
+			FlxG.switchState(() -> new FreeplayState());
+			return;
+		}
+		
 		DiscordRPC.update();
 		if (FlxG.keys.justPressed.Q) {
 			Conductor.songPosition -= 350;
@@ -262,7 +310,9 @@ class PlayState extends MusicBeatState {
 			}
 		}
 		
-		// debugTxt.text = 'BPM: ${Conductor.bpm}  |  Time Signature: ${Conductor.timeSignature.toString()}\nBeat: $curBeat | Measure: $curBar${playerStrumline.cpu ? '\nBOTPLAY ENABLED' : ''}';
+		if (paused) return;
+		
+		HScriptBackend.run('update', [elapsed]);
 		
 		super.update(elapsed);
 		iconP1.updateBop(elapsed);
@@ -270,13 +320,11 @@ class PlayState extends MusicBeatState {
 		iconP1.setPosition(healthBar.barCenter.x + 60 - iconP1.width * .5, healthBar.barCenter.y - iconP1.height * .5);
 		iconP2.setPosition(healthBar.barCenter.x - 60 - iconP2.width * .5, healthBar.barCenter.y - iconP2.height * .5);
 		
-		if (paused) return;
-		
 		extraWindow = Math.max(extraWindow - elapsed * 200, 0);
 		
 		syncMusic();
-		camHUD.zoom = FlxMath.lerp(camHUD.zoom, 1, elapsed * 3);
-		FlxG.camera.zoom = FlxMath.lerp(FlxG.camera.zoom, 1, elapsed * 3);
+		if (camZoomLerp) camHUD.zoom = FlxMath.lerp(camHUD.zoom, defaultHUDZoom, elapsed * 3);
+		if (HUDZoomLerp) camGame.zoom = FlxMath.lerp(camGame.zoom, defaultCamZoom, elapsed * 3);
 		camFocus.setPosition(
 			Util.smoothLerp(camFocus.x, camFocusTarget.x, elapsed * 3),
 			Util.smoothLerp(camFocus.y, camFocusTarget.y, elapsed * 3)
@@ -289,7 +337,9 @@ class PlayState extends MusicBeatState {
 			limit --;
 		}
 		
-		if (Conductor.songPosition >= song.songLength || FlxG.keys.justPressed.ESCAPE) {
+		HScriptBackend.run('updatePost', [elapsed]);
+		
+		if (Conductor.songPosition >= song.songLength) {
 			FlxG.switchState(() -> new FreeplayState());
 		}
 	}
@@ -312,6 +362,10 @@ class PlayState extends MusicBeatState {
 	}
 
 	public function pushedEvent(event:SongEvent) {
+		for (path in Paths.getPaths('events/$event.hx')) {
+			HScriptBackend.loadFromFile(path);
+		}
+		
 		var params:Map<String, Dynamic> = event.params;
 		switch (event.name) {
 			case 'PlayAnimation':
@@ -322,6 +376,7 @@ class PlayState extends MusicBeatState {
 					case 'dad': focusChara = player2;
 				} if (focusChara != null) focusChara.preloadAnimAsset(params['anim']);
 		}
+		HScriptBackend.run('eventPushed', [event]);
 	}
 	
 	public function triggerEvent(event:SongEvent) {
@@ -366,10 +421,12 @@ class PlayState extends MusicBeatState {
 					}
 				}
 		}
+		HScriptBackend.run('eventTriggered', [event]);
 	}
 	
 	public function stepHitEvent(step:Int) {
 		syncMusic(true);
+		HScriptBackend.run('stepHit', [step]);
 	}
 	public function beatHitEvent(beat:Int) {
 		iconP1.bop();
@@ -395,6 +452,7 @@ class PlayState extends MusicBeatState {
 				syncMusic(true, true);
 			default:
 		}
+		HScriptBackend.run('beatHit', [beat]);
 	}
 	public function popCountdown(image:String) {
 		var pop = new FunkinSprite().loadTexture(image);
@@ -405,10 +463,12 @@ class PlayState extends MusicBeatState {
 			remove(pop);
 			pop.destroy();
 		}});
+		HScriptBackend.run('countdownTick', [image]);
 	}
 	public function barHitEvent(bar:Int) {
-		FlxG.camera.zoom += .015;
-		camHUD.zoom += .03;
+		camHUD.zoom += .03 * HUDZoomIntensity;
+		camGame.zoom += .015 * camZoomIntensity;
+		HScriptBackend.run('barHit', [bar]);
 	}
 	
 	public function keyPressEvent(event:KeyboardEvent) {
@@ -426,6 +486,7 @@ class PlayState extends MusicBeatState {
 		if (keybind >= 0) inputOff(keybind);
 	}
 	public function inputOn(keybind:Int) { // todo: lanes have the INPUTS and not PLAYSTATE
+		HScriptBackend.run('keyPressed', [keybind]);
 		var oldTime:Float = Conductor.songPosition;
 		Conductor.songPosition = getSongPos();
 		var lane:Lane = playerStrumline.getLane(keybind);
@@ -443,6 +504,7 @@ class PlayState extends MusicBeatState {
 		Conductor.songPosition = oldTime;
 	}
 	public function inputOff(keybind:Int) {
+		HScriptBackend.run('keyReleased', [keybind]);
 		var lane:Lane = playerStrumline.getLane(keybind);
 		lane.receptor.playAnimation('static', true);
 		lane.held = false;
@@ -450,6 +512,7 @@ class PlayState extends MusicBeatState {
 	public function playerNoteEvent(e:Lane.NoteEvent) {
 		var note:Note = e.note;
 		var lane:Lane = e.lane;
+		HScriptBackend.run('playerNoteEventPre', [e]);
 		switch (e.type) {
 			case HIT:
 				player1.volume = 1;
@@ -493,10 +556,12 @@ class PlayState extends MusicBeatState {
 				updateRating();
 			default:
 		}
+		HScriptBackend.run('playerNoteEvent', [e]);
 	}
 	public function opponentNoteEvent(e:Lane.NoteEvent) {
 		var note:Note = e.note;
 		var lane:Lane = e.lane;
+		HScriptBackend.run('opponentNoteEventPre', [e]);
 		switch (e.type) {
 			case HIT:
 				player2.volume = 1;
@@ -512,9 +577,11 @@ class PlayState extends MusicBeatState {
 				player2.volume = 0;
 			default:
 		}
+		HScriptBackend.run('opponentNoteEvent', [e]);
 	}
 	public dynamic function comboBroken(oldCombo:Int) {
 		popCombo(0);
+		HScriptBackend.run('comboBroken');
 	}
 	public function popCombo(combo:Int) {
 		var tempCombo:Int = combo;
@@ -589,6 +656,7 @@ class PlayState extends MusicBeatState {
 		var accuracyString:String = 'NA';
 		if (totalNotes > 0) accuracyString = '${Util.padDecimals(percent, 2)}%';
 		scoreTxt.text = 'Score: ${Util.thousandSep(Std.int(score))} (${accuracyString}) | Misses: ${misses}';
+		HScriptBackend.run('updateScore');
 	}
 	public function set_combo(newCombo:Int) {
 		if (combo > 0 && newCombo == 0) comboBroken(combo);

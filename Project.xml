@@ -37,7 +37,7 @@
 
 	<!-- _______________________________ i forgot _______________________________ -->
 
-	
+	<define name="USE_HSCRIPT" />
 
 	<!-- _______________________________ Libraries ______________________________ -->
 
@@ -46,10 +46,17 @@
 	<haxelib name="flixel-ui" />
 	<haxelib name="moonchart" />
 	<haxelib name="tjson" />
-	<haxelib name="hxdiscord_rpc" if='cpp'/>
+	<haxelib name="hxdiscord_rpc" if="cpp" />
+	
+	<haxedef name="hscriptPos" if="USE_HSCRIPT" />
+	<haxelib name="hscript-iris" if="USE_HSCRIPT" />
 
 	<!--In case you want to use nape with flixel-->
 	<!--<haxelib name="nape-haxe4" />-->
+	
+	<!-- __________________________________ uhh!_________________________________ -->
+	
+	<haxeflag name="--macro" value="include('flixel', true, ['flixel.addons.nape', 'flixel.addons.editors', 'flixel.system.macros'])" if="USE_HSCRIPT" />
 
 	<!-- ______________________________ Haxedefines _____________________________ -->
 

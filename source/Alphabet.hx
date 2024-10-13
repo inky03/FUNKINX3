@@ -123,15 +123,15 @@ class AlphabetCharacter extends FunkinSprite {
 			var letter:Letter = AlphabetCharacter.getLetter(newChar);
 			
 			var letterAnim:String = letter.name;
-			if (type == 'bold') letterAnim = '${letterAnim} bold';
-			else if (isLowerCase(newChar)) letterAnim = '${letterAnim} lowercase';
+			if (type == 'bold') letterAnim = '$letterAnim bold';
+			else if (isLowerCase(newChar)) letterAnim = '$letterAnim lowercase';
 			
-			if (hasAnimationPrefix(letterAnim)) {
+			if (hasAnimationPrefix(letterAnim + '0')) {
 				var letterOffset:Array<Float> = (type == 'bold' ? letter.boldOffset : letter.blackOffset);
 				visible = true;
 				blank = false;
 				offsets[newChar] = FlxPoint.get(letterOffset[0], letterOffset[1]);
-				animation.addByPrefix(newChar, '${letterAnim}0', 24, true);
+				animation.addByPrefix(newChar, letterAnim + '0', 24, true);
 				playAnimation(newChar);
 				updateHitbox();
 				if (letterOffset[1] == 0)

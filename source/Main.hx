@@ -31,6 +31,7 @@ class Main extends Sprite {
 		watermark.updateHitbox();
 		watermark.borderSize = 1.25;
 		watermark.scrollFactor.set();
+		watermark.camera = FlxG.camera;
 		
 		FlxG.plugins.drawOnTop = true;
 		FlxG.plugins.addPlugin(watermark);

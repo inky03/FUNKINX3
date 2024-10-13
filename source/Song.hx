@@ -419,10 +419,11 @@ class Song {
 	}
 }
 
-typedef SongEvent = {
-	var name:String;
-	var msTime:Float;
-	var params:Map<String, Any>;
+@:structInit
+class SongEvent {
+	public var name:String;
+	public var msTime:Float;
+	public var params:Map<String, Any>;
 }
 
 typedef LegacySongSection = {

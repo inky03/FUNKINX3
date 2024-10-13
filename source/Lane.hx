@@ -385,10 +385,11 @@ class NoteSpark extends FunkinSprite {
 	}
 }
 
-typedef NoteEvent = {
-	var note:Note;
-	var lane:Lane;
-	var type:NoteEventType;
+@:structInit
+class NoteEvent {
+	public var note:Note;
+	public var lane:Lane;
+	public var type:NoteEventType;
 }
 
 enum NoteEventType {

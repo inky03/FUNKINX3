@@ -22,12 +22,14 @@ class Paths {
 	static var excludeKeys:Array<String> = [];
 
 	static public function clean() { // adapted from psych
-		/*var exclusions:Array<String> = excludedGraphicKeys();
+		var exclusions:Array<String> = excludedGraphicKeys();
 		@:privateAccess
 		for (key => graphic in graphicCache) {
 			if (!trackedAssets.contains(key) && !exclusions.contains(key)) {
 				if (graphic != null) {
-					graphic.destroy();
+					graphic.destroyOnNoUse = true;
+					graphic.persist = false;
+					FlxG.bitmap.remove(graphic);
 					trace('graphic $key removed');
 				}
 				graphicCache.remove(key);
@@ -43,7 +45,7 @@ class Paths {
 			}
 		}
 		FlxG.bitmap.clearUnused();
-		runGC();*/
+		runGC();
 	}
 	inline static public function excludedGraphicKeys():Array<String> {
 		var exclusions:Array<String> = excludeKeys.copy();
@@ -77,6 +79,26 @@ class Paths {
 
 		return null;
 	}
+	static public function getPaths(key:String, allowMods:Bool = true):Array<String> {
+		var files:Array<String> = [];
+		if (allowMods) {
+			var currentMod:String = Mods.currentMod;
+			if (currentMod != '') {
+				var path:String = modPath(key, currentMod);
+				if (FileSystem.exists(path)) files.push(path);
+			}
+			for (mod in Mods.get()) {
+				if (!mod.global) continue;
+				var path:String = modPath(key, mod.directory);
+				if (FileSystem.exists(path)) files.push(path);
+			}
+			if (FileSystem.exists(globalModPath(key))) files.push(globalModPath(key));
+		}
+		if (FileSystem.exists(sharedPath(key))) files.push(sharedPath(key));
+		if (FileSystem.exists(key)) files.push(key);
+
+		return files;
+	}
 	inline static public function modPath(key:String, mod:String = '')
 		return mod.trim() == '' ? globalModPath(key) : 'mods/$mod/$key';
 	inline static public function globalModPath(key:String)
@@ -99,6 +121,8 @@ class Paths {
 
 	inline static public function sound(key:String)
 		return ogg('sounds/$key');
+	inline static public function music(key:String)
+		return ogg('music/$key');
 
 	static public function image(key:String) {
 		var bmdKey:String = 'images/$key.png';
@@ -111,7 +135,7 @@ class Paths {
 		var bmd:BitmapData = bmd(key);
 		if (bmd == null) return null;
 		
-		var graphic:FlxGraphic = graphicCache[assetKey] = FlxGraphic.fromBitmapData(bmd);
+		var graphic:FlxGraphic = graphicCache[assetKey] = FlxGraphic.fromBitmapData(bmd, false, assetKey);
 		trackedAssets.push(assetKey);
 		graphic.destroyOnNoUse = false;
 		graphic.persist = true;

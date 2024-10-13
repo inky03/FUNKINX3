@@ -5,11 +5,12 @@ class MainMenuState extends MusicBeatState {
 	public var buttonNames:Array<String> = ['campaign', 'freeplay', 'mods', 'options', 'credits'];
 	public var menuButtons:Array<FunkinSprite> = [];
 	public var inputEnabled:Bool = true;
-	public var selection:Int = 0;
+	public static var selection:Int = 0;
 	
 	override public function create() {
 		super.create();
 		
+		playMusic('title');
 		var bg:FunkinSprite = new FunkinSprite().loadTexture('menuBG');
 		bg.setGraphicSize(bg.width * 1.1);
 		bg.scrollFactor.set(.1, .1);
