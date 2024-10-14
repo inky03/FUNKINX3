@@ -1,5 +1,6 @@
 package;
 
+import Lane.NoteEventType;
 import flixel.util.FlxAxes;
 import openfl.display.BlendMode;
 
@@ -22,11 +23,12 @@ class HScript extends Iris {
 		trace('HSCRIPT ERROR: ${Printer.errorToString(e)}');
 	}
 	
-	public function run(?func:String, ?args:Array<Any>, safe:Bool = false) {
+	public function run(?func:String, ?args:Array<Any>, safe:Bool = false):Any {
 		try {
 			if (func != null) {
 				if (safe && !exists(func)) return null;
-				return call(func, args);
+				var result:IrisCall = call(func, args);
+				return result?.returnValue ?? null;
 			} else {
 				return execute();
 			}
@@ -55,11 +57,16 @@ class HScript extends Iris {
 		set('Settings', Settings);
 		set('PlayState', PlayState);
 		set('Conductor', Conductor);
+		set('Character', Character);
 		set('SongEvent', Song.SongEvent);
 		set('NoteEvent', Lane.NoteEvent);
 		set('FunkinSprite', FunkinSprite);
 		set('Metronome', Conductor.Metronome);
-		set('NoteEventType', Lane.NoteEventType);
+		#if static
+		set('NoteEventType', {HIT: NoteEventType.HIT, LOST: NoteEventType.LOST, SPAWNED: NoteEventType.SPAWNED, DESPAWNED: NoteEventType.DESPAWNED});
+		#else
+		set('NoteEventType', NoteEventType);
+		#end
 		
 		set('state', FlxG.state);
 		set('add', FlxG.state.add);
