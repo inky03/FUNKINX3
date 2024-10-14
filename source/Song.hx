@@ -51,6 +51,7 @@ class Song {
 	public var player1:String = 'bf';
 	public var player2:String = 'dad';
 	public var player3:String = 'gf';
+	public var stage:String = 'placeholder';
 	
 	public function new(path:String, keyCount:Int = 4) {
 		this.path = path;
@@ -209,6 +210,7 @@ class Song {
 		song.player1 = meta.extraData['FNF_P1'] ?? 'bf';
 		song.player2 = meta.extraData['FNF_P2'] ?? 'dad';
 		song.player3 = meta.extraData['FNF_P3'] ?? 'gf';
+		song.stage = meta.extraData['FNF_STAGE'] ?? 'placeholder';
 		time = Sys.time();
 		song.audioSuffix = suffix;
 
@@ -355,6 +357,7 @@ class Song {
 			song.player1 = song.json.player1;
 			song.player2 = song.json.player2;
 			song.player3 = song.json.player3 ?? song.json.gfVersion ?? 'gf';
+			song.stage = song.json.stage;
 
 			Sys.println('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch(e:Exception) {

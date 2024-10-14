@@ -20,7 +20,7 @@ import Bar;
 using StringTools;
 
 class PlayState extends MusicBeatState {
-	public var basicBG:FunkinSprite;
+	//public var basicBG:FunkinSprite;
 	public var player1:Character;
 	public var player2:Character;
 	public var player3:Character;
@@ -77,6 +77,15 @@ class PlayState extends MusicBeatState {
 		
 		HScriptBackend.loadFromFolder('scripts');
 		HScriptBackend.loadFromFolder('data/${song.path}');
+
+		//theres probably a better way to write this - chloe
+		var stagePath:String = 'stages/${song.stage}';
+		if (Paths.exists(stagePath)) {
+			HScriptBackend.loadFromFile(stagePath);
+		}else{
+			//HScriptBackend.loadFromFile('stages/placeholder');
+			trace('erm');
+		}
 		
 		Conductor.metronome.tempoChanges = song.tempoChanges;
 		Conductor.metronome.setBeat(-5);
@@ -106,11 +115,11 @@ class PlayState extends MusicBeatState {
 		camGame.follow(camFocus, LOCKON, 1);
 		add(camFocus);
 		
-		basicBG = new FunkinSprite().loadTexture('bg');
+		/*basicBG = new FunkinSprite().loadTexture('bg');
 		basicBG.setPosition(-basicBG.width * .5, (FlxG.height - basicBG.height) * .5 + 75);
 		basicBG.scrollFactor.set(.95, .95);
 		basicBG.scale.set(2.25, 2.25);
-		add(basicBG);
+		add(basicBG);*/
 		
 		HScriptBackend.run('create');
 
@@ -230,6 +239,8 @@ class PlayState extends MusicBeatState {
 		DiscordRPC.dirty = true;
 		
 		HScriptBackend.run('createPost');
+
+		trace(song.stage);
 	}
 
 	override public function resetState() {
