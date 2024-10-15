@@ -20,7 +20,7 @@ import Bar;
 using StringTools;
 
 class PlayState extends MusicBeatState {
-	//public var basicBG:FunkinSprite;
+	public var basicBG:FunkinSprite;
 	public var player1:Character;
 	public var player2:Character;
 	public var player3:Character;
@@ -77,15 +77,6 @@ class PlayState extends MusicBeatState {
 		
 		HScriptBackend.loadFromFolder('scripts');
 		HScriptBackend.loadFromFolder('data/${song.path}');
-
-		//theres probably a better way to write this - chloe
-		var stagePath:String = 'stages/${song.stage}';
-		if (Paths.exists(stagePath)) {
-			HScriptBackend.loadFromFile(stagePath);
-		}else{
-			//HScriptBackend.loadFromFile('stages/placeholder');
-			trace('erm');
-		}
 		
 		Conductor.metronome.tempoChanges = song.tempoChanges;
 		Conductor.metronome.setBeat(-5);
@@ -115,14 +106,26 @@ class PlayState extends MusicBeatState {
 		camGame.follow(camFocus, LOCKON, 1);
 		add(camFocus);
 		
-		/*basicBG = new FunkinSprite().loadTexture('bg');
+		basicBG = new FunkinSprite().loadTexture('bg');
 		basicBG.setPosition(-basicBG.width * .5, (FlxG.height - basicBG.height) * .5 + 75);
 		basicBG.scrollFactor.set(.95, .95);
 		basicBG.scale.set(2.25, 2.25);
-		add(basicBG);*/
+
+		var stagePath = 'stages/${song.stage}.hx';
+		trace(stagePath);
+		if (Paths.exists(stagePath)){
+			for (path in Paths.getPaths(stagePath)){
+				trace(path);
+				HScriptBackend.loadFromFile(path);
+			}
+		}else{
+			trace('Stage was not found! - burpp sorry i ate it');
+			add(basicBG);
+		}
 		
 		HScriptBackend.run('create');
 
+		// add stage character positions one day Smiles
 		player1 = new Character(250, 0, song.player1, 'bf');
 		player2 = new Character(-250, 0, song.player2, 'dad');
 		player3 = new Character(0, 0, song.player3, 'gf');
@@ -239,8 +242,6 @@ class PlayState extends MusicBeatState {
 		DiscordRPC.dirty = true;
 		
 		HScriptBackend.run('createPost');
-
-		trace(song.stage);
 	}
 
 	override public function resetState() {
