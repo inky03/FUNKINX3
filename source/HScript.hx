@@ -3,6 +3,7 @@ package;
 import Lane.NoteEventType;
 import flixel.util.FlxAxes;
 import openfl.display.BlendMode;
+import flixel.addons.display.FlxRuntimeShader;
 
 import crowplexus.iris.Iris;
 import crowplexus.iris.IrisConfig;
@@ -39,6 +40,7 @@ class HScript extends Iris {
 	}
 	public override function preset() {
 		super.preset();
+		set('this', this);
 		set('Type', Type);
 		set('Reflect', Reflect);
 		
@@ -50,11 +52,12 @@ class HScript extends Iris {
 		set('FlxEase', flixel.tweens.FlxEase);
 		set('FlxTimer', flixel.util.FlxTimer);
 		set('FlxTween', flixel.tweens.FlxTween);
-		set('FlxRuntimeShader', flixel.addons.display.FlxRuntimeShader);
-		
+		set('FlxRuntimeShader', FlxRuntimeShader);
+
 		set('Lane', Lane);
 		set('Note', Note);
 		set('Paths', Paths);
+		set('HScript', HScript);
 		set('Controls', Controls);
 		set('Settings', Settings);
 		set('PlayState', PlayState);
@@ -66,6 +69,7 @@ class HScript extends Iris {
 		set('NoteEvent', Lane.NoteEvent);
 		set('FunkinSprite', FunkinSprite);
 		set('Metronome', Conductor.Metronome);
+		set('RuntimeShader', QuickRuntimeShader);
 		#if static
 		set('NoteEventType', {HIT: NoteEventType.HIT, LOST: NoteEventType.LOST, SPAWNED: NoteEventType.SPAWNED, DESPAWNED: NoteEventType.DESPAWNED});
 		#else
@@ -76,6 +80,10 @@ class HScript extends Iris {
 		set('add', FlxG.state.add);
 		set('remove', FlxG.state.remove);
 		set('insert', FlxG.state.insert);
+		if (Std.isOfType(FlxG.state, PlayState)) {
+			set('game', FlxG.state);
+			set('addBG', cast(FlxG.state, PlayState).addBG);
+		}
 		
 		// abstract classes
 		set('FlxAxes', HScriptFlxAxes);
@@ -94,6 +102,16 @@ class HScript extends Iris {
 	}
 }
 
+class QuickRuntimeShader extends FlxRuntimeShader {
+	public var frag:Null<String> = null;
+	public var vert:Null<String> = null;
+
+	public function new(name:String) {
+		frag = Paths.shaderFrag(name);
+		vert = Paths.shaderVert(name);
+		super(frag, vert);
+	}
+}
 class HScriptFlxColor { // i hate it in here
 	public static var BLACK(default, never):Int = cast FlxColor.BLACK;
 	public static var GRAY(default, never):Int = cast FlxColor.GRAY;

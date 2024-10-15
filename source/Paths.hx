@@ -123,6 +123,10 @@ class Paths {
 		return ogg('sounds/$key');
 	inline static public function music(key:String)
 		return ogg('music/$key');
+	inline static public function shaderFrag(key:String)
+		return text('shaders/$key.frag');
+	inline static public function shaderVert(key:String)
+		return text('shaders/$key.vert');
 
 	static public function image(key:String) {
 		var bmdKey:String = 'images/$key.png';

@@ -86,6 +86,7 @@ class PlayState extends MusicBeatState {
 	
 	override public function create() {
 		super.create();
+		Main.watermark.visible = false;
 		
 		HScriptBackend.loadFromFolder('scripts');
 		HScriptBackend.loadFromFolder('data/${song.path}');
@@ -261,11 +262,20 @@ class PlayState extends MusicBeatState {
 		HScriptBackend.run('createPost');
 	}
 
-	override public function resetState() {
-		// prevent destroying notes??
-		opponentStrumline.clearAllNotes();
-		playerStrumline.clearAllNotes();
-		super.resetState();
+	public function addBG(sprite:FlxBasic) {
+		var low:Null<Int> = null;
+		for (chara in [player1, player2, player3]) {
+			var pos:Int = members.indexOf(chara);
+			if (pos > -1 && (low == null || pos < low)) {
+				low = pos;
+			}
+		}
+		if (low != null) {
+			insert(low, sprite);
+		} else {
+			add(sprite); // too bad!
+		}
+		return sprite;
 	}
 	override public function update(elapsed:Float) {
 		if (FlxG.keys.justPressed.ESCAPE) {
@@ -550,9 +560,10 @@ class PlayState extends MusicBeatState {
 	}
 	public function opponentNoteEvent(e:Lane.NoteEvent) {
 		e.targetCharacter = player2;
-		e.cancelHitSound();
-		e.cancelRating();
-		e.cancelSplash();
+		e.playHitSound = false;
+		e.applyRating = false;
+		e.splash = false;
+		e.spark = false;
 
 		HScriptBackend.run('opponentNoteEventPre', [e]);
 		try e.dispatch()
@@ -646,6 +657,9 @@ class PlayState extends MusicBeatState {
 	override public function destroy() {
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
+		opponentStrumline.clearAllNotes(); // prevent destroying notes
+		playerStrumline.clearAllNotes();
+		Main.watermark.visible = true;
 		super.destroy();
 	}
 }

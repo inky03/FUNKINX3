@@ -19,6 +19,7 @@ import tjson.TJSON;
 
 import flixel.FlxG;
 import flixel.FlxState;
+import flixel.FlxBasic;
 import flixel.FlxObject;
 import flixel.FlxSprite;
 import flixel.FlxCamera;

@@ -169,7 +169,7 @@ class Lane extends FlxSpriteGroup {
 		} else {
 			if (Conductor.songPosition - hitWindow > note.msTime) {
 				note.lost = true;
-				noteEvent.dispatch({note: note, lane: this, type: LOST});
+				noteEvent.dispatch({note: note, lane: this, type: LOST, strumline: strumline});
 			}
 		}
 	}
@@ -195,17 +195,17 @@ class Lane extends FlxSpriteGroup {
 			}
 		}
 		notes.insert(pos, note);
-		noteEvent.dispatch({note: note, lane: this, type: SPAWNED});
+		noteEvent.dispatch({note: note, lane: this, type: SPAWNED, strumline: strumline});
 	}
 	public dynamic function hitNote(note:Note, kill:Bool = true) {
 		note.goodHit = true;
-		noteEvent.dispatch({note: note, lane: this, type: HIT});
+		noteEvent.dispatch({note: note, lane: this, type: HIT, strumline: strumline});
 		if (kill && !note.ignore) killNote(note);
 	}
 	public function killNote(note:Note) {
-		notes.remove(note, true);
 		note.kill();
-		noteEvent.dispatch({note: note, lane: this, type: DESPAWNED});
+		notes.remove(note, true);
+		noteEvent.dispatch({note: note, lane: this, type: DESPAWNED, strumline: strumline});
 	}
 }
 
@@ -389,8 +389,12 @@ class NoteSpark extends FunkinSprite {
 	public var note:Note;
 	public var lane:Lane;
 	public var type:NoteEventType;
-	public var splash:Bool = true;
+	public var strumline:Strumline;
 	public var cancelled:Bool = false;
+
+	public var spark:Bool = true; // many vars...
+	public var splash:Bool = true;
+	public var lightStrum:Bool = true;
 	public var applyRating:Bool = true;
 	public var playHitSound:Bool = true;
 	public var playAnimation:Bool = true;
@@ -398,10 +402,6 @@ class NoteSpark extends FunkinSprite {
 	public var targetCharacter:Null<Character> = null;
 
 	public function cancel() cancelled = true;
-	public function cancelSplash() splash = false;
-	public function cancelRating() applyRating = false;
-	public function cancelHitSound() playHitSound = false;
-	public function cancelAnimation() playAnimation = false;
 	public function dispatch() { // hahaaa
 		if (cancelled) return;
 		var game:PlayState;
@@ -413,11 +413,11 @@ class NoteSpark extends FunkinSprite {
 		}
 		switch (type) {
 			case HIT:
-				targetCharacter.volume = 1;
+				if (targetCharacter != null) targetCharacter.volume = 1;
 				if (note.isHoldPiece) {
 					if (playAnimation) {
 						var anim:String = 'sing${game.singAnimations[note.noteData]}';
-						if (targetCharacter.animation.name != anim && !targetCharacter.animationIsLooping(anim)) {
+						if (targetCharacter != null && targetCharacter.animation.name != anim && !targetCharacter.animationIsLooping(anim)) {
 							targetCharacter.playAnimationSoft(anim, true);
 						}
 					}
@@ -425,11 +425,12 @@ class NoteSpark extends FunkinSprite {
 						FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
 				} else {
 					if (playHitSound) game.hitsound.play(true);
-					if (playAnimation) targetCharacter.playAnimationSoft('sing${game.singAnimations[note.noteData]}', true);
+					if (playAnimation && targetCharacter != null) targetCharacter.playAnimationSoft('sing${game.singAnimations[note.noteData]}', true);
 					
 					if (applyRating) {
 						window = window ?? Scoring.judgeLegacy(game.hitWindows, note.hitWindow, note.msTime - Conductor.songPosition);
 						window.count ++;
+						
 						note.ratingData = window;
 						game.popRating(window.rating);
 						game.score += window.score;
@@ -440,16 +441,34 @@ class NoteSpark extends FunkinSprite {
 						game.totalHits ++;
 						if (window.breaksCombo) game.combo = 0; // maybe add the ghost note here?
 						else game.popCombo(++ game.combo);
-						if (note.ratingData.splash && splash) lane.splash();
 						game.updateRating();
-					} else if (splash) {
+					}
+					if (splash && (window?.splash ?? true)) {
 						lane.splash();
 					}
 				}
-				targetCharacter.timeAnimSteps(targetCharacter.singForSteps);
+				if (targetCharacter != null) targetCharacter.timeAnimSteps(targetCharacter.singForSteps);
+
+				lane.receptor.playAnimation('confirm', true);
+				if (!note.isHoldPiece) {
+					if (note.msLength > 0) {
+						for (child in note.children) child.canHit = true;
+						lane.held = true;
+					} else if (!lane.cpu) {
+						lane.receptor.grayBeat = note.beatTime + 1;
+					}
+				}
+				if (note.isHoldTail) {
+					lane.held = false;
+					if (spark) {
+						lane.spark();
+						if (!lane.cpu) lane.receptor.playAnimation('press', true);
+					}
+				}
 			case LOST:
 				targetCharacter.volume = 0;
 				if (playAnimation) targetCharacter.playAnimationSoft('sing${game.singAnimations[note.noteData]}miss', true);
+				if (targetCharacter != null) targetCharacter.timeAnimSteps(targetCharacter.singForSteps);
 
 				if (applyRating) {
 					game.health -= note.healthLoss;
