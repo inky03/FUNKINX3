@@ -37,23 +37,23 @@
       "animations": []
     }
   ],
-  "cameraZoom": 1,
+  "cameraZoom": 0.9,
   "version": "1.0.0",
   "characters": {
     "bf": {
       "zIndex": 300,
-      "position": [50,350],
+      "position": [50,0],
       "cameraOffsets": [-100, -100]
     },
     "dad": {
       "zIndex": 200,
-      "position": [-600,0],
+      "position": [-200,0],
       "cameraOffsets": [150, -100]
     },
     "gf": {
       "zIndex": 100,
       "cameraOffsets": [0, 0],
-      "position": [-323,0]
+      "position": [-23,0]
     }
   },
   "name": "Main Stage"
