@@ -31,13 +31,13 @@ class Stage extends FlxBasic {
 
             zoom = json.cameraZoom;
             //god theres definitly a better way to write this
-            bfPos = FlxPoint.get(json.characters.bf.position[0],json.characters.bf.position[1]);
-            gfPos = FlxPoint.get(json.characters.gf.position[0],json.characters.gf.position[1]);
-            dadPos = FlxPoint.get(json.characters.dad.position[0],json.characters.dad.position[1]);
+            bfPos.set(json.characters.bf.position[0],json.characters.bf.position[1]);
+            gfPos.set(json.characters.gf.position[0],json.characters.gf.position[1]);
+            dadPos.set(json.characters.dad.position[0],json.characters.dad.position[1]);
 
-            bfOffset = FlxPoint.get(json.characters.bf.cameraOffsets[0],json.characters.bf.cameraOffsets[1]);
-            gfOffset = FlxPoint.get(json.characters.gf.cameraOffsets[0],json.characters.gf.cameraOffsets[1]);
-            dadOffset = FlxPoint.get(json.characters.dad.cameraOffsets[0],json.characters.dad.cameraOffsets[1]);
+            bfOffset.set(json.characters.bf.cameraOffsets[0],json.characters.bf.cameraOffsets[1]);
+            gfOffset.set(json.characters.gf.cameraOffsets[0],json.characters.gf.cameraOffsets[1]);
+            dadOffset.set(json.characters.dad.cameraOffsets[0],json.characters.dad.cameraOffsets[1]);
 		}
         
         // loads hscript file
