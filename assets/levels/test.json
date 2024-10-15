@@ -17,6 +17,12 @@
 			"songPath": "spookeez",
 			"icon": "spooky",
 			"difficulties": ["Easy", "Normal", "Hard", "Erect", "Nightmare"]
+		},
+		{
+			"displayName": "Dadbattle",
+			"songPath": "dadbattle",
+			"icon": "daddy",
+			"difficulties": ["Easy", "Normal", "Hard", "Erect", "Nightmare"]
 		}
 	]
 	"storyMode": [

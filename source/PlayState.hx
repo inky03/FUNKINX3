@@ -24,6 +24,18 @@ class PlayState extends MusicBeatState {
 	public var player1:Character;
 	public var player2:Character;
 	public var player3:Character;
+
+	// maybe arrays arent the best options :sob:
+	public var p1pos:FlxPoint = new FlxPoint(250,0);
+	public var p2pos:FlxPoint = new FlxPoint(-250, 0);
+	public var p3pos:FlxPoint = new FlxPoint(0,0);
+
+	public var p1offset:FlxPoint = new FlxPoint(0,0);
+	public var p2offset:FlxPoint = new FlxPoint(0,0);
+	public var p3offset:FlxPoint = new FlxPoint(0,0);
+
+	public var stage:Stage;
+	public var curStage:String;
 	
 	public var healthBar:Bar;
 	public var iconP1:HealthIcon;
@@ -105,13 +117,24 @@ class PlayState extends MusicBeatState {
 		camFocus = new FlxObject(camFocusTarget.x, camFocusTarget.y, 1, 1);
 		camGame.follow(camFocus, LOCKON, 1);
 		add(camFocus);
+
+		stage = new Stage(song.stage);
+		//doesnt properly check i think
+		if(stage.json != null){
+			defaultCamZoom = stage.zoom;
+			p1pos = stage.bfPos;
+			p2pos = stage.dadPos;
+			p3pos = stage.gfPos;
+
+			p1offset = stage.bfOffset;
+			p2offset = stage.dadOffset;
+			p3offset = stage.gfOffset;
+		}
 		
 		basicBG = new FunkinSprite();
 
-		var stagePath = 'stages/${song.stage}.hx';
-		if (Paths.exists(stagePath)){
-			HScriptBackend.loadFromPaths(stagePath);
-		} else {
+		//var stagePath = 'stages/${song.stage}.hx';
+		if (stage.scriptPath == null){
 			basicBG.loadTexture('bg');
 			basicBG.setPosition(-basicBG.width * .5, (FlxG.height - basicBG.height) * .5 + 75);
 			basicBG.scrollFactor.set(.95, .95);
@@ -122,9 +145,10 @@ class PlayState extends MusicBeatState {
 		HScriptBackend.run('create');
 
 		// add stage character positions one day Smiles
-		player1 = new Character(250, 0, song.player1, 'bf');
-		player2 = new Character(-250, 0, song.player2, 'dad');
-		player3 = new Character(0, 0, song.player3, 'gf');
+		// update: i did ( it sucks i think )
+		player1 = new Character(p1pos.x, p1pos.y, song.player1, 'bf');
+		player2 = new Character(p2pos.x, p2pos.y, song.player2, 'dad');
+		player3 = new Character(p3pos.x, p3pos.y, song.player3, 'gf');
 		player3.x -= player3.width * .5;
 		player2.x -= player2.width;
 		add(player3);
@@ -388,20 +412,24 @@ class PlayState extends MusicBeatState {
 			case 'FocusCamera':
 				var focusCharaInt:Int;
 				var focusChara:Null<Character> = null;
+				var focusStageOffset:FlxPoint = new FlxPoint();
 				if (params.exists('char')) focusCharaInt = Util.parseInt(params['char']);
 				else focusCharaInt = Util.parseInt(params['value']);
 				switch (focusCharaInt) {
 					case 0: // player focus
 						focusChara = player1;
+						focusStageOffset = p1offset;
 					case 1: // opponent focus
 						focusChara = player2;
+						focusStageOffset = p2offset;
 					case 2: // gf focus
 						focusChara = player3;
+						focusStageOffset = p3offset;
 				}
 
 				if (focusChara != null) {
-					camFocusTarget.x = focusChara.getMidpoint().x + focusChara.cameraOffset.x;
-					camFocusTarget.y = focusChara.getMidpoint().y + focusChara.cameraOffset.y;
+					camFocusTarget.x = focusChara.getMidpoint().x + focusChara.cameraOffset.x + focusStageOffset.x;
+					camFocusTarget.y = focusChara.getMidpoint().y + focusChara.cameraOffset.y + focusStageOffset.y;
 				} else {
 					camFocusTarget.x = 0;
 					camFocusTarget.y = 0;
