@@ -50,14 +50,18 @@ class HScript extends Iris {
 		set('FlxEase', flixel.tweens.FlxEase);
 		set('FlxTimer', flixel.util.FlxTimer);
 		set('FlxTween', flixel.tweens.FlxTween);
+		set('FlxRuntimeShader', flixel.addons.display.FlxRuntimeShader);
 		
 		set('Lane', Lane);
 		set('Note', Note);
 		set('Paths', Paths);
+		set('Controls', Controls);
 		set('Settings', Settings);
 		set('PlayState', PlayState);
 		set('Conductor', Conductor);
 		set('Character', Character);
+		set('Strumline', Strumline);
+		set('HealthIcon', HealthIcon);
 		set('SongEvent', Song.SongEvent);
 		set('NoteEvent', Lane.NoteEvent);
 		set('FunkinSprite', FunkinSprite);

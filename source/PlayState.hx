@@ -106,20 +106,16 @@ class PlayState extends MusicBeatState {
 		camGame.follow(camFocus, LOCKON, 1);
 		add(camFocus);
 		
-		basicBG = new FunkinSprite().loadTexture('bg');
-		basicBG.setPosition(-basicBG.width * .5, (FlxG.height - basicBG.height) * .5 + 75);
-		basicBG.scrollFactor.set(.95, .95);
-		basicBG.scale.set(2.25, 2.25);
+		basicBG = new FunkinSprite();
 
 		var stagePath = 'stages/${song.stage}.hx';
-		trace(stagePath);
 		if (Paths.exists(stagePath)){
-			for (path in Paths.getPaths(stagePath)){
-				trace(path);
-				HScriptBackend.loadFromFile(path);
-			}
-		}else{
-			trace('Stage was not found! - burpp sorry i ate it');
+			HScriptBackend.loadFromPaths(stagePath);
+		} else {
+			basicBG.loadTexture('bg');
+			basicBG.setPosition(-basicBG.width * .5, (FlxG.height - basicBG.height) * .5 + 75);
+			basicBG.scrollFactor.set(.95, .95);
+			basicBG.scale.set(2.25, 2.25);
 			add(basicBG);
 		}
 		
@@ -188,11 +184,8 @@ class PlayState extends MusicBeatState {
 				noteKinds.push(note.noteKind);
 		}
 		for (noteKind in noteKinds) {
-			for (path in Paths.getPaths('notekinds/$noteKind.hx')) {
-				HScriptBackend.loadFromFile(path);
-			}
+			HScriptBackend.loadFromPaths('notekinds/$noteKind.hx');
 		}
-		trace(Paths.getPaths('images/characters/bf.png'));
 		
 		if (Settings.data.middlescroll) {
 			playerStrumline.center(X);
@@ -374,9 +367,7 @@ class PlayState extends MusicBeatState {
 	}
 
 	public function pushedEvent(event:SongEvent) {
-		for (path in Paths.getPaths('events/$event.hx')) {
-			HScriptBackend.loadFromFile(path);
-		}
+		HScriptBackend.loadFromPaths('events/$event.hx');
 		
 		var params:Map<String, Dynamic> = event.params;
 		switch (event.name) {
@@ -522,73 +513,22 @@ class PlayState extends MusicBeatState {
 		lane.held = false;
 	}
 	public function playerNoteEvent(e:Lane.NoteEvent) {
-		var note:Note = e.note;
-		var lane:Lane = e.lane;
+		e.targetCharacter = player1;
+
 		HScriptBackend.run('playerNoteEventPre', [e]);
-		switch (e.type) {
-			case HIT:
-				player1.volume = 1;
-				if (note.isHoldPiece) {
-					var anim:String = 'sing${singAnimations[note.noteData]}';
-					if (player1.animation.name != anim && !player1.animationIsLooping(anim))
-						player1.playAnimationSoft(anim, true);
-					if (note.isHoldTail)
-						FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
-				} else {
-					hitsound.play(true);
-					player1.playAnimationSoft('sing${singAnimations[note.noteData]}', true);
-					
-					var window:HitWindow = Scoring.judgeLegacy(hitWindows, note.hitWindow, note.msTime - Conductor.songPosition);
-					window.count ++;
-					
-					note.ratingData = window;
-					popRating(window.rating);
-					score += window.score;
-					health += note.healthGain * window.health;
-					accuracyMod += window.accuracyMod;
-					accuracyDiv ++;
-					totalNotes ++;
-					totalHits ++;
-					if (window.breaksCombo) combo = 0; // maybe add the ghost note here?
-					else popCombo(++ combo);
-					if (note.ratingData.splash) lane.splash();
-				}
-				player1.timeAnimSteps(player1.singForSteps);
-				updateRating();
-			case LOST:
-				popRating('sadmiss');
-				player1.volume = 0;
-				player1.playAnimationSoft('sing${singAnimations[note.noteData]}miss', true);
-				health -= note.healthLoss;
-				accuracyDiv ++;
-				totalNotes ++;
-				misses ++;
-				combo = 0;
-				score -= 10;
-				updateRating();
-			default:
-		}
+		try e.dispatch()
+		catch (e:haxe.Exception) Sys.println('error dispatching note event -> ${e.message}');
 		HScriptBackend.run('playerNoteEvent', [e]);
 	}
 	public function opponentNoteEvent(e:Lane.NoteEvent) {
-		var note:Note = e.note;
-		var lane:Lane = e.lane;
+		e.targetCharacter = player2;
+		e.cancelHitSound();
+		e.cancelRating();
+		e.cancelSplash();
+
 		HScriptBackend.run('opponentNoteEventPre', [e]);
-		switch (e.type) {
-			case HIT:
-				player2.volume = 1;
-				if (note.isHoldPiece) {
-					var anim:String = 'sing${singAnimations[note.noteData]}';
-					if (player2.animation.name != anim && !player2.animationIsLooping(anim))
-						player2.playAnimationSoft(anim, true);
-				} else {
-					player2.playAnimationSoft('sing${singAnimations[note.noteData]}', true);
-				}
-				player2.timeAnimSteps(player2.singForSteps);
-			case LOST:
-				player2.volume = 0;
-			default:
-		}
+		try e.dispatch()
+		catch (e:haxe.Exception) Sys.println('error dispatching note event -> ${e.message}');
 		HScriptBackend.run('opponentNoteEvent', [e]);
 	}
 	public dynamic function comboBroken(oldCombo:Int) {

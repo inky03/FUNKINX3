@@ -385,11 +385,85 @@ class NoteSpark extends FunkinSprite {
 	}
 }
 
-@:structInit
-class NoteEvent {
+@:structInit class NoteEvent {
 	public var note:Note;
 	public var lane:Lane;
 	public var type:NoteEventType;
+	public var splash:Bool = true;
+	public var cancelled:Bool = false;
+	public var applyRating:Bool = true;
+	public var playHitSound:Bool = true;
+	public var playAnimation:Bool = true;
+	public var window:Null<Scoring.HitWindow> = null;
+	public var targetCharacter:Null<Character> = null;
+
+	public function cancel() cancelled = true;
+	public function cancelSplash() splash = false;
+	public function cancelRating() applyRating = false;
+	public function cancelHitSound() playHitSound = false;
+	public function cancelAnimation() playAnimation = false;
+	public function dispatch() { // hahaaa
+		if (cancelled) return;
+		var game:PlayState;
+		if (Std.isOfType(FlxG.state, PlayState)) {
+			game = cast FlxG.state;
+		} else {
+			throw(new haxe.Exception('note event can\'t be dispatched outside of PlayState!!'));
+			return;
+		}
+		switch (type) {
+			case HIT:
+				targetCharacter.volume = 1;
+				if (note.isHoldPiece) {
+					if (playAnimation) {
+						var anim:String = 'sing${game.singAnimations[note.noteData]}';
+						if (targetCharacter.animation.name != anim && !targetCharacter.animationIsLooping(anim)) {
+							targetCharacter.playAnimationSoft(anim, true);
+						}
+					}
+					if (note.isHoldTail && playHitSound)
+						FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
+				} else {
+					if (playHitSound) game.hitsound.play(true);
+					if (playAnimation) targetCharacter.playAnimationSoft('sing${game.singAnimations[note.noteData]}', true);
+					
+					if (applyRating) {
+						window = window ?? Scoring.judgeLegacy(game.hitWindows, note.hitWindow, note.msTime - Conductor.songPosition);
+						window.count ++;
+						note.ratingData = window;
+						game.popRating(window.rating);
+						game.score += window.score;
+						game.health += note.healthGain * window.health;
+						game.accuracyMod += window.accuracyMod;
+						game.accuracyDiv ++;
+						game.totalNotes ++;
+						game.totalHits ++;
+						if (window.breaksCombo) game.combo = 0; // maybe add the ghost note here?
+						else game.popCombo(++ game.combo);
+						if (note.ratingData.splash && splash) lane.splash();
+						game.updateRating();
+					} else if (splash) {
+						lane.splash();
+					}
+				}
+				targetCharacter.timeAnimSteps(targetCharacter.singForSteps);
+			case LOST:
+				targetCharacter.volume = 0;
+				if (playAnimation) targetCharacter.playAnimationSoft('sing${game.singAnimations[note.noteData]}miss', true);
+
+				if (applyRating) {
+					game.health -= note.healthLoss;
+					game.accuracyDiv ++;
+					game.totalNotes ++;
+					game.misses ++;
+					game.combo = 0;
+					game.score -= 10;
+					game.updateRating();
+					game.popRating('sadmiss');
+				}
+			default:
+		}
+	}
 }
 
 enum NoteEventType {

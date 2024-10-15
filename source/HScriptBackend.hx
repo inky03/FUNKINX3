@@ -17,14 +17,18 @@ class HScriptBackend {
 			return null;
 		}
 	}
+	public static function findFromSuffix(test:String) {
+		for (hscript in activeScripts) {
+			if (hscript.scriptName.endsWith(test)) return hscript;
+		}
+		return null;
+	}
 	public static function add(hscript:HScript):Void {
 		if (!activeScripts.contains(hscript)) activeScripts.push(hscript);
 	}
 	public static function stop(hscript:HScript):Void {
-		if (activeScripts.contains(hscript)) {
-			activeScripts.remove(hscript);
-			hscript.destroy();
-		}
+		if (activeScripts.contains(hscript)) activeScripts.remove(hscript);
+		hscript.destroy();
 	}
 	public static function stopAllScripts():Void {
 		while (activeScripts.length > 0) stop(activeScripts[0]);
@@ -80,5 +84,13 @@ class HScriptBackend {
 		hs.run();
 		add(hs);
 		return hs;
+	}
+	public static function loadFromPaths(basepath:String) {
+		var found:Bool = false;
+		for (path in Paths.getPaths(basepath)) {
+			HScriptBackend.loadFromFile(path);
+			found = true;
+		}
+		return found;
 	}
 }
