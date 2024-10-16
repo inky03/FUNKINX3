@@ -259,7 +259,7 @@ class Song {
 	
 	public static function loadLegacySong(path:String, difficulty:String = 'normal', suffix:String = '', keyCount:Int = 4) { // move to moonchart format???
 		difficulty = difficulty.toLowerCase();
-		Sys.println('loading legacy FNF song "${path}" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
+		Sys.println('loading legacy FNF song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 		
 		var song = new Song(path, keyCount);
 		song.json = Song.loadJson(path, difficulty);
@@ -271,6 +271,18 @@ class Song {
 		
 		var time = Sys.time();
 		try {
+			var eventsPath:String = 'data/$path/events.json';
+			var eventContent:Null<String> = Paths.text(eventsPath);
+			if (eventContent != null) {
+				Sys.println('loading events from "$eventsPath"');
+				var eventJson:Dynamic = TJSON.parse(eventContent);
+				if (eventJson.song != null && !Std.isOfType(eventJson.song, String)) eventJson = eventJson.song;
+				if (song.json.events == null) song.json.events = [];
+				var eventBlobs:Array<Array<Dynamic>> = eventJson.events;
+				var songEventBlobs:Array<Array<Dynamic>> = song.json.events;
+				for (eventBlob in eventBlobs) songEventBlobs.push(eventBlob);
+			}
+			
 			song.name = song.json.song;
 			song.initialBpm = song.json.bpm;
 			song.tempoChanges = [new TempoChange(0, song.initialBpm, new TimeSignature())];
@@ -294,7 +306,9 @@ class Song {
 					var eventTime:Float = eventBlob[0];
 					var events:Array<Array<String>> = eventBlob[1];
 					for (event in events) {
-						song.events.push({name: event[0], msTime: eventTime, params: ['value1' => event[1], 'value2' => event[2]]});
+						var songEvent:SongEvent = {name: event[0], msTime: eventTime, params: ['value1' => event[1], 'value2' => event[2]]};
+						Sys.println(songEvent.name);
+						song.events.push(songEvent);
 					}
 				}
 			}
@@ -346,7 +360,7 @@ class Song {
 						playerNote = (noteData < keyCount);
 					}
 					
-					song.notes.push({player: playerNote, msTime: noteTime, laneIndex: noteData % keyCount, msLength: noteLength});
+					song.notes.push({player: playerNote, msTime: noteTime, laneIndex: noteData % keyCount, msLength: noteLength, kind: noteKind});
 				}
 			}
 			song.sortNotes();

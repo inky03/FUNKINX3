@@ -401,7 +401,7 @@ class PlayState extends MusicBeatState {
 	}
 
 	public function pushedEvent(event:SongEvent) {
-		HScriptBackend.loadFromPaths('events/$event.hx');
+		HScriptBackend.loadFromPaths('events/${event.name}.hx');
 		
 		var params:Map<String, Dynamic> = event.params;
 		switch (event.name) {
