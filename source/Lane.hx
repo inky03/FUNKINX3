@@ -72,6 +72,7 @@ class Lane extends FlxSpriteGroup {
 		noteEvent = new FlxTypedSignal<NoteEvent->Void>();
 
 		noteCover.shader = rgbShader.shader;
+		updateHitbox();
 	}
 	
 	public override function update(elapsed:Float) {
@@ -207,6 +208,9 @@ class Lane extends FlxSpriteGroup {
 		notes.remove(note, true);
 		noteEvent.dispatch({note: note, lane: this, type: DESPAWNED, strumline: strumline});
 	}
+
+	public override function get_width() return receptor?.width ?? 0;
+	public override function get_height() return receptor?.height ?? 0;
 }
 
 class Receptor extends FunkinSprite {
@@ -242,6 +246,7 @@ class Receptor extends FunkinSprite {
 		animation.addByPrefix('confirm', '$dirName confirm', 24, false);
 		animation.addByPrefix('press', '$dirName press', 24, false);
 		playAnimation('static', true);
+		updateHitbox();
 	}
 
 	public override function update(elapsed:Float) {

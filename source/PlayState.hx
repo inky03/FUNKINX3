@@ -68,6 +68,7 @@ class PlayState extends MusicBeatState {
 	public static var song:Song;
 	public var syncVocals:Array<FlxSound> = [];
 	public var events:Array<SongEvent> = [];
+	public var notes:Array<Note> = [];
 	public var noteSpawnOffset:Float;
 	
 	public var maxHealth(default, set):Float = 1;
@@ -200,13 +201,12 @@ class PlayState extends MusicBeatState {
 		playerStrumline.addEvent(playerNoteEvent);
 		
 		var noteKinds:Array<String> = [];
-		for (note in song.notes) {
+		for (note in song.generateNotes()) {
 			var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
 			var lane:Lane = strumline.getLane(note.noteData);
-			if (lane != null)
-				lane.queue.push(note);
-			if (note.noteKind.trim() != '' && !noteKinds.contains(note.noteKind))
-				noteKinds.push(note.noteKind);
+			if (lane != null) lane.queue.push(note);
+			if (note.noteKind.trim() != '' && !noteKinds.contains(note.noteKind)) noteKinds.push(note.noteKind);
+			notes.push(note);
 		}
 		for (noteKind in noteKinds) {
 			HScriptBackend.loadFromPaths('notekinds/$noteKind.hx');
@@ -253,7 +253,7 @@ class PlayState extends MusicBeatState {
 		noteSpawnOffset = Note.distanceToMS(720, playerStrumline.scrollSpeed);
 		updateRating();
 
-		hitsound = new FlxSound().loadEmbedded(Paths.sound('hitsound'));
+		hitsound = FlxG.sound.load(Paths.sound('hitsound'));
 		hitsound.volume = .7;
 		
 		DiscordRPC.presence.details = '${song.name} [${song.difficulty.toUpperCase()}]';
@@ -295,7 +295,7 @@ class PlayState extends MusicBeatState {
 			playerStrumline.clearAllNotes();
 			events = [];
 			for (lane in opponentStrumline.lanes) lane.held = false;
-			for (note in song.notes) {
+			for (note in notes) {
 				var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
 				var lane:Lane = strumline.getLane(note.noteData);
 				lane.queue.push(note);
@@ -655,10 +655,9 @@ class PlayState extends MusicBeatState {
 	}
 	
 	override public function destroy() {
+		HScriptBackend.run('destroy');
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
-		opponentStrumline.clearAllNotes(); // prevent destroying notes
-		playerStrumline.clearAllNotes();
 		Main.watermark.visible = true;
 		super.destroy();
 	}

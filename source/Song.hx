@@ -38,7 +38,7 @@ class Song {
 	public var json:Dynamic;
 	public var initialBpm:Float = 100;
 	public var keyCount:Int = 4;
-	public var notes:Array<Note> = [];
+	public var notes:Array<SongNote> = [];
 	public var events:Array<SongEvent> = [];
 	public var tempoChanges:Array<TempoChange> = [new TempoChange(0, 100, new TimeSignature())];
 	public var scrollSpeed:Float = 1;
@@ -148,8 +148,7 @@ class Song {
 				tempMetronome.setMS(note.time + 1);
 				var isPlayer:Bool = (dance == SINGLE ? note.lane < 4 : note.lane >= 4);
 				var stepCrochet:Float = tempMetronome.getCrochet(tempMetronome.bpm, tempMetronome.timeSignature.denominator) * .25;
-				for (note in generateNotes(isPlayer, note.time, Std.int(note.lane % 4), '', note.length, stepCrochet))
-					song.notes.push(note);
+				song.notes.push({player: isPlayer, msTime: note.time, laneIndex: Std.int(note.lane % 4), msLength: note.length});
 			}
 			Note.baseMetronome = Conductor.metronome;
 
@@ -195,8 +194,7 @@ class Song {
 			for (note in notes) {
 				tempMetronome.setMS(note.time + 1);
 				var stepCrochet:Float = tempMetronome.getCrochet(tempMetronome.bpm, tempMetronome.timeSignature.denominator) * .25;
-				for (note in generateNotes(note.lane >= 4, note.time, Std.int(note.lane % 4), '', note.length - stepCrochet, stepCrochet))
-					song.notes.push(note);
+				song.notes.push({player: note.lane >= 4, msTime: note.time, laneIndex: Std.int(note.lane % 4), msLength: note.length - stepCrochet});
 			}
 			Note.baseMetronome = Conductor.metronome;
 
@@ -254,7 +252,8 @@ class Song {
 			}
 		}
 		
-		this.songLength = (notes[notes.length - 1]?.endMs ?? 0) + 500;
+		var lastNote:SongNote = notes[notes.length - 1];
+		this.songLength = (lastNote == null ? 0 : lastNote.msTime + lastNote.msLength) + 500;
 		return this;
 	}
 	
@@ -347,12 +346,13 @@ class Song {
 						playerNote = (noteData < keyCount);
 					}
 					
-					for (note in generateNotes(playerNote, noteTime, noteData % keyCount, noteKind, noteLength, stepCrochet)) song.notes.push(note);
+					song.notes.push({player: playerNote, msTime: noteTime, laneIndex: noteData % keyCount, msLength: noteLength});
 				}
 			}
 			song.sortNotes();
 			Note.baseMetronome = Conductor.metronome;
-			song.songLength = (song.notes[song.notes.length - 1]?.endMs ?? 0) + 500;
+			var lastNote:SongNote = song.notes[song.notes.length - 1];
+			song.songLength = (lastNote == null ? 0 : lastNote.msTime + lastNote.msLength) + 500;
 
 			song.player1 = song.json.player1;
 			song.player2 = song.json.player2;
@@ -366,32 +366,36 @@ class Song {
 		
 		return song;
 	}
-	
-	public static function generateNotes(playerNote:Bool, noteTime:Float, noteData:Int, noteKind:String = '', noteLength:Float = 0, stepCrochet:Float = 1000) {
-		var notes:Array<Note> = [];
-		var hitNote:Note = new Note(playerNote, noteTime, noteData, noteLength, noteKind);
-		notes.push(hitNote);
-		
-		if (hitNote.msLength > 0) { //hold bits
-			var holdBits:Float = noteLength / stepCrochet;
-			for (i in 0...Math.ceil(holdBits)) {
-				var bitTime:Float = i * stepCrochet;
-				var bitLength:Float = stepCrochet;
-				if (i == Math.ceil(holdBits - 1)) bitLength = (noteLength - bitTime);
-				var holdBit:Note = new Note(playerNote, noteTime + bitTime, noteData, bitLength, noteKind, true);
-				hitNote.children.push(holdBit);
-				holdBit.parent = hitNote;
-				notes.push(holdBit);
-			}
-			var endBit:Note = new Note(playerNote, noteTime + noteLength, noteData, 0, noteKind, true);
-			hitNote.children.push(endBit);
-			notes.push(endBit);
+
+	public function generateNotes():Array<Note> {
+		var noteArray:Array<Note> = [];
+		var tempMetronome:Metronome = new Metronome();
+		tempMetronome.tempoChanges = this.tempoChanges;
+		for (note in notes) {
+			tempMetronome.setMS(note.msTime);
+			final stepCrochet:Float = tempMetronome.getCrochet(tempMetronome.bpm) * .25;
+			var hitNote:Note = new Note(note.player, note.msTime, note.laneIndex, note.msLength, note.kind);
+			noteArray.push(hitNote);
 			
-			endBit.parent = hitNote;
-			hitNote.tail = endBit;
+			if (hitNote.msLength > 0) { //hold bits
+				var holdBits:Float = note.msLength / stepCrochet;
+				for (i in 0...Math.ceil(holdBits)) {
+					var bitTime:Float = note.msTime + i * stepCrochet;
+					var bitLength:Float = Math.min(note.msTime + note.msLength - bitTime, stepCrochet);
+					var holdBit:Note = new Note(note.player, bitTime, note.laneIndex, bitLength, note.kind, true);
+					hitNote.children.push(holdBit);
+					holdBit.parent = hitNote;
+					noteArray.push(holdBit);
+				}
+				var endBit:Note = new Note(note.player, note.msTime + note.msLength, note.laneIndex, 0, note.kind, true);
+				hitNote.children.push(endBit);
+				noteArray.push(endBit);
+				
+				endBit.parent = hitNote;
+				hitNote.tail = endBit;
+			}
 		}
-		
-		return notes;
+		return noteArray;
 	}
 	
 	public function loadMusic(path:String, overwrite:Bool = true) { // this could be better
@@ -414,16 +418,18 @@ class Song {
 	}
 	
 	public function sortNotes() {
-		notes.sort((a, b) -> {
-			var ord:Int = Std.int(a.msTime - b.msTime);
-			if (ord == 0 && !a.isHoldPiece && b.isHoldPiece) return -1;
-			return ord;
-		});
+		notes.sort((a, b) -> Std.int(a.msTime - b.msTime));
 	}
 }
 
-@:structInit
-class SongEvent {
+@:structInit class SongNote {
+	public var laneIndex:Int;
+	public var msTime:Float = 0;
+	public var kind:String = '';
+	public var msLength:Float = 0;
+	public var player:Bool = true;
+}
+@:structInit class SongEvent {
 	public var name:String;
 	public var msTime:Float;
 	public var params:Map<String, Any>;
