@@ -36,12 +36,13 @@ class Song {
 
 	public var chart:Any; //BasicFormat?
 	public var json:Dynamic;
-	public var initialBpm:Float = 100;
+	
 	public var keyCount:Int = 4;
+	public var scrollSpeed:Float = 1;
+	public var initialBpm:Float = 100;
 	public var notes:Array<SongNote> = [];
 	public var events:Array<SongEvent> = [];
 	public var tempoChanges:Array<TempoChange> = [new TempoChange(0, 100, new TimeSignature())];
-	public var scrollSpeed:Float = 1;
 
 	public var instLoaded:Bool;
 	public var instTrack:FlxSound;

@@ -18,8 +18,8 @@ class OptionsState extends MusicBeatState {
 		items = new FlxTypedGroup<SettingItem>();
 		add(items);
 		
-		items.add(new SettingItem(0, 0, 'hawk one'));
-		items.add(new SettingItem(40, 100, 'hawk two'));
+		items.add(new SettingItem(0, 0, 'downscroll', 'Downscroll'));
+		items.add(new SettingItem(40 * .75, 75, 'middlescroll', 'Middlescroll'));
 		
 		FlxG.camera.target = target = new FlxObject();
 		FlxG.camera.followLerp = 9 / 60;
@@ -68,22 +68,28 @@ class SettingItem extends FlxSpriteGroup {
 	public var text:Alphabet;
 	public var type:SettingType;
 	public var checkbox:FunkinSprite = null;
+	public var settingSave:Null<String> = null;
+	public var settingValue(get, default):Dynamic;
 	public var enabled(default, set):Bool = false;
-	public function new(x:Float = 0, y:Float = 0, name:String = 'unknown', type:SettingType = BOOLEAN) {
+	public function new(x:Float = 0, y:Float = 0, ?save:String, name:String = 'Unknown', type:SettingType = BOOLEAN) {
 		super(x, y);
 		
-		text = new Alphabet(150, 0, name);
+		settingSave = save;
+		text = new Alphabet(100, 0, name);
+		text.scaleTo(.75, .75);
 		add(text);
 		updateHitbox();
 		
 		this.type = type;
 		switch (type) {
 			case BOOLEAN:
-				checkbox = new FunkinSprite(0, -70);
+				checkbox = new FunkinSprite(0, -30);
 				checkbox.loadAtlas('options/checkbox');
 				checkbox.animation.addByPrefix('select', 'checkbox select', 24, false);
 				checkbox.animation.addByPrefix('unselect', 'checkbox unselect', 24, false);
-				enabled = false;
+				checkbox.playAnimation(settingValue == true ? 'select' : 'unselect');
+				checkbox.offsets.set('select', FlxPoint.get(12, 40));
+				checkbox.scale.set(.5, .5);
 				checkbox.animation.finish();
 				checkbox.updateHitbox();
 				add(checkbox);
@@ -91,8 +97,15 @@ class SettingItem extends FlxSpriteGroup {
 		}
 		highlight(false);
 	}
+	inline function hasSave() return (settingSave != null && Reflect.hasField(Settings.data, settingSave));
+	public function get_settingValue() {
+		return Reflect.field(Settings.data, settingSave);
+	}
 	public function set_enabled(on:Bool) {
 		if (type != BOOLEAN) return on;
+		if (hasSave()) {
+			Reflect.setField(Settings.data, settingSave, on);
+		}
 		checkbox.playAnimation(on ? 'select' : 'unselect');
 		return enabled = on;
 	}

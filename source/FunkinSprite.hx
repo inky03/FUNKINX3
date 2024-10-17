@@ -28,19 +28,19 @@ class FunkinSprite extends FlxSprite {
 		super.update(elapsed);
 	}
 	
-	public function loadTexture(path:String) {
-		loadGraphic(Paths.image(path));
+	public function loadTexture(path:String, ?library:String) {
+		loadGraphic(Paths.image(path, library));
 		return this;
 	}
-	public function loadAtlas(path:String) {
-		frames = Paths.sparrowAtlas(path);
+	public function loadAtlas(path:String, ?library:String) {
+		frames = Paths.sparrowAtlas(path, library);
 		return this;
 	}
-	public function addAtlas(path:String, overwrite:Bool = false) {
-		if (frames == null) loadAtlas(path);
+	public function addAtlas(path:String, overwrite:Bool = false, ?library:String) {
+		if (frames == null) loadAtlas(path, library);
 		else {
 			var aFrames:FlxAtlasFrames = cast(frames, FlxAtlasFrames);
-			aFrames.addAtlas(Paths.sparrowAtlas(path), overwrite);
+			aFrames.addAtlas(Paths.sparrowAtlas(path, library), overwrite);
 			@:bypassAccessor frames = aFrames; // kys
 		}
 		return this;

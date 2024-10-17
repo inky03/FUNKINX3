@@ -22,11 +22,15 @@ class Alphabet extends FlxSpriteGroup {
 		}
 		return padding = newPadding;
 	}
+	public function scaleTo(x:Float = 1, y:Float = 1) {
+		scale.set(x, y);
+		recalculateLetters();
+	}
 	public inline function recalculateLetters() {
 		var xx:Float = 0;
 		for (character in characters) {
 			character.baseX = xx;
-			xx += (character.blank ? 50 : character.width) + padding;
+			xx += ((character.blank ? 50 : character.width) + padding) * scale.x;
 		}
 	}
 	public function set_letterCase(newCase:AlphabetCase) {
@@ -66,6 +70,7 @@ class Alphabet extends FlxSpriteGroup {
 			var character:AlphabetCharacter;
 			if (i >= characters.length) {
 				character = new AlphabetCharacter(0, 0, letter, type);
+				character.scale.copyFrom(scale);
 				characters.push(character);
 				add(character);
 			} else {
@@ -156,7 +161,7 @@ class AlphabetCharacter extends FunkinSprite {
 	public function set_type(newType:String) {
 		if (type != newType) {
 			offsets.clear();
-			loadAtlas('alphabet${newType == '' ? '' : '-${newType}'}');
+			loadAtlas(Util.pathSuffix('alphabet', newType));
 			set_character(character);
 		}
 		return type = newType;

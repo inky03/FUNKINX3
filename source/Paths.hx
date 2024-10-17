@@ -30,7 +30,7 @@ class Paths {
 					graphic.destroyOnNoUse = true;
 					graphic.persist = false;
 					FlxG.bitmap.remove(graphic);
-					trace('graphic $key removed');
+					// trace('graphic $key removed');
 				}
 				graphicCache.remove(key);
 			}
@@ -39,7 +39,7 @@ class Paths {
 			if (!trackedAssets.contains(key) && !excludeKeys.contains(key)) {
 				if (snd != null) {
 					LimeAssets.cache.clear(key);
-					trace('sound $key removed');
+					// trace('sound $key removed');
 				}
 				soundCache.remove(key);
 			}
@@ -60,64 +60,53 @@ class Paths {
 		#end
 	}
 
-	static public function getPath(key:String, allowMods:Bool = true) {
+	static public function getPath(key:String, allowMods:Bool = true, ?library:String) {
 		if (allowMods) {
 			var currentMod:String = Mods.currentMod;
 			if (currentMod != '') {
-				var path:String = modPath(key, currentMod);
+				var path:String = modPath(key, currentMod, library);
 				if (FileSystem.exists(path)) return path;
 			}
 			for (mod in Mods.get()) {
 				if (!mod.global) continue;
-				var path:String = modPath(key, mod.directory);
+				var path:String = modPath(key, mod.directory, library);
 				if (FileSystem.exists(path)) return path;
 			}
 			if (FileSystem.exists(globalModPath(key))) return globalModPath(key);
 		}
-		if (FileSystem.exists(sharedPath(key))) return sharedPath(key);
+		if (FileSystem.exists(sharedPath(key, library))) return sharedPath(key, library);
 		if (FileSystem.exists(key)) return key;
 
 		return null;
 	}
-	static public function getPaths(key:String, allowMods:Bool = true):Array<String> {
+	static public function getPaths(key:String, allowMods:Bool = true, ?library:String):Array<String> {
 		var files:Array<String> = [];
 		if (allowMods) {
 			var currentMod:String = Mods.currentMod;
 			if (currentMod != '') {
-				var path:String = modPath(key, currentMod);
+				var path:String = modPath(key, currentMod, library);
 				if (FileSystem.exists(path)) files.push(path);
 			}
 			for (mod in Mods.get()) {
 				if (!mod.global) continue;
-				var path:String = modPath(key, mod.directory);
+				var path:String = modPath(key, mod.directory, library);
 				if (FileSystem.exists(path)) files.push(path);
 			}
 			if (FileSystem.exists(globalModPath(key))) files.push(globalModPath(key));
 		}
-		if (FileSystem.exists(sharedPath(key))) files.push(sharedPath(key));
+		if (FileSystem.exists(sharedPath(key, library))) files.push(sharedPath(key, library));
 		if (FileSystem.exists(key)) files.push(key);
 
 		return files;
 	}
-	inline static public function modPath(key:String, mod:String = '')
-		return mod.trim() == '' ? globalModPath(key) : 'mods/$mod/$key';
+	inline static public function modPath(key:String, mod:String = '', library:String = '')
+		return mod.trim() == '' ? globalModPath(key) : 'mods/$mod/${library == '' ? key : '$library/$key'}';
 	inline static public function globalModPath(key:String)
 		return 'mods/$key';
-	inline static public function sharedPath(key:String)
-		return 'assets/$key';
+	inline static public function sharedPath(key:String, library:String = '')
+		return 'assets/${library == '' ? key : '$library/$key'}';
 	inline static public function exists(key:String, allowMods:Bool = true)
 		return (getPath(key, allowMods) != null);
-
-	static public function text(key:String) {
-		var assetKey:String = getPath(key);
-		if (assetKey == sharedPath(key) && OFLAssets.exists(assetKey, TEXT)) {
-			return OFLAssets.getText(sharedPath(key));
-		} else if (assetKey == null) {
-			return null;
-		}
-		
-		return File.getContent(assetKey);
-	}
 
 	inline static public function sound(key:String)
 		return ogg('sounds/$key');
@@ -128,15 +117,15 @@ class Paths {
 	inline static public function shaderVert(key:String)
 		return text('shaders/$key.vert');
 
-	static public function image(key:String) {
+	static public function image(key:String, ?library:String) {
 		var bmdKey:String = 'images/$key.png';
-		var assetKey:String = getPath(bmdKey);
+		var assetKey:String = getPath(bmdKey, library);
 		if (graphicCache[assetKey] != null) {
 			if (!trackedAssets.contains(assetKey)) trackedAssets.push(assetKey);
 			return graphicCache[assetKey];
 		}
 
-		var bmd:BitmapData = bmd(key);
+		var bmd:BitmapData = bmd(key, library);
 		if (bmd == null) return null;
 		
 		var graphic:FlxGraphic = graphicCache[assetKey] = FlxGraphic.fromBitmapData(bmd, false, assetKey);
@@ -147,12 +136,12 @@ class Paths {
 		return graphic;
 	}
 	
-	static public function bmd(key:String) {
+	static public function bmd(key:String, ?library:String) {
 		var bmdKey:String = 'images/$key.png';
-		var assetKey:String = getPath(bmdKey);
+		var assetKey:String = getPath(bmdKey, library);
 
 		var bmd:BitmapData = null;
-		if (assetKey == sharedPath(bmdKey) && OFLAssets.exists(assetKey, IMAGE)) {
+		if (assetKey == sharedPath(bmdKey, library) && OFLAssets.exists(assetKey, IMAGE)) {
 			return OFLAssets.getBitmapData(assetKey);
 		} else {
 			if (assetKey == null) return null;
@@ -160,15 +149,15 @@ class Paths {
 		}
 	}
 
-	static public function ogg(key:String, isMusic:Bool = false) {
+	static public function ogg(key:String, isMusic:Bool = false, ?library:String) {
 		var sndKey:String = '$key.ogg';
-		var assetKey:String = getPath(sndKey);
+		var assetKey:String = getPath(sndKey, library);
 		if (soundCache[assetKey] != null)  {
 			if (!trackedAssets.contains(assetKey)) trackedAssets.push(assetKey);
 			return soundCache[assetKey];
 		}
 
-		if (assetKey == sharedPath(sndKey) && OFLAssets.exists(assetKey, SOUND)) {
+		if (assetKey == sharedPath(sndKey, library) && OFLAssets.exists(assetKey, SOUND)) {
 			return (isMusic ? OFLAssets.getMusic : OFLAssets.getSound)(assetKey);
 		} else if (assetKey == null) {
 			return new Sound();
@@ -179,12 +168,23 @@ class Paths {
 		return snd;
 	}
 
-	inline static public function font(key:String)
-		return (getPath('fonts/$key') ?? 'Nokia Cellphone FC');
+	static public function text(key:String, ?library:String) {
+		var assetKey:String = getPath(key, library);
+		if (assetKey == sharedPath(key, library) && OFLAssets.exists(assetKey, TEXT)) {
+			return OFLAssets.getText(sharedPath(key, library));
+		} else if (assetKey == null) {
+			return null;
+		}
+		
+		return File.getContent(assetKey);
+	}
 
-	static public function sparrowAtlas(key:String) {
-		var xmlContent:String = text('images/$key.xml');
+	inline static public function font(key:String, ?library:String)
+		return (getPath('fonts/$key', library) ?? 'Nokia Cellphone FC');
+
+	static public function sparrowAtlas(key:String, ?library:String) {
+		var xmlContent:String = text('images/$key.xml', library);
 		if (xmlContent == null) return null;
-		return FlxAtlasFrames.fromSparrow(image(key), xmlContent);
+		return FlxAtlasFrames.fromSparrow(image(key, library), xmlContent);
 	}
 }

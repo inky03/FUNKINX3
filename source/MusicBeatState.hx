@@ -9,6 +9,7 @@ class MusicBeatState extends FlxUIState {
 	public var curBeat:Int = -1;
 	public var curBar:Int = -1;
 	public var paused:Bool = false;
+	public var conductorPaused:Bool = false;
 
 	public var stepHit:FlxTypedSignal<Int->Void> = new FlxTypedSignal<Int->Void>();
 	public var beatHit:FlxTypedSignal<Int->Void> = new FlxTypedSignal<Int->Void>();
@@ -35,13 +36,13 @@ class MusicBeatState extends FlxUIState {
 	override function update(elapsed:Float) {
 		if (FlxG.keys.justPressed.F5) resetState();
 		
-		super.update(elapsed);
 		if (paused) return;
+		super.update(elapsed);
 		
-		updateMetronome(elapsed * 1000);
+		if (!conductorPaused) updateConductor(elapsed * 1000);
 	}
 	
-	public function updateMetronome(elapsedMS:Float = 0) {
+	public function updateConductor(elapsedMS:Float = 0) {
 		var prevStep:Int = curStep;
 		var prevBeat:Int = curBeat;
 		var prevBar:Int = curBar;

@@ -121,10 +121,11 @@ class Strumline extends FlxSpriteGroup {
 			FlxTween.cancelTweensOf(lane);
 			lane.x = targetX - Math.cos(rad) * 10;
 			lane.y = targetY - Math.sin(rad) * 10;
-			FlxTween.tween(lane, {x: targetX, y: targetY, alpha: 1}, 1, {ease: FlxEase.circOut, startDelay: .5 + i * .2});
+			FlxTween.tween(lane, {x: targetX, y: targetY, alpha: alpha}, 1, {ease: FlxEase.circOut, startDelay: .5 + i * .2});
 			
 			i ++;
 		}
+		visible = true;
 	}
 	
 	public function fitToSize(targetWidth:Float = 0, targetHeight:Float = 0, center:FlxAxes = NONE) {

@@ -15,6 +15,7 @@ import flixel.input.keyboard.FlxKey;
 		]
 	];
 }
+
 class Settings {
 	public static var defaultData:SettingsData = {};
 	public static var data:SettingsData = {};

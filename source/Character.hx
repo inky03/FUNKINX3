@@ -21,6 +21,7 @@ class Character extends FunkinSprite {
 	public function new(x:Float, y:Float, ?character:String, ?fallback:String) {
 		super(x, y);
 		sparrowsList = [];
+		rotateOffsets = true;
 		vocals = new FlxSound();
 		FlxG.sound.list.add(vocals);
 		this.fallbackCharacter = fallback;
@@ -125,16 +126,17 @@ class Character extends FunkinSprite {
 		return character = newChara;
 	}
 
-	public override function loadAtlas(path:String):FunkinSprite {
+	public override function loadAtlas(path:String, ?library:String):FunkinSprite {
 		animationList.clear();
-		sparrowsList = [path];
-		super.loadAtlas(path);
+		sparrowsList.resize(0);
+		sparrowsList.push(path);
+		super.loadAtlas(path, library);
 		return cast this;
 	}
-	public override function addAtlas(path:String, o:Bool = false):FunkinSprite {
+	public override function addAtlas(path:String, overwrite:Bool = false, ?library:String):FunkinSprite {
 		if (sparrowsList.contains(path)) return this;
 		sparrowsList.push(path);
-		super.addAtlas(path, o);
+		super.addAtlas(path, overwrite);
 		return cast this; // kys
 	}
 
@@ -195,6 +197,7 @@ class Character extends FunkinSprite {
 		} else {
 			playAnimation(charData.startingAnimation);
 		}
+		animation.finish();
 	}
 	public function loadPsychCharData(charData:PsychCharacterData) {
 		var sparrows:Array<String> = charData.image.split(',');
@@ -216,6 +219,7 @@ class Character extends FunkinSprite {
 		sway = (animationList.exists('danceLeft') && animationList.exists('danceRight'));
 		setBaseSize();
 		dance();
+		animation.finish();
 	}
 
 	public function changeBasePos(x:Float = 0, y:Float = 0) {
@@ -262,8 +266,9 @@ class Character extends FunkinSprite {
 		@:bypassAccessor this.character = null;
 		setBaseSize();
 		dance();
+		animation.finish();
 	}
-	public function addAnimation(name:String, prefix:String, fps:Float = 24, loop:Bool = false, frameIndices:Null<Array<Int>> = null, assetPath:Null<String> = null) {
+	public function addAnimation(name:String, prefix:String, fps:Float = 24, loop:Bool = false, ?frameIndices:Array<Int>, ?assetPath:String) {
 		if (assetPath == null) { // wait for the asset to be loaded
 			if (frameIndices == null || frameIndices.length == 0) {
 				animation.addByPrefix(name, prefix, fps, loop);

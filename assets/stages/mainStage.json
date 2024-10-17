@@ -37,24 +37,25 @@
       "animations": []
     }
   ],
-  "cameraZoom": 0.9,
+  "cameraZoom": 1.1,
   "version": "1.0.0",
   "characters": {
     "bf": {
       "zIndex": 300,
-      "position": [50,0],
+      "position": [989.5, 885],
       "cameraOffsets": [-100, -100]
     },
     "dad": {
       "zIndex": 200,
-      "position": [-200,0],
+      "position": [335, 885],
       "cameraOffsets": [150, -100]
     },
     "gf": {
       "zIndex": 100,
       "cameraOffsets": [0, 0],
-      "position": [-23,0]
+      "position": [751.5, 787]
     }
   },
+  "library": "week1",
   "name": "Main Stage"
 }
