@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<TextureAtlas imagePath="checkbox.png">
+	<!-- Created with Adobe Flash CS6 version 12.0.0.481 -->
+	<!-- http://www.adobe.com/products/flash.html -->
+	<SubTexture name="checkbox select0000" x="252" y="271" width="121" height="82" frameX="-16" frameY="-134" frameWidth="141" frameHeight="226"/>
+	<SubTexture name="checkbox select0001" x="252" y="271" width="121" height="82" frameX="-16" frameY="-134" frameWidth="141" frameHeight="226"/>
+	<SubTexture name="checkbox select0002" x="1" y="196" width="128" height="181" frameX="-4" frameY="-45" frameWidth="141" frameHeight="226"/>
+	<SubTexture name="checkbox select0003" x="1" y="1" width="128" height="194" frameX="0" frameY="0" frameWidth="141" frameHeight="226"/>
+	<SubTexture name="checkbox select0004" x="1" y="1" width="128" height="194" frameX="0" frameY="0" frameWidth="141" frameHeight="226"/>
+	<SubTexture name="checkbox select0005" x="130" y="355" width="139" height="147" frameX="-2" frameY="-62" frameWidth="141" frameHeight="226"/>
+	<SubTexture name="checkbox select0006" x="130" y="355" width="139" height="147" frameX="-2" frameY="-62" frameWidth="141" frameHeight="226"/>
+	<SubTexture name="checkbox select0007" x="130" y="1" width="121" height="177" frameX="-12" frameY="-29" frameWidth="141" frameHeight="226"/>
+	<SubTexture name="checkbox select0008" x="130" y="1" width="121" height="177" frameX="-12" frameY="-29" frameWidth="141" frameHeight="226"/>
+	<SubTexture name="checkbox select0009" x="130" y="179" width="121" height="175" frameX="-12" frameY="-29" frameWidth="141" frameHeight="226"/>
+	<SubTexture name="checkbox select0010" x="130" y="179" width="121" height="175" frameX="-12" frameY="-29" frameWidth="141" frameHeight="226"/>
+	<SubTexture name="checkbox unselect0000" x="252" y="1" width="123" height="165"/>
+	<SubTexture name="checkbox unselect0001" x="252" y="1" width="123" height="165"/>
+	<SubTexture name="checkbox unselect0002" x="1" y="378" width="114" height="121" frameX="-4" frameY="-44" frameWidth="123" frameHeight="165"/>
+	<SubTexture name="checkbox unselect0003" x="1" y="378" width="114" height="121" frameX="-4" frameY="-44" frameWidth="123" frameHeight="165"/>
+	<SubTexture name="checkbox unselect0004" x="252" y="167" width="102" height="103" frameX="-15" frameY="-62" frameWidth="123" frameHeight="165"/>
+	<SubTexture name="checkbox unselect0005" x="252" y="167" width="102" height="103" frameX="-15" frameY="-62" frameWidth="123" frameHeight="165"/>
+	<SubTexture name="checkbox unselect0006" x="252" y="167" width="102" height="103" frameX="-15" frameY="-62" frameWidth="123" frameHeight="165"/>
+</TextureAtlas>

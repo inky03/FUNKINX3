@@ -72,6 +72,7 @@ class Lane extends FlxSpriteGroup {
 		noteEvent = new FlxTypedSignal<NoteEvent->Void>();
 
 		noteCover.shader = rgbShader.shader;
+		updateHitbox();
 	}
 	
 	public override function update(elapsed:Float) {
@@ -207,6 +208,9 @@ class Lane extends FlxSpriteGroup {
 		notes.remove(note, true);
 		noteEvent.dispatch({note: note, lane: this, type: DESPAWNED, strumline: strumline});
 	}
+
+	public override function get_width() return receptor?.width ?? 0;
+	public override function get_height() return receptor?.height ?? 0;
 }
 
 class Receptor extends FunkinSprite {
@@ -242,6 +246,7 @@ class Receptor extends FunkinSprite {
 		animation.addByPrefix('confirm', '$dirName confirm', 24, false);
 		animation.addByPrefix('press', '$dirName press', 24, false);
 		playAnimation('static', true);
+		updateHitbox();
 	}
 
 	public override function update(elapsed:Float) {
@@ -449,12 +454,12 @@ class NoteSpark extends FunkinSprite {
 				}
 				if (targetCharacter != null) targetCharacter.timeAnimSteps(targetCharacter.singForSteps);
 
-				lane.receptor.playAnimation('confirm', true);
+				if (lightStrum) lane.receptor.playAnimation('confirm', true);
 				if (!note.isHoldPiece) {
 					if (note.msLength > 0) {
 						for (child in note.children) child.canHit = true;
 						lane.held = true;
-					} else if (!lane.cpu) {
+					} else if (!lane.cpu && lightStrum) {
 						lane.receptor.grayBeat = note.beatTime + 1;
 					}
 				}
@@ -462,7 +467,7 @@ class NoteSpark extends FunkinSprite {
 					lane.held = false;
 					if (spark) {
 						lane.spark();
-						if (!lane.cpu) lane.receptor.playAnimation('press', true);
+						if (!lane.cpu && lightStrum) lane.receptor.playAnimation('press', true);
 					}
 				}
 			case LOST:
