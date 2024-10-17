@@ -1,5 +1,5 @@
 function createPost() {
-	var stageBack = new FunkinSprite().loadTexture('stageback');
+	/*var stageBack = new FunkinSprite().loadTexture('stageback');
 	stageBack.setPosition(-1200, -200);
 	stageBack.scrollFactor.set(.9, .9);
 	addBG(stageBack);
@@ -14,5 +14,5 @@ function createPost() {
 	stageCurtains.scale.set(.9, .9);
 	stageCurtains.scrollFactor.set(1.3, 1.3);
 	stageCurtains.updateHitbox();
-	add(stageCurtains);
+	add(stageCurtains);*/
 }

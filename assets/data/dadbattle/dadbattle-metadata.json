@@ -15,7 +15,7 @@
       "opponent": "dad",
       "altInstrumentals": ["pico"]
     },
-    "stage": "stage",
+    "stage": "mainStage",
     "noteStyle": "funkin",
     "album": "volume1",
     "previewStart": 0,

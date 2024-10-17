@@ -1,5 +1,4 @@
 package;
-import flixel.FlxBasic;
 
 //THIS IS ALL KINDOF A MESS BUT IT WORKS??? I THINK
 class Stage extends FlxBasic {
@@ -16,18 +15,31 @@ class Stage extends FlxBasic {
     public var bfOffset:FlxPoint = new FlxPoint();
     public var gfOffset:FlxPoint = new FlxPoint();
     public var dadOffset:FlxPoint = new FlxPoint();
-    //var state = FlxG.state;
+    var state = FlxG.state;
 
-    public function new(stage:String) {
+    public function new(stageId:String) {
         super();
         // loads json file
         // right now only works with vslice stage jsons
         // doesnt create sprites
-		jsonPath = 'stages/${stage}.json';
+		jsonPath = 'stages/${stageId}.json';
 		if (Paths.exists(jsonPath)) {
 			var content:String = Paths.text(jsonPath);
 			var jsonData:Dynamic = TJSON.parse(content);
 			json = jsonData;
+            var props:Array<Dynamic> = json.props;
+
+            for (propData in props){
+                var propSprite:FunkinSprite;
+                propSprite = new FunkinSprite();
+                propSprite.x = propData.position[0];
+                propSprite.y = propData.position[1];
+                propSprite.alpha = dataProp.alpha;
+                propSprite.loadTexture(propData.assetPath);
+                propSprite.updateHitbox();
+
+                state.add(propSprite);
+            }
 
             zoom = json.cameraZoom;
             //god theres definitly a better way to write this
@@ -41,7 +53,7 @@ class Stage extends FlxBasic {
 		}
         
         // loads hscript file
-        scriptPath = 'stages/${stage}.hx';
+        scriptPath = 'stages/${stageId}.hx';
         if (Paths.exists(scriptPath)){
             HScriptBackend.loadFromPaths(scriptPath);
         }else{
