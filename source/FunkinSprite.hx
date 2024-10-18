@@ -74,7 +74,7 @@ class FunkinSprite extends FlxSprite {
 			var rad:Float = angle / 180 * Math.PI;
 			var cos:Float = Math.cos(rad);
 			var sin:Float = Math.sin(rad);
-			offset.set(cos * xP + sin * yP, cos * yP + sin * xP);
+			offset.set(cos * xP - sin * yP, cos * yP + sin * xP);
 		} else
 			offset.set(xP, yP);
 	}

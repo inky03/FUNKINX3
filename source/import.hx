@@ -23,6 +23,7 @@ import flixel.FlxBasic;
 import flixel.FlxObject;
 import flixel.FlxSprite;
 import flixel.FlxCamera;
+import flixel.util.FlxSort;
 import flixel.text.FlxText;
 import flixel.math.FlxMath;
 import flixel.math.FlxRect;

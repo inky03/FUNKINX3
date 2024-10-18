@@ -118,56 +118,31 @@ class PlayState extends MusicBeatState {
 		add(camFocus);
 
 		curStage = song.stage;
-		stage = new Stage(curStage);
+		stage = new Stage(curStage, song);
 		defaultCamZoom = stage.zoom;
-		
-		basicBG = new FunkinSprite();
-		if (!stage.valid) {
-			basicBG.loadTexture('bg');
-			basicBG.setPosition(-basicBG.width * .5, (FlxG.height - basicBG.height) * .5 + 75);
-			basicBG.scrollFactor.set(.95, .95);
-			basicBG.scale.set(2.25, 2.25);
-			add(basicBG);
-		}
+		add(stage);
+
+		player1 = stage.getCharacter('bf');
+		player2 = stage.getCharacter('dad');
+		player3 = stage.getCharacter('gf');
 
 		// add stage character positions one day Smiles
 		// update: i did ( it sucks i think )
-		player1 = new Character(stage.bfPosition.x, stage.bfPosition.y, song.player1, 'bf');
-		player2 = new Character(stage.dadPosition.x, stage.dadPosition.y, song.player2, 'dad');
-		player3 = new Character(stage.gfPosition.x, stage.gfPosition.y, song.player3, 'gf');
-		switch (stage.format) {
-			case MODERN:
-				for (chara in [player1, player2, player3]) { // center by FEET!! HUFF HUFF ok sorry
-					chara.x -= chara.width * .5;
-					chara.y -= chara.height;
-					chara.changeBasePos(0, 0);
-					// TODO: shouldnt negate position (base game also allows offsetting in character jsons, maybe should unify)
-				}
-			case PSYCH:
-			default:
-				player3.x -= player3.width * .5;
-				player2.x -= player2.width;
-		}
-		player1.cameraOffset += stage.bfOffset;
-		player2.cameraOffset += stage.dadOffset;
-		player3.cameraOffset += stage.gfOffset;
-		add(player3);
-		add(player2);
-		add(player1);
 
-		focusOnCharacter(player3);
+		focusOnCharacter(player3 ?? player1);
 		camFocus.setPosition(camFocusTarget.x, camFocusTarget.y);
 		
 		song.instLoaded = false;
 		song.loadMusic('data/${song.path}/', false);
 		song.loadMusic('songs/${song.path}/', false);
 		for (chara in [player1, player2, player3]) {
+			if (chara == null) continue;
 			chara.loadVocals(song.path, song.audioSuffix);
 			syncVocals.push(chara.vocals);
 		}
-		if (!player1.vocalsLoaded && player1.character != song.player1) player1.loadVocals(song.path, song.audioSuffix, song.player1);
-		if (!player2.vocalsLoaded && player2.character != song.player2) player2.loadVocals(song.path, song.audioSuffix, song.player2);
-		if (!player1.vocalsLoaded && !player2.vocalsLoaded) {
+		if (player1 != null && !player1.vocalsLoaded && player1.character != song.player1) player1.loadVocals(song.path, song.audioSuffix, song.player1);
+		if (player2 != null && !player2.vocalsLoaded && player2.character != song.player2) player2.loadVocals(song.path, song.audioSuffix, song.player2);
+		if (player1 != null && player2 != null && !player1.vocalsLoaded && !player2.vocalsLoaded) {
 			player1.loadVocals(song.path, song.audioSuffix, '');
 		}
 		
@@ -183,6 +158,7 @@ class PlayState extends MusicBeatState {
 		opponentStrumline.fitToSize(strumlineBound, opponentStrumline.height * .7);
 		opponentStrumline.setPosition(50, strumlineY);
 		opponentStrumline.camera = camHUD;
+		opponentStrumline.zIndex = 40;
 		add(opponentStrumline);
 		
 		playerStrumline = new Strumline(4, scrollDir, song.scrollSpeed * 1.08);
@@ -190,6 +166,7 @@ class PlayState extends MusicBeatState {
 		playerStrumline.setPosition(FlxG.width - playerStrumline.width - 50 - 75, strumlineY);
 		playerStrumline.camera = camHUD;
 		playerStrumline.cpu = false;
+		playerStrumline.zIndex = 50;
 		add(playerStrumline);
 
 		if (Settings.data.middlescroll) {
@@ -223,20 +200,24 @@ class PlayState extends MusicBeatState {
 		}
 		
 		ratingGroup = new FlxTypedSpriteGroup<FunkinSprite>();
-		ratingGroup.setPosition(player3.getMidpoint().x, player3.getMidpoint().y);
+		ratingGroup.setPosition(player3?.getMidpoint()?.x ?? FlxG.width * .5, player3?.getMidpoint()?.y ?? FlxG.height * .5);
+		ratingGroup.zIndex = (player3?.zIndex ?? 0) + 10;
 		add(ratingGroup);
 		
 		healthBar = new Bar(0, FlxG.height - 50, 'healthBar', () -> return health);
 		healthBar.bounds.max = maxHealth;
 		healthBar.y -= healthBar.height;
 		healthBar.screenCenter(X);
+		healthBar.zIndex = 10;
 		uiGroup.add(healthBar);
 		iconP1 = new HealthIcon(0, 0, player1.healthIcon);
 		iconP1.origin.x = 0;
 		iconP1.flipX = true; // fuck you
+		iconP1.zIndex = 15;
 		uiGroup.add(iconP1);
 		iconP2 = new HealthIcon(0, 0, player2.healthIcon);
 		iconP2.origin.x = iconP2.width;
+		iconP2.zIndex = 15;
 		uiGroup.add(iconP2);
 		
 		scoreTxt = new FlxText(0, FlxG.height - 25, FlxG.width, 'Score: idk');
@@ -267,6 +248,7 @@ class PlayState extends MusicBeatState {
 		DiscordRPC.dirty = true;
 		
 		HScriptBackend.run('createPost');
+		sortZIndex();
 	}
 
 	public function addBG(sprite:FlxBasic) {
@@ -307,8 +289,8 @@ class PlayState extends MusicBeatState {
 				lane.queue.push(note);
 			}
 			for (event in song.events) events.push(event);
-			song.instTrack.time = 0;
-			song.instTrack.pause();
+			song.inst.time = 0;
+			song.inst.pause();
 			for (track in syncVocals) {
 				track.time = 0;
 				track.pause();
@@ -323,12 +305,12 @@ class PlayState extends MusicBeatState {
 			}
 			if (FlxG.keys.justPressed.RIGHT) {
 				Conductor.songPosition += 2000;
-				song.instTrack.time = Conductor.songPosition + 2000;
+				song.inst.time = Conductor.songPosition + 2000;
 				syncMusic(false, true);
 			}
 			if (FlxG.keys.justPressed.LEFT) {
 				Conductor.songPosition -= 2000;
-				song.instTrack.time = Conductor.songPosition - 2000;
+				song.inst.time = Conductor.songPosition - 2000;
 				syncMusic(false, true);
 			}
 		}
@@ -346,10 +328,10 @@ class PlayState extends MusicBeatState {
 			paused = !paused;
 			var pauseVocals:Bool = (paused || Conductor.songPosition < 0);
 			if (pauseVocals) {
-				song.instTrack.pause();
+				song.inst.pause();
 				for (track in syncVocals) track.pause();
 			} else {
-				if (song.instLoaded) song.instTrack.play(true, Conductor.songPosition);
+				if (song.instLoaded) song.inst.play(true, Conductor.songPosition);
 				for (track in syncVocals) track.play(true, Conductor.songPosition);
 				syncMusic(false, true);
 			}
@@ -391,18 +373,18 @@ class PlayState extends MusicBeatState {
 	}
 	
 	public function syncMusic(forceSongpos:Bool = false, forceTrackTime:Bool = false) {
-		if (song.instLoaded && song.instTrack.playing) {
-			var disparity:Float = Math.abs(song.instTrack.time - Conductor.songPosition);
-			if ((forceSongpos && Conductor.songPosition < song.instTrack.time) || disparity > 100)
-				Conductor.songPosition = song.instTrack.time;
+		if (song.instLoaded && song.inst.playing) {
+			var disparity:Float = Math.abs(song.inst.time - Conductor.songPosition);
+			if ((forceSongpos && Conductor.songPosition < song.inst.time) || disparity > 100)
+				Conductor.songPosition = song.inst.time;
 			if (forceTrackTime || disparity > 100) {
-				for (track in syncVocals) track.time = song.instTrack.time;
+				for (track in syncVocals) track.time = song.inst.time;
 			}
 		}
 	}
 	public function getSongPos() {
-		if (song.instLoaded && song.instTrack.playing)
-			return song.instTrack.time;
+		if (song.instLoaded && song.inst.playing)
+			return song.inst.time;
 		else
 			return Conductor.songPosition;
 	}
@@ -481,9 +463,6 @@ class PlayState extends MusicBeatState {
 		try {
 			iconP1.bop();
 			iconP2.bop();
-			player1.dance(beat);
-			player2.dance(beat);
-			player3.dance(beat);
 			stage.beatHit(beat);
 		} catch (e:Dynamic) {}
 
@@ -506,7 +485,7 @@ class PlayState extends MusicBeatState {
 			}
 		}
 		if (beat == 0) {
-			if (song.instLoaded) song.instTrack.play(true);
+			if (song.instLoaded) song.inst.play(true);
 			for (track in syncVocals) track.play(true);
 			syncMusic(true, true);
 		}

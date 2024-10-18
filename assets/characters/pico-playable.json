@@ -11,7 +11,6 @@
     "cameraZoom": 1.0
   },
   "flipX": false,
-  "offsets": [0, 300],
   "renderType": "multisparrow",
   "animations": [
     {

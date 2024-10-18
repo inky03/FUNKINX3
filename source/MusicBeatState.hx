@@ -22,6 +22,10 @@ class MusicBeatState extends FlxUIState {
 		// var stats = hl.Gc.stats();
 		// Sys.println('mem: ${DebugDisplay.formatBytes(stats.currentMemory)} / allocated: ${DebugDisplay.formatBytes(stats.totalAllocated)} / alloc count: ${DebugDisplay.formatBytes(stats.allocationCount)}');
 	}
+
+	public function sortZIndex() {
+		sort(Util.sortZIndex, FlxSort.ASCENDING);
+	}
 	
 	public function resetMusic() {
 		curBar = -1;
