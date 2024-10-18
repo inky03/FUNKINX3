@@ -11,7 +11,9 @@ class Character extends FunkinSprite {
 	public var fallbackCharacter:Null<String>;
 	public var character(default, set):Null<String>;
 	public var animationList:Map<String, CharacterAnim> = [];
-	public var startPos(default, never):FlxPoint = FlxPoint.get();
+	public var stagePos(default, never):FlxPoint = FlxPoint.get();
+	public var psychOffset(default, never):FlxPoint = FlxPoint.get();
+	public var originOffset(default, never):FlxPoint = FlxPoint.get();
 	public var cameraOffset(default, never):FlxPoint = FlxPoint.get();
 	
 	public var vocalsLoaded(default, null):Bool = false;
@@ -34,10 +36,6 @@ class Character extends FunkinSprite {
 			playAnimation('$anim-hold');
 		};
 	}
-	public override function destroy() {
-		startPos.destroy();
-		super.destroy();
-	}
 	
 	public function set_volume(newVolume:Float) {
 		vocals.volume = newVolume;
@@ -55,6 +53,8 @@ class Character extends FunkinSprite {
 					vocals.loadEmbedded(Paths.ogg(vocalsPath));
 					if (vocals.length > 0) {
 						vocalsLoaded = true;
+						vocals.play();
+						vocals.stop();
 						vocals.volume = volume;
 						Sys.println('vocals loaded!!');
 						return true;
@@ -187,7 +187,7 @@ class Character extends FunkinSprite {
 		singForSteps = Math.max(charData.singTime ?? 8, 1);
 		var scale:Float = charData.scale ?? 1;
 		this.scale.set(scale, scale);
-		if (charData.offsets != null) changeBasePos(charData.offsets[0] ?? 0, charData.offsets[1] ?? 0);
+		if (charData.offsets != null) originOffset.set(charData.offsets[0] ?? 0, charData.offsets[1] ?? 0);
 		if (charData.cameraOffsets != null) cameraOffset.set(charData.cameraOffsets[0] ?? 0, charData.cameraOffsets[1] ?? 0);
 		
 		sway = (animationList.exists('danceLeft') && animationList.exists('danceRight'));
@@ -213,7 +213,7 @@ class Character extends FunkinSprite {
 		smooth = !charData.no_antialiasing;
 		singForSteps = charData.sing_duration;
 		scale.set(charData.scale, charData.scale);
-		changeBasePos(charData.position[0], charData.position[1]);
+		psychOffset.set(charData.position[0], charData.position[1]);
 		cameraOffset.set(charData.camera_position[0], charData.camera_position[1]);
 		
 		sway = (animationList.exists('danceLeft') && animationList.exists('danceRight'));
@@ -222,13 +222,6 @@ class Character extends FunkinSprite {
 		animation.finish();
 	}
 
-	public function changeBasePos(x:Float = 0, y:Float = 0) {
-		this.x -= startPos.x;
-		this.y -= startPos.y;
-		startPos.set(x, y);
-		this.x += startPos.x;
-		this.y += startPos.y;
-	}
 	function setBaseSize() { // lazy, maybe do this without changing cur anim eventually?
 		playAnimation(sway ? 'danceLeft' : 'idle');
 		animation.finish();
@@ -259,8 +252,9 @@ class Character extends FunkinSprite {
 		offsets.set('singDOWNmiss', FlxPoint.get(-15, -19));
 		offsets.set('singUPmiss', FlxPoint.get(-46, 27));
 		offsets.set('singRIGHTmiss', FlxPoint.get(-44, 19));
+		psychOffset.set(0, 350);
+		originOffset.set(0, 0);
 		cameraOffset.set(0, 0);
-		changeBasePos(0, 350);
 		sway = false;
 
 		@:bypassAccessor this.character = null;

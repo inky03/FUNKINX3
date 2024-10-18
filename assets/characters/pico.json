@@ -2,7 +2,6 @@
   "version": "1.0.0",
   "name": "Pico",
   "assetPath": "characters/Pico_Basic",
-  "offsets": [0, 300],
   "flipX": true,
   "animations": [
     {

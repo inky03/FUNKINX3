@@ -45,7 +45,7 @@ class Song {
 	public var tempoChanges:Array<TempoChange> = [new TempoChange(0, 100, new TimeSignature())];
 
 	public var instLoaded:Bool;
-	public var instTrack:FlxSound;
+	public var inst:FlxSound;
 	public var songLength:Float = 0;
 	public var audioSuffix:String = '';
 
@@ -59,8 +59,8 @@ class Song {
 		this.keyCount = keyCount;
 		
 		instLoaded = false;
-		instTrack = new FlxSound();
-		FlxG.sound.list.add(instTrack);
+		inst = new FlxSound();
+		FlxG.sound.list.add(inst);
 	}
 	
 	public static function loadJson(path:String, difficulty:String = 'normal') {
@@ -418,11 +418,13 @@ class Song {
 		var instPath:String = path + Util.pathSuffix('Inst', audioSuffix);
 		Sys.println('attempting to load instrumental from $instPath...');
 		try {
-			instTrack.loadEmbedded(Paths.ogg(instPath));
-			if (instTrack.length > 0) {
-				Sys.println('instrumental loaded!!');
-				songLength = instTrack.length;
+			inst.loadEmbedded(Paths.ogg(instPath));
+			if (inst.length > 0) {
+				songLength = inst.length;
 				instLoaded = true;
+				inst.play();
+				inst.stop();
+				Sys.println('instrumental loaded!!');
 				return true;
 			}
 		} catch (e:Exception) {
