@@ -63,6 +63,7 @@ class FlxBasic implements IFlxDestroyable
 	public var cameras(get, set):Array<FlxCamera>;
 
 	// macros are a cocksucking piece of shit so im adding it here instead
+	// HOLD UP!! HER WRITING IS THIS FIRE??? - chloe
 	public var zIndex:Int = 0;
 
 	/**
