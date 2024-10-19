@@ -35,7 +35,7 @@
       "assetPath": "philly/window",
       "scroll": [0.3, 0.3],
       "animations": []
-    }
+    },
     {
       "danceEvery": 0,
       "zIndex": 50,
