@@ -105,17 +105,17 @@ class Paths {
 		return 'mods/$key';
 	inline static public function sharedPath(key:String, library:String = '')
 		return 'assets/${library == '' ? key : '$library/$key'}';
-	inline static public function exists(key:String, allowMods:Bool = true)
-		return (getPath(key, allowMods) != null);
+	inline static public function exists(key:String, allowMods:Bool = true, ?library:String)
+		return (getPath(key, allowMods, library) != null);
 
 	inline static public function sound(key:String, ?library:String)
 		return ogg('sounds/$key', false, library);
-	inline static public function music(key:String)
-		return ogg('music/$key');
-	inline static public function shaderFrag(key:String)
-		return text('shaders/$key.frag');
-	inline static public function shaderVert(key:String)
-		return text('shaders/$key.vert');
+	inline static public function music(key:String, ?library:String)
+		return ogg('music/$key', false, library);
+	inline static public function shaderFrag(key:String, ?library:String)
+		return text('shaders/$key.frag', library);
+	inline static public function shaderVert(key:String, ?library:String)
+		return text('shaders/$key.vert', library);
 
 	static public function image(key:String, ?library:String) {
 		var bmdKey:String = 'images/$key.png';
