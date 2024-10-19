@@ -27,7 +27,8 @@ function createPost() {
 	light.visible = false;
 }
 
-function update(elapsed){
+function update(elapsed:Float, paused:Bool){
+	if (paused) return;
 	var shaderInput:Float = (Conductor.crochet / 1000) * elapsed * 1.5;
 	lightShader.setFloat('alphaShit', lightShader.getFloat('alphaShit') + shaderInput);
 
@@ -102,6 +103,6 @@ function trainReset(){
 }
 
 function getNamedProp(name:String){
-    var prop = game.stage.getProp(name);
+    var prop = stage.getProp(name);
     return prop;
 }

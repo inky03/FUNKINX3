@@ -33,6 +33,11 @@ class HScriptBackend {
 	public static function stopAllScripts():Void {
 		while (activeScripts.length > 0) stop(activeScripts[0]);
 	}
+	public static function set(field:String, value:Any):Void {
+		for (hscript in activeScripts) {
+			hscript.set(field, value);
+		}
+	}
 	public static function run(?name:String, ?args:Array<Any>):Any {
 		var returnValue:Any = null;
 		var returnLocked:Bool = false;

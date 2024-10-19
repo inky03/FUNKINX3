@@ -27,6 +27,23 @@ class MusicBeatState extends FlxUIState {
 	public function sortZIndex() {
 		sort(Util.sortZIndex, FlxSort.ASCENDING);
 	}
+	public function insertZIndex(obj:FunkinSprite) {
+        if (members.contains(obj)) remove(obj);
+        var low:Null<Int> = null;
+        for (pos => mem in members) {
+            low = (low == null ? mem.zIndex : Std.int(Math.min(mem.zIndex, low)));
+            if (obj.zIndex < mem.zIndex) {
+                insert(pos, obj);
+                return obj;
+            }
+        }
+        if (low != null && obj.zIndex < low) {
+            insert(0, obj);
+        } else {
+            add(obj);
+        }
+        return obj;
+    }
 	
 	public function resetMusic() {
 		curBar = -1;
@@ -53,7 +70,7 @@ class MusicBeatState extends FlxUIState {
 		var prevBar:Int = curBar;
 
 		var trackerTime:Float = (syncTracker != null && syncTracker.playing ? syncTracker.time : Conductor.songPosition);
-		if (Conductor.songPosition == trackerTime) {
+		if (Math.abs(Conductor.songPosition - trackerTime) < 5) {
 			Conductor.songPosition += elapsedMS;
 		} else {
 			Conductor.songPosition = trackerTime;

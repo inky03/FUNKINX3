@@ -54,8 +54,30 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
         }
 
         startCharPositions();
+        sortZIndex();
+    }
+
+    public function sortZIndex() {
         sort(Util.sortZIndex, FlxSort.ASCENDING);
     }
+    public function insertZIndex(obj:FunkinSprite) {
+        if (members.contains(obj)) remove(obj);
+        var low:Null<Int> = null;
+        for (pos => mem in members) {
+            low = (low == null ? mem.zIndex : Std.int(Math.min(mem.zIndex, low)));
+            if (obj.zIndex < mem.zIndex) {
+                insert(pos, obj);
+                return obj;
+            }
+        }
+        if (low != null && obj.zIndex < low) {
+            insert(0, obj);
+        } else {
+            add(obj);
+        }
+        return obj;
+    }
+
     public function beatHit(beat:Int) {
         for (prop in props) prop.dance(beat);
         for (chara in characters) chara.dance(beat);
@@ -83,13 +105,17 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
             propSprite.y = prop.position[1];
             propSprite.alpha = prop.alpha ?? 1;
             propSprite.smooth = !(prop.isPixel ?? false);
-            if (prop.animType == 'sparrow' && (prop?.animations?.length ?? 0) > 0) { // this is stupid
-                propSprite.loadAtlas(prop.assetPath, library);
-                propSprite.animated = true;
+            propSprite.animated = (prop?.animations?.length ?? 0) > 0;
+            if (propSprite.animated) { // this is stupid
+                switch (prop.animType) {
+                    case 'sparrow': propSprite.loadAtlas(prop.assetPath, library);
+                    default:
+                }
                 for (animation in prop.animations) {
                     propSprite.addAnimation(animation.name, animation.prefix, animation.frameRate ?? 24, animation.looped ?? false, animation.frameIndices);
                     if (animation.offsets != null) propSprite.offsets.set(animation.name, FlxPoint.get(animation.offsets[0], animation.offsets[1]));
                 }
+                if (prop.startingAnimation != null) propSprite.animation.play(prop.startingAnimation);
             } else {
                 if (prop.assetPath.startsWith('#'))
                     propSprite.makeGraphic(1, 1, FlxColor.fromString(prop.assetPath));
@@ -98,7 +124,6 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
             }
             if (prop.scroll != null) propSprite.scrollFactor.set(prop.scroll[0], prop.scroll[1]);
             if (prop.scale != null) propSprite.scale.set(prop.scale[0], prop.scale[1]);
-            if (prop.startingAnimation != null) propSprite.animation.play(prop.startingAnimation);
             propSprite.updateHitbox();
 
             this.props[prop.name] = propSprite;

@@ -9,12 +9,14 @@ class DebugDisplay extends TextField {
 	public var currentFPS(default, null):Int;
 	public var mem:Float;
 	public var maxMem:Float;
+	public var showFPS:Bool = true;
+	public var showMem:Bool = true;
 	public static var byteUnits:Array<String> = ['bytes', 'kb', 'mb', 'gb'];
 	
 	@:noCompletion private var currentTime:Float;
 	@:noCompletion private var times:Array<Float>;
 
-	public function new(x:Float = 10, y:Float = 10, color:Int = 0x000000) {
+	public function new(x:Float = 10, y:Float = 10, color:Int = 0xffffff) {
 		super();
 		
 		this.x = x;
@@ -25,14 +27,17 @@ class DebugDisplay extends TextField {
 		multiline = true;
 		selectable = false;
 		mouseEnabled = false;
-		defaultTextFormat = new TextFormat('_sans', 12, color);
+		// filters = [new openfl.filters.GlowFilter(0, 4, 2, 2)];
+
+		var tf:TextFormat = new TextFormat('_sans', 12, color);
+		tf.leading = -4;
+		defaultTextFormat = tf;
 		
 		currentTime = 0;
 		times = [];
 	}
 
-	// Event Handlers
-	private #if !flash override #end function __enterFrame(deltaTime:Float):Void {
+	override function __enterFrame(deltaTime:Float):Void {
 		var oldFPS:Int = currentFPS;
 		var oldMem:Float = mem;
 		
@@ -45,8 +50,8 @@ class DebugDisplay extends TextField {
 		
 		if (oldFPS != currentFPS || oldMem != mem) {
 			maxMem = Math.max(mem, maxMem);
-			text = 'FPS: ${Math.min(currentFPS, FlxG.drawFramerate)}'+
-			'\nGC MEM: ${DebugDisplay.formatBytes(mem)} / ${DebugDisplay.formatBytes(maxMem)}';
+			text = (showFPS ? 'FPS: ${Math.min(currentFPS, FlxG.drawFramerate)}' : '') + 
+			(showMem ? '\nGC MEM: ${DebugDisplay.formatBytes(mem)} / ${DebugDisplay.formatBytes(maxMem)}' : '');
 		}
 	}
 	

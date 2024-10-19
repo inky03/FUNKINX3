@@ -388,21 +388,23 @@ class Song {
 		tempMetronome.tempoChanges = this.tempoChanges;
 		for (note in notes) {
 			tempMetronome.setMS(note.msTime);
-			final stepCrochet:Float = tempMetronome.getCrochet(tempMetronome.bpm) * .25;
 			var hitNote:Note = new Note(note.player, note.msTime, note.laneIndex, note.msLength, note.kind);
 			noteArray.push(hitNote);
 			
 			if (hitNote.msLength > 0) { //hold bits
-				var holdBits:Float = note.msLength / stepCrochet;
-				for (i in 0...Math.ceil(holdBits)) {
-					var bitTime:Float = note.msTime + i * stepCrochet;
-					var bitLength:Float = Math.min(note.msTime + note.msLength - bitTime, stepCrochet);
+				var endMs:Float = note.msTime + note.msLength;
+				var bitTime:Float = note.msTime;
+				while (bitTime < endMs) {
+					tempMetronome.setStep(Std.int(tempMetronome.step + .05) + 1);
+					var newTime:Float = tempMetronome.ms;
+					var bitLength:Float = Math.min(newTime - bitTime, endMs - bitTime);
 					var holdBit:Note = new Note(note.player, bitTime, note.laneIndex, bitLength, note.kind, true);
 					hitNote.children.push(holdBit);
 					holdBit.parent = hitNote;
 					noteArray.push(holdBit);
+					bitTime = newTime;
 				}
-				var endBit:Note = new Note(note.player, note.msTime + note.msLength, note.laneIndex, 0, note.kind, true);
+				var endBit:Note = new Note(note.player, endMs, note.laneIndex, 0, note.kind, true);
 				hitNote.children.push(endBit);
 				noteArray.push(endBit);
 				

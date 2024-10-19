@@ -121,6 +121,7 @@ class PlayState extends MusicBeatState {
 		stage = new Stage(curStage, song);
 		defaultCamZoom = stage.zoom;
 		add(stage);
+		HScriptBackend.set('stage', stage);
 
 		player1 = stage.getCharacter('bf');
 		player2 = stage.getCharacter('dad');
@@ -254,21 +255,6 @@ class PlayState extends MusicBeatState {
 		sortZIndex();
 	}
 
-	public function addBG(sprite:FlxBasic) {
-		var low:Null<Int> = null;
-		for (chara in [player1, player2, player3]) {
-			var pos:Int = members.indexOf(chara);
-			if (pos > -1 && (low == null || pos < low)) {
-				low = pos;
-			}
-		}
-		if (low != null) {
-			insert(low, sprite);
-		} else {
-			add(sprite); // too bad!
-		}
-		return sprite;
-	}
 	override public function update(elapsed:Float) {
 		if (FlxG.keys.justPressed.ESCAPE) {
 			FlxG.switchState(() -> new FreeplayState());
@@ -338,13 +324,18 @@ class PlayState extends MusicBeatState {
 				for (track in syncVocals) track.play(true, Conductor.songPosition);
 				syncMusic(false, true);
 			}
+			FlxTimer.globalManager.forEach((timer:FlxTimer) -> { if (!timer.finished) timer.active = !paused; });
+			FlxTween.globalManager.forEach((tween:FlxTween) -> { if (!tween.finished) tween.active = !paused; });
 		}
 		
 		DiscordRPC.update();
 		super.update(elapsed);
-		HScriptBackend.run('update', [elapsed]);
+		HScriptBackend.run('update', [elapsed, paused]);
 
-		if (paused) return;
+		if (paused) {
+			HScriptBackend.run('updatePost', [elapsed, paused]);
+			return;
+		}
 		
 		iconP1.updateBop(elapsed);
 		iconP2.updateBop(elapsed);
@@ -386,11 +377,13 @@ class PlayState extends MusicBeatState {
 	
 	public function syncMusic(forceSongpos:Bool = false, forceTrackTime:Bool = false) {
 		if (song.instLoaded && song.inst.playing) {
-			var disparity:Float = Math.abs(song.inst.time - Conductor.songPosition);
-			if ((forceSongpos && Conductor.songPosition < song.inst.time) || disparity > 100)
+			if ((forceSongpos && Conductor.songPosition < song.inst.time) || Math.abs(song.inst.time - Conductor.songPosition) > 75)
 				Conductor.songPosition = song.inst.time;
-			if (forceTrackTime || disparity > 100) {
-				for (track in syncVocals) track.time = song.inst.time;
+			if (forceTrackTime) {
+				for (track in syncVocals) {
+					if (Math.abs(song.inst.time - track.time) > 75)
+						track.time = song.inst.time;
+				}
 			}
 		}
 	}

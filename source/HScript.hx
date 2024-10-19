@@ -89,11 +89,11 @@ class HScript extends Iris {
 		if (Std.isOfType(FlxG.state, MusicBeatState)) {
 			var state:MusicBeatState = cast FlxG.state;
 			set('sortZIndex', state.sortZIndex);
+			set('insertZIndex', state.insertZIndex);
 		}
 		if (Std.isOfType(FlxG.state, PlayState)) {
 			var playState:PlayState = cast FlxG.state;
 			set('stage', playState.stage);
-			set('addBG', playState.addBG);
 		}
 		
 		// abstract classes and special

@@ -13,10 +13,7 @@ class Conductor {
 	public static function get_stepCrochet() return (crochet * .25);
 	
 	public static function get_songPosition() return metronome.ms;
-	public static function set_songPosition(newMS:Float) {
-		metronome.setMS(newMS);
-		return songPosition = newMS;
-	}
+	public static function set_songPosition(newMS:Float) return metronome.setMS(newMS);
 	public static function get_timeSignature() return metronome.timeSignature;
 	public static function get_bpm() return metronome.bpm;
 	
@@ -32,7 +29,7 @@ enum MetronomeMeasure {
 	MS;
 }
 
-class Metronome { // TODO: move metronome, tempo change time signature shit to somewhere else (not conductor)
+class Metronome {
 	public var tempoChanges:Array<TempoChange>;
 	public var step:Float;
 	public var beat:Float;
@@ -55,7 +52,7 @@ class Metronome { // TODO: move metronome, tempo change time signature shit to s
 	}
 	
 	public function setStep(newStep:Float) {
-		setBeat(newStep * 4);
+		setBeat(newStep * .25);
 		return step = newStep;
 	}
 	
@@ -157,7 +154,10 @@ class Metronome { // TODO: move metronome, tempo change time signature shit to s
 		return ms = newMS;
 	}
 
-	public function convertMeasure(value:Float, input:MetronomeMeasure, output:MetronomeMeasure) {
+	public function convertMeasure(value:Float, input:MetronomeMeasure, output:MetronomeMeasure):Float {
+		var prevStep:Float = step;
+		var prevBeat:Float = beat;
+		var prevBar:Float = bar;
 		var prevMS:Float = ms;
 		var target:Float = 0;
 		switch (input) { // uh. yeah.
@@ -174,7 +174,10 @@ class Metronome { // TODO: move metronome, tempo change time signature shit to s
 			case MS: target = ms;
 			default:
 		}
-		setMS(prevMS);
+		step = prevStep;
+		beat = prevBeat;
+		bar = prevBar;
+		ms = prevMS;
 		return target;
 	}
 }

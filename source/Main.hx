@@ -18,7 +18,7 @@ class Main extends Sprite {
 		var game:FlxGame = new FlxGame(0, 0, MainMenuState);
 		@:privateAccess game._customSoundTray = FunkinSoundTray;
 		addChild(game);
-		addChild(debugDisplay = new DebugDisplay(10, 3, 0xFFFFFF));
+		addChild(debugDisplay = new DebugDisplay(10, 3));
 
 		FlxG.maxElapsed = 1;
 		FlxG.drawFramerate = 144;

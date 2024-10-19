@@ -39,7 +39,7 @@
     {
       "danceEvery": 0,
       "zIndex": 50,
-      "position": [378, 147],
+      "position": [178, 145],
       "scale": [1, 1],
       "animType": "sparrow",
       "name": "behindTrain",

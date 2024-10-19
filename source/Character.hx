@@ -1,6 +1,7 @@
 using StringTools;
 
 class Character extends FunkinSprite {
+	public var bop:Bool = true;
 	public var sway:Bool = false;
 	public var animReset:Float = 0;
 	public var bopFrequency:Int = 2;
@@ -101,7 +102,7 @@ class Character extends FunkinSprite {
 		super.playAnimation(anim, forced);
 	}
 	public function dance(beat:Int = 0) {
-		if (animReset > 0 || bopFrequency <= 0) return false;
+		if (animReset > 0 || bopFrequency <= 0 || !bop) return false;
 		if (sway)
 			playAnimation(beat % 2 == 0 ? 'danceLeft' : 'danceRight');
 		else if (beat % 2 == 0)
