@@ -88,6 +88,7 @@ class PlayState extends MusicBeatState {
 		HScriptBackend.run('create');
 		
 		Conductor.metronome.setBeat(playCountdown ? -5 : -1);
+		syncTracker = song.instLoaded ? song.inst : null;
 
 		hitsound = FlxG.sound.load(Paths.sound('hitsound'));
 		hitsound.volume = .7;
@@ -110,7 +111,6 @@ class PlayState extends MusicBeatState {
 			FlxG.cameras.defaults.resize(0);
 			FlxG.cameras.defaults.push(camGame);
 		}
-		// FlxG.cameras.setDefaultDrawTarget(camGame, true);
 		
 		camFocusTarget = new FlxPoint(0, FlxG.height * .5);
 		camFocus = new FlxObject(camFocusTarget.x, camFocusTarget.y, 1, 1);
@@ -240,6 +240,9 @@ class PlayState extends MusicBeatState {
 			events.push(event);
 			pushedEvent(event);
 		}
+		if (song.instLoaded) {
+			song.inst.onComplete = finishSong;
+		}
 		
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
@@ -367,9 +370,18 @@ class PlayState extends MusicBeatState {
 		
 		HScriptBackend.run('updatePost', [elapsed]);
 		
-		if (Conductor.songPosition >= song.songLength) {
-			FlxG.switchState(() -> new FreeplayState());
+		if (Conductor.songPosition >= song.songLength && !conductorPaused) {
+			finishSong();
 		}
+	}
+
+	public function finishSong() {
+		var result:Dynamic = HScriptBackend.run('finishSong');
+		if (result == HScript.STOP) {
+			conductorPaused = true;
+			return;
+		}
+		FlxG.switchState(() -> new FreeplayState());
 	}
 	
 	public function syncMusic(forceSongpos:Bool = false, forceTrackTime:Bool = false) {

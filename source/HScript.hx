@@ -11,6 +11,9 @@ import crowplexus.hscript.Printer;
 import crowplexus.hscript.Expr.Error as IrisError;
 
 class HScript extends Iris {
+	public static var STOP(default, never):HScriptFunctionEnum = STOP;
+	public static var STOPALL(default, never):HScriptFunctionEnum = STOPALL;
+
 	public var scriptString(default, set):String = '';
 	public var scriptName:String = '';
 	
@@ -43,6 +46,7 @@ class HScript extends Iris {
 		set('this', this);
 		set('Type', Type);
 		set('Reflect', Reflect);
+		set('HScript', HScript);
 		
 		set('FlxG', flixel.FlxG);
 		set('FlxSprite', flixel.FlxSprite);
@@ -51,6 +55,7 @@ class HScript extends Iris {
 		set('FlxText', flixel.text.FlxText);
 		set('FlxEase', flixel.tweens.FlxEase);
 		set('FlxTimer', flixel.util.FlxTimer);
+		set('FlxSound', flixel.sound.FlxSound);
 		set('FlxTween', flixel.tweens.FlxTween);
 		set('FlxRuntimeShader', FlxRuntimeShader);
 
@@ -76,16 +81,24 @@ class HScript extends Iris {
 		set('NoteEventType', NoteEventType);
 		#end
 		
+		set('game', FlxG.state);
 		set('state', FlxG.state);
 		set('add', FlxG.state.add);
 		set('remove', FlxG.state.remove);
 		set('insert', FlxG.state.insert);
+		if (Std.isOfType(FlxG.state, MusicBeatState)) {
+			var state:MusicBeatState = cast FlxG.state;
+			set('sortZIndex', state.sortZIndex);
+		}
 		if (Std.isOfType(FlxG.state, PlayState)) {
-			set('game', FlxG.state);
-			set('addBG', cast(FlxG.state, PlayState).addBG);
+			var playState:PlayState = cast FlxG.state;
+			set('stage', playState.stage);
+			set('addBG', playState.addBG);
 		}
 		
-		// abstract classes
+		// abstract classes and special
+		set('STOP', STOP);
+		set('STOPALL', STOPALL);
 		set('FlxAxes', HScriptFlxAxes);
 		set('FlxColor', HScriptFlxColor);
 		set('BlendMode', HScriptBlendMode);
@@ -100,6 +113,10 @@ class HScript extends Iris {
 		}
 		return scriptString = newCode;
 	}
+}
+enum HScriptFunctionEnum {
+	STOP;
+	STOPALL;
 }
 
 class QuickRuntimeShader extends FlxRuntimeShader {
@@ -128,7 +145,59 @@ class HScriptFlxColor { // i hate it in here
 	public static var PINK(default, never):Int = cast FlxColor.PINK;
 	public static var MAGENTA(default, never):Int = cast FlxColor.MAGENTA;
 	public static var TRANSPARENT(default, never):Int = cast FlxColor.TRANSPARENT;
+
+	public var color:FlxColor;
+	public var alpha(default, set):Int;
+	public var alphaFloat(default, set):Float;
+	@:isVar public var red(get, set):Int;
+	@:isVar public var green(get, set):Int;
+	@:isVar public var blue(get, set):Int;
+	@:isVar public var redFloat(get, set):Float;
+	@:isVar public var greenFloat(get, set):Float;
+	@:isVar public var blueFloat(get, set):Float;
+	@:isVar public var hue(get, set):Float;
+	@:isVar public var cyan(get, set):Float;
+	@:isVar public var magenta(get, set):Float;
+	@:isVar public var yellow(get, set):Float;
+	@:isVar public var black(get, set):Float;
+	@:isVar public var saturation(get, set):Float;
+	@:isVar public var brightness(get, set):Float;
+	@:isVar public var lightness(get, set):Float;
 	
+	public function new(color:Int = 0xffffffff) {
+		this.color = cast (color, FlxColor);
+	} // this is so horrible i could kill myself
+	function set_alpha(newAlpha:Int) return alpha = color.alpha = newAlpha;
+	function set_alphaFloat(newAlpha:Float) return alphaFloat = color.alphaFloat = newAlpha;
+	function get_red() return color.red;
+	function set_red(newRed:Int) return red = color.red = newRed;
+	function get_green() return color.green;
+	function set_green(newGreen:Int) return green = color.green = newGreen;
+	function get_blue() return color.blue;
+	function set_blue(newBlue:Int) return blue = color.blue = newBlue;
+	function get_redFloat() return color.redFloat;
+	function set_redFloat(newRed:Float) return redFloat = color.redFloat = newRed;
+	function get_greenFloat() return color.greenFloat;
+	function set_greenFloat(newGreen:Float) return greenFloat = color.greenFloat = newGreen;
+	function get_blueFloat() return color.blueFloat;
+	function set_blueFloat(newBlue:Float) return blueFloat = color.blueFloat = newBlue;
+	function get_hue() return color.hue;
+	function set_hue(newHue:Float) return hue = color.hue = newHue;
+	function get_saturation() return color.saturation;
+	function set_saturation(newSat:Float) return saturation = color.saturation = newSat;
+	function get_brightness() return color.brightness;
+	function set_brightness(newBrt:Float) return brightness = color.brightness = newBrt;
+	function get_lightness() return color.lightness;
+	function set_lightness(newLt:Float) return lightness = color.lightness = newLt;
+	function get_cyan() return color.cyan;
+	function set_cyan(newCyan:Float) return cyan = color.cyan = newCyan;
+	function get_magenta() return color.magenta;
+	function set_magenta(newMagenta:Float) return magenta = color.magenta = newMagenta;
+	function get_yellow() return color.cyan;
+	function set_yellow(newYellow:Float) return yellow = color.yellow = newYellow;
+	function get_black() return color.black;
+	function set_black(newBlack:Float) return black = color.black = newBlack;
+
 	public static function fromCMYK(c:Float, m:Float, y:Float, k:Float, a:Float = 1) {
 		return FlxColor.fromCMYK(c, m, y, k, a);
 	}
@@ -168,14 +237,8 @@ class HScriptFlxColor { // i hate it in here
 	public static function multiply(col:Int, col2:Int) {
 		return FlxColor.multiply(col, col2);
 	}
-	
-	public static function retrieve(num:Int) {
-		var col:FlxColor = num;
-		return {
-			red: col.red, green: col.green, blue: col.blue, alpha: col.alpha,
-			redFloat: col.redFloat, greenFloat: col.greenFloat, blueFloat: col.blueFloat,
-			hue: col.hue, saturation: col.saturation, brightness: col.brightness, lightness: col.lightness
-		};
+	public static function from(num:Int) {
+		return new HScriptFlxColor(num);
 	}
 }
 class HScriptFlxAxes {

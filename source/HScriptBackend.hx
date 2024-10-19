@@ -35,9 +35,15 @@ class HScriptBackend {
 	}
 	public static function run(?name:String, ?args:Array<Any>):Any {
 		var returnValue:Any = null;
+		var returnLocked:Bool = false;
 		for (hscript in activeScripts) {
 			var result:Any = hscript.run(name, args, true);
-			if (result != null) returnValue = result;
+			switch (result) {
+				case null:
+				case HScript.STOPALL: return result;
+				case HScript.STOP: returnLocked = true;
+				default: if (!returnLocked) returnValue = result;
+			}
 		}
 		return returnValue;
 	}

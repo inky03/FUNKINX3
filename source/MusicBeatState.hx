@@ -9,6 +9,7 @@ class MusicBeatState extends FlxUIState {
 	public var curBeat:Int = -1;
 	public var curBar:Int = -1;
 	public var paused:Bool = false;
+	public var syncTracker:FlxSound = null;
 	public var conductorPaused:Bool = false;
 
 	public var stepHit:FlxTypedSignal<Int->Void> = new FlxTypedSignal<Int->Void>();
@@ -51,7 +52,12 @@ class MusicBeatState extends FlxUIState {
 		var prevBeat:Int = curBeat;
 		var prevBar:Int = curBar;
 
-		Conductor.songPosition += elapsedMS;
+		var trackerTime:Float = (syncTracker != null && syncTracker.playing ? syncTracker.time : Conductor.songPosition);
+		if (Conductor.songPosition == trackerTime) {
+			Conductor.songPosition += elapsedMS;
+		} else {
+			Conductor.songPosition = trackerTime;
+		}
 		
 		curStep = Math.floor(Conductor.metronome.step);
 		curBeat = Math.floor(Conductor.metronome.beat);
