@@ -107,7 +107,7 @@ class Paths {
 		return 'assets/${library == '' ? key : '$library/$key'}';
 	inline static public function exists(key:String, allowMods:Bool = true, ?library:String)
 		return (getPath(key, allowMods, library) != null);
-
+	
 	inline static public function sound(key:String, ?library:String)
 		return ogg('sounds/$key', false, library);
 	inline static public function music(key:String, ?library:String)
