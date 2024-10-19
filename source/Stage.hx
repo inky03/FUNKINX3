@@ -88,7 +88,7 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
                 propSprite.animated = true;
                 for (animation in prop.animations) {
                     propSprite.addAnimation(animation.name, animation.prefix, animation.frameRate ?? 24, animation.looped ?? false, animation.frameIndices);
-                    propSprite.offsets.set(animation.name, FlxPoint.get(animation.offsets[0], animation.offsets[1]));
+                    if (animation.offsets != null) propSprite.offsets.set(animation.name, FlxPoint.get(animation.offsets[0], animation.offsets[1]));
                 }
             } else {
                 if (prop.assetPath.startsWith('#'))
@@ -98,6 +98,7 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
             }
             if (prop.scroll != null) propSprite.scrollFactor.set(prop.scroll[0], prop.scroll[1]);
             if (prop.scale != null) propSprite.scale.set(prop.scale[0], prop.scale[1]);
+            if (prop.startingAnimation != null) propSprite.animation.play(prop.startingAnimation);
             propSprite.updateHitbox();
 
             this.props[prop.name] = propSprite;

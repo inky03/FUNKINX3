@@ -108,8 +108,8 @@ class Paths {
 	inline static public function exists(key:String, allowMods:Bool = true)
 		return (getPath(key, allowMods) != null);
 
-	inline static public function sound(key:String)
-		return ogg('sounds/$key');
+	inline static public function sound(key:String, ?library:String)
+		return ogg('sounds/$key', false, library);
 	inline static public function music(key:String)
 		return ogg('music/$key');
 	inline static public function shaderFrag(key:String)
