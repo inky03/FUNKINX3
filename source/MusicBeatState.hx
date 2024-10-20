@@ -28,22 +28,22 @@ class MusicBeatState extends FlxUIState {
 		sort(Util.sortZIndex, FlxSort.ASCENDING);
 	}
 	public function insertZIndex(obj:FunkinSprite) {
-        if (members.contains(obj)) remove(obj);
-        var low:Float = Math.POSITIVE_INFINITY;
-        for (pos => mem in members) {
-            low = Math.min(mem.zIndex, low);
-            if (obj.zIndex < mem.zIndex) {
-                insert(pos, obj);
-                return obj;
-            }
-        }
-        if (obj.zIndex < low) {
-            insert(0, obj);
-        } else {
-            add(obj);
-        }
-        return obj;
-    }
+		if (members.contains(obj)) remove(obj);
+		var low:Float = Math.POSITIVE_INFINITY;
+		for (pos => mem in members) {
+			low = Math.min(mem.zIndex, low);
+			if (obj.zIndex < mem.zIndex) {
+				insert(pos, obj);
+				return obj;
+			}
+		}
+		if (obj.zIndex < low) {
+			insert(0, obj);
+		} else {
+			add(obj);
+		}
+		return obj;
+	}
 	
 	public function resetMusic() {
 		curBar = -1;
