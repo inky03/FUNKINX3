@@ -17,6 +17,7 @@ class Strumline extends FlxSpriteGroup {
 	
 	//all lane setters (getters are Not representative of all lanes)
 	public var cpu(default, set):Bool;
+	public var oneWay(default, set):Bool;
 	public var laneCount(default, set):Int;
 	public var hitWindow(default, set):Float;
 	public var direction(default, set):Float;
@@ -24,6 +25,7 @@ class Strumline extends FlxSpriteGroup {
 	
 	//oh dear
 	public function set_cpu(isCpu:Bool) { for (lane in lanes) lane.cpu = isCpu; return cpu = isCpu; }
+	public function set_oneWay(isOneWay:Bool) { for (lane in lanes) lane.oneWay = isOneWay; return oneWay = isOneWay; }
 	public function set_direction(newDir:Float) { for (lane in lanes) lane.direction = newDir; return direction = newDir; }
 	public function set_hitWindow(newWindow:Float) { for (lane in lanes) lane.hitWindow = newWindow; return hitWindow = newWindow; }
 	public function set_scrollSpeed(newSpeed:Float) { for (lane in lanes) lane.scrollSpeed = newSpeed; return scrollSpeed = newSpeed; }

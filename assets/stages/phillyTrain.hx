@@ -16,11 +16,10 @@ var trainCars:Int = 8;
 var trainCooldown:Int = 0;
 
 function createPost() {
-	trainSound = new flixel.sound.FlxSound().loadEmbedded(Paths.sound('train_passes', 'week3'));
-	FlxG.sound.list.add(trainSound);
+	Paths.sound('train_passes', 'week3');
 
-    lightShader = new RuntimeShader('building');
-    lightShader.setFloat('alphaShit', 0.0);
+	lightShader = new RuntimeShader('building');
+	lightShader.setFloat('alphaShit', 0.0);
 
 	var light:FlxSprite = getNamedProp('lights');
 	light.shader = lightShader;
@@ -63,33 +62,33 @@ function beatHit(beat:Int){
 
 function trainStart(){
 	trainMoving = true;
-	trainSound.play();
+	FlxG.sound.play(Paths.sound('train_passes', 'week3'));
 }
 
 var startedMoving:Bool = false;
 
 function updateTrainPos(){
-    if (trainSound.time >= 4700){
-    	startedMoving = true;
-        game.player3.playAnimation('hairBlow');
-    }
+	if (trainSound.time >= 4700){
+		startedMoving = true;
+		game.player3.playAnimation('hairBlow');
+	}
 
-    if (startedMoving){
-        var train:FlxSprite = getNamedProp('train');
-        train.x -= 400;
+	if (startedMoving){
+		var train:FlxSprite = getNamedProp('train');
+		train.x -= 400;
 
-        if (train.x < -2000 && !trainFinishing)
-        {
-            train.x = -1150;
-            trainCars -= 1;
+		if (train.x < -2000 && !trainFinishing)
+		{
+			train.x = -1150;
+			trainCars -= 1;
 
-            if (trainCars <= 0)
-                trainFinishing = true;
-        }
+			if (trainCars <= 0)
+				trainFinishing = true;
+		}
 
-        if (train.x < -4000 && trainFinishing)
-            trainReset();
-    }
+		if (train.x < -4000 && trainFinishing)
+			trainReset();
+	}
 }
 
 function trainReset(){
@@ -103,6 +102,6 @@ function trainReset(){
 }
 
 function getNamedProp(name:String){
-    var prop = stage.getProp(name);
-    return prop;
+	var prop = stage.getProp(name);
+	return prop;
 }

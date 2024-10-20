@@ -308,7 +308,6 @@ class Song {
 					var events:Array<Array<String>> = eventBlob[1];
 					for (event in events) {
 						var songEvent:SongEvent = {name: event[0], msTime: eventTime, params: ['value1' => event[1], 'value2' => event[2]]};
-						Sys.println(songEvent.name);
 						song.events.push(songEvent);
 					}
 				}

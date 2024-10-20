@@ -40,6 +40,7 @@ class MainMenuState extends MusicBeatState {
 		FlxG.camera.followLerp = 9 / 60;
 		target.x = FlxG.width * .5;
 		select();
+		FlxG.camera.snapToTarget();
 		
 		DiscordRPC.presence.details = 'In the main menu!';
 		DiscordRPC.dirty = true;

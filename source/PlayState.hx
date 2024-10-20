@@ -244,6 +244,7 @@ class PlayState extends MusicBeatState {
 		if (song.instLoaded) {
 			song.inst.onComplete = finishSong;
 		}
+		for (i in 0...4) Paths.sound('missnote$i');
 		
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
@@ -542,7 +543,7 @@ class PlayState extends MusicBeatState {
 			lane.hitNote(note);
 			extraWindow = Math.min(extraWindow + 6, 200);
 		} else {
-			lane.receptor.playAnimation('press', true);
+			lane.ghostTapped();
 			extraWindow = Math.min(extraWindow + 15, 200);
 		}
 		Conductor.songPosition = oldTime;
@@ -555,6 +556,11 @@ class PlayState extends MusicBeatState {
 	}
 	public function playerNoteEvent(e:Lane.NoteEvent) {
 		e.targetCharacter = player1;
+		if (e.type == Lane.NoteEventType.GHOST && Settings.data.ghostTapping) {
+			e.playAnimation = false;
+			e.applyRating = false;
+			e.playSound = false;
+		}
 
 		HScriptBackend.run('playerNoteEventPre', [e]);
 		try e.dispatch()
@@ -563,10 +569,10 @@ class PlayState extends MusicBeatState {
 	}
 	public function opponentNoteEvent(e:Lane.NoteEvent) {
 		e.targetCharacter = player2;
-		e.playHitSound = false;
 		e.applyRating = false;
-		e.splash = false;
-		e.spark = false;
+		e.playSound = false;
+		e.doSplash = false;
+		e.doSpark = false;
 
 		HScriptBackend.run('opponentNoteEventPre', [e]);
 		try e.dispatch()

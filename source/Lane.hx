@@ -113,6 +113,10 @@ class Lane extends FlxSpriteGroup {
 			
 		}
 	}
+	public function ghostTapped()
+		noteEvent.dispatch(basicEvent(GHOST));
+	public function basicEvent(type:NoteEventType, ?note:Note):NoteEvent
+		return {lane: this, strumline: strumline, receptor: receptor, note: note, type: type};
 	public function getHighestNote(filter:Null<(note:Note)->Bool> = null) {
 		var highNote:Null<Note> = null;
 		for (note in notes) {
@@ -125,21 +129,24 @@ class Lane extends FlxSpriteGroup {
 		return highNote;
 	}
 	
-	public function splash() {
+	public function splash():NoteSplash {
 		var splash:NoteSplash = noteSplashes.recycle(NoteSplash, () -> new NoteSplash(noteData));
 		splash.camera = camera; //silly. freaking silly
 		splash.alpha = alpha * .7;
 		splash.shader = splashRGB.shader;
 		splash.splashOnReceptor(receptor);
+		return splash;
 	}
-	public function popCover() {
+	public function popCover():NoteCover {
 		noteCover.popOnReceptor(receptor);
+		return noteCover;
 	}
-	public function spark() {
+	public function spark():NoteSpark {
 		var spark:NoteSpark = noteSparks.recycle(NoteSpark, () -> new NoteSpark(noteData));
 		spark.camera = camera;
 		spark.shader = splashRGB.shader;
 		spark.sparkOnReceptor(receptor);
+		return spark;
 	}
 	
 	public function clearNotes() {
@@ -173,7 +180,7 @@ class Lane extends FlxSpriteGroup {
 		} else {
 			if (Conductor.songPosition - hitWindow > note.msTime) {
 				note.lost = true;
-				noteEvent.dispatch({note: note, lane: this, type: LOST, strumline: strumline});
+				noteEvent.dispatch(basicEvent(LOST, note));
 			}
 		}
 	}
@@ -199,17 +206,17 @@ class Lane extends FlxSpriteGroup {
 			}
 		}
 		notes.insert(pos, note);
-		noteEvent.dispatch({note: note, lane: this, type: SPAWNED, strumline: strumline});
+		noteEvent.dispatch(basicEvent(SPAWNED, note));
 	}
 	public dynamic function hitNote(note:Note, kill:Bool = true) {
 		note.goodHit = true;
-		noteEvent.dispatch({note: note, lane: this, type: HIT, strumline: strumline});
+		noteEvent.dispatch(basicEvent(HIT, note));
 		if (kill && !note.ignore) killNote(note);
 	}
 	public function killNote(note:Note) {
 		note.kill();
 		notes.remove(note, true);
-		noteEvent.dispatch({note: note, lane: this, type: DESPAWNED, strumline: strumline});
+		noteEvent.dispatch(basicEvent(DESPAWNED, note));
 	}
 
 	public override function get_width() return receptor?.width ?? 0;
@@ -396,18 +403,22 @@ class NoteSpark extends FunkinSprite {
 @:structInit class NoteEvent {
 	public var note:Note;
 	public var lane:Lane;
+	public var receptor:Receptor;
 	public var type:NoteEventType;
 	public var strumline:Strumline;
 	public var cancelled:Bool = false;
 
-	public var spark:Bool = true; // many vars...
-	public var splash:Bool = true;
-	public var lightStrum:Bool = true;
+	public var spark:NoteSpark = null;
+	public var splash:NoteSplash = null;
+	public var window:Scoring.HitWindow = null;
+	public var targetCharacter:Character = null;
+
+	public var doSpark:Bool = true; // many vars...
+	public var doSplash:Bool = true;
+	public var playSound:Bool = true;
 	public var applyRating:Bool = true;
-	public var playHitSound:Bool = true;
 	public var playAnimation:Bool = true;
-	public var window:Null<Scoring.HitWindow> = null;
-	public var targetCharacter:Null<Character> = null;
+	public var animateReceptor:Bool = true;
 
 	public function cancel() cancelled = true;
 	public function dispatch() { // hahaaa
@@ -423,16 +434,15 @@ class NoteSpark extends FunkinSprite {
 			case HIT:
 				if (targetCharacter != null) targetCharacter.volume = 1;
 				if (note.isHoldPiece) {
-					if (playAnimation) {
+					if (note.isHoldTail && playSound) FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
+					if (playAnimation && targetCharacter != null) {
 						var anim:String = 'sing${game.singAnimations[note.noteData]}';
-						if (targetCharacter != null && targetCharacter.animation.name != anim && !targetCharacter.animationIsLooping(anim)) {
+						if (targetCharacter.animation.name != anim && !targetCharacter.animationIsLooping(anim)) {
 							targetCharacter.playAnimationSoft(anim, true);
 						}
 					}
-					if (note.isHoldTail && playHitSound)
-						FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
 				} else {
-					if (playHitSound) game.hitsound.play(true);
+					if (playSound) game.hitsound.play(true);
 					if (playAnimation && targetCharacter != null) targetCharacter.playAnimationSoft('sing${game.singAnimations[note.noteData]}', true);
 					
 					if (applyRating) {
@@ -451,32 +461,48 @@ class NoteSpark extends FunkinSprite {
 						else game.popCombo(++ game.combo);
 						game.updateRating();
 					}
-					if (splash && (window?.splash ?? true)) {
-						lane.splash();
-					}
+					if (doSplash && (window?.splash ?? true)) splash = lane.splash();
 				}
-				if (targetCharacter != null) targetCharacter.timeAnimSteps(targetCharacter.singForSteps);
+				if (playAnimation && targetCharacter != null) targetCharacter.timeAnimSteps(targetCharacter.singForSteps);
 
-				if (lightStrum) lane.receptor.playAnimation('confirm', true);
+				if (animateReceptor) lane.receptor.playAnimation('confirm', true);
 				if (!note.isHoldPiece) {
 					if (note.msLength > 0) {
 						for (child in note.children) child.canHit = true;
 						lane.held = true;
-					} else if (!lane.cpu && lightStrum) {
+					} else if (!lane.cpu && animateReceptor) {
 						lane.receptor.grayBeat = note.beatTime + 1;
 					}
 				}
 				if (note.isHoldTail) {
 					lane.held = false;
-					if (spark) {
-						lane.spark();
-						if (!lane.cpu && lightStrum) lane.receptor.playAnimation('press', true);
+					if (doSpark) {
+						spark = lane.spark();
+						if (!lane.cpu && animateReceptor) lane.receptor.playAnimation('press', true);
 					}
 				}
+			case GHOST:
+				if (animateReceptor) lane.receptor.playAnimation('press', true);
+				if (playSound) FlxG.sound.play(Paths.sound('missnote${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
+				if (playAnimation && targetCharacter != null) {
+					targetCharacter.playAnimationSoft('sing${game.singAnimations[lane.noteData]}miss', true);
+					targetCharacter.timeAnimSteps(targetCharacter.singForSteps);
+				}
+
+				if (applyRating) {
+					game.score -= 10;
+					game.health -= .01;
+					game.updateRating();
+				}
 			case LOST:
-				targetCharacter.volume = 0;
-				if (playAnimation) targetCharacter.playAnimationSoft('sing${game.singAnimations[note.noteData]}miss', true);
-				if (targetCharacter != null) targetCharacter.timeAnimSteps(targetCharacter.singForSteps);
+				if (playSound) FlxG.sound.play(Paths.sound('missnote${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
+				if (targetCharacter != null) {
+					targetCharacter.volume = 0;
+					if (playAnimation) {
+						targetCharacter.playAnimationSoft('sing${game.singAnimations[note.noteData]}miss', true);
+						targetCharacter.timeAnimSteps(targetCharacter.singForSteps);
+					}
+				}
 
 				if (applyRating) {
 					game.health -= note.healthLoss;
@@ -498,4 +524,5 @@ enum NoteEventType {
 	DESPAWNED;
 	HIT;
 	LOST;
+	GHOST;
 }

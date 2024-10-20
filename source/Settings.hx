@@ -5,6 +5,7 @@ import flixel.input.keyboard.FlxKey;
 @:structInit class SettingsData {
 	public var downscroll:Bool = false;
 	public var middlescroll:Bool = false;
+	public var ghostTapping:Bool = true;
 	public var antialiasing:Bool = true;
 	public var keybinds:Map<String, Dynamic> = [
 		'4k' => [

@@ -2,6 +2,11 @@ class OptionsState extends MusicBeatState {
 	public var target:FlxObject;
 	public var items:FlxTypedGroup<SettingItem>;
 	public var inputEnabled:Bool = true;
+	public var settingList:Array<Array<String>> = [
+		['downscroll', 'Downscroll'],
+		['middlescroll', 'Middlescroll'],
+		['ghostTapping', 'Ghost Tapping']
+	];
 	public static var selection:Int = 0;
 	
 	override public function create() {
@@ -18,8 +23,8 @@ class OptionsState extends MusicBeatState {
 		items = new FlxTypedGroup<SettingItem>();
 		add(items);
 		
-		items.add(new SettingItem(0, 0, 'downscroll', 'Downscroll'));
-		items.add(new SettingItem(40 * .75, 75, 'middlescroll', 'Middlescroll'));
+		for (i => setting in settingList)
+			items.add(new SettingItem(30 * i, 75 * i, setting[0], setting[1]));
 		
 		FlxG.camera.target = target = new FlxObject();
 		FlxG.camera.followLerp = 9 / 60;
@@ -87,9 +92,9 @@ class SettingItem extends FlxSpriteGroup {
 				checkbox.loadAtlas('options/checkbox');
 				checkbox.animation.addByPrefix('select', 'checkbox select', 24, false);
 				checkbox.animation.addByPrefix('unselect', 'checkbox unselect', 24, false);
-				checkbox.playAnimation(settingValue == true ? 'select' : 'unselect');
 				checkbox.offsets.set('select', FlxPoint.get(12, 40));
 				checkbox.scale.set(.5, .5);
+				enabled = settingValue;
 				checkbox.animation.finish();
 				checkbox.updateHitbox();
 				add(checkbox);
@@ -103,9 +108,7 @@ class SettingItem extends FlxSpriteGroup {
 	}
 	public function set_enabled(on:Bool) {
 		if (type != BOOLEAN) return on;
-		if (hasSave()) {
-			Reflect.setField(Settings.data, settingSave, on);
-		}
+		if (hasSave() && on != settingValue) Reflect.setField(Settings.data, settingSave, on);
 		checkbox.playAnimation(on ? 'select' : 'unselect');
 		return enabled = on;
 	}
