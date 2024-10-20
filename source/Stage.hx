@@ -106,6 +106,7 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
             propSprite.alpha = prop.alpha ?? 1;
             propSprite.smooth = !(prop.isPixel ?? false);
             propSprite.animated = (prop?.animations?.length ?? 0) > 0;
+            propSprite.bopFrequency = prop.danceEvery ?? 0;
             if (propSprite.animated) { // this is stupid
                 switch (prop.animType) {
                     case 'sparrow': propSprite.loadAtlas(prop.assetPath, library);
@@ -183,6 +184,7 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
 }
 
 class StageProp extends FunkinSprite { // maybe unify character with props?
+    public var bop:Bool = true;
     public var bopFrequency:Int = 0;
     public var animated:Bool = false;
     public var startingAnimation:Null<String> = null;
@@ -191,7 +193,7 @@ class StageProp extends FunkinSprite { // maybe unify character with props?
         super(x, y);
     }
     public function dance(beat:Int = 0) {
-        if (bopFrequency <= 0 || !animated) return false;
+        if (bopFrequency <= 0 || !animated || !bop) return false;
         if (beat % bopFrequency == 0)
             playAnimation(startingAnimation ?? 'idle');
         return true;
