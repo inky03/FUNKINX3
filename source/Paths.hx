@@ -71,6 +71,10 @@ class Paths {
 				if (!mod.global) continue;
 				var path:String = modPath(key, mod.directory, library);
 				if (FileSystem.exists(path)) return path;
+				if (library != null) {
+					var path:String = modPath(key, mod.directory);
+					if (FileSystem.exists(path)) return path;
+				}
 			}
 			if (FileSystem.exists(globalModPath(key))) return globalModPath(key);
 		}

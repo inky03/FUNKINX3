@@ -53,20 +53,20 @@ class Character extends FunkinSprite {
 			for (path in paths) {
 				if (Paths.exists(path)) {
 					var vocalsPath:String = path + Util.pathSuffix(Util.pathSuffix('Voices', chara), suffix);
-					Sys.println('attempting to load vocals from $vocalsPath...');
+					// Sys.println('attempting to load vocals from $vocalsPath...');
 					vocals.loadEmbedded(Paths.ogg(vocalsPath));
 					if (vocals.length > 0) {
 						vocalsLoaded = true;
 						vocals.play();
 						vocals.stop();
 						vocals.volume = volume;
-						Sys.println('vocals loaded!!');
+						Log.info('vocals loaded for character "$character"!!');
 						return true;
 					}
 				}
 			}
 		} catch (e:haxe.Exception) {
-			Sys.println('error when loading vocals -> ${e.message}');
+			Log.error('error when loading vocals -> ${e.message}');
 			vocals.volume = 0;
 		}
 		return false;
@@ -158,7 +158,7 @@ class Character extends FunkinSprite {
 		var charLoad:String = character ?? fallbackCharacter;
 		var charPath:String = 'characters/$charLoad.json';
 		if (!Paths.exists(charPath)) {
-			Sys.println('failed to load character "$charLoad"');
+			Log.warning('failed to load character "$charLoad"');
 			Sys.println('verify path:');
 			Sys.println('- $charPath');
 			fallback(character);
@@ -177,11 +177,11 @@ class Character extends FunkinSprite {
 				loadModernCharData(json);
 			}
 		} catch (e:haxe.Exception) {
-			Sys.println('error while loading character "$charLoad"... -> ${e.details()}');
+			Log.error('error while loading character "$charLoad"... -> ${e.details()}');
 			fallback(character);
 			return this;
 		}
-		Sys.println('character loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
+		Log.info('character "$charLoad" loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		return this;
 	}
 	public function loadModernCharData(charData:ModernCharacterData) {
@@ -251,6 +251,7 @@ class Character extends FunkinSprite {
 	}
 	public function fallback(?attempted:String) {
 		if (fallbackCharacter == null || attempted == null) { // dont attempt if fallback failed to fall back :p
+			Log.info('fallback failed lol: loading super fallback character');
 			useDefault();
 		} else {
 			Sys.println('attempting to fall back to "$fallbackCharacter"...');
@@ -299,7 +300,7 @@ class Character extends FunkinSprite {
 					anim.addBySymbol(name, prefix, fps, loop);
 				} else {
 					try { anim.addByFrameLabel(name, prefix, fps, loop); }
-					catch (e:Dynamic) { Sys.println('frame label for $name not found... (verify: $prefix)'); }
+					catch (e:Dynamic) { Log.warning('frame label for $name not found... (verify: $prefix)'); }
 				}
 			} else {
 				if (symbolExists) {
@@ -311,9 +312,9 @@ class Character extends FunkinSprite {
 						var finalIndices:Array<Int> = [];
 						for (index in frameIndices) finalIndices.push(keyFrameIndices[index] ?? (keyFrameIndices.length - 1));
 						try { anim.addBySymbolIndices(name, anim.stageInstance.symbol.name, finalIndices, fps, loop); }
-						catch (e:Dynamic) { Sys.println('erm AWKWARD!! ($name)'); }
+						catch (e:Dynamic) {}
 					} catch (e:Dynamic) {
-						Sys.println('frame label for $name not found... (verify: $prefix)');
+						Log.warning('frame label for $name not found... (verify: $prefix)');
 					}
 				}
 			}

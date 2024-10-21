@@ -62,6 +62,7 @@ class PlayState extends MusicBeatState {
 	public var syncVocals:Array<FlxSound> = [];
 	public var events:Array<SongEvent> = [];
 	public var notes:Array<Note> = [];
+	public var songName:String;
 	
 	public var maxHealth(default, set):Float = 1;
 	public var health(default, set):Float = .5;
@@ -133,9 +134,16 @@ class PlayState extends MusicBeatState {
 		focusOnCharacter(player3 ?? player1);
 		camFocus.setPosition(camFocusTarget.x, camFocusTarget.y);
 		
+		songName = song.name;
 		song.instLoaded = false;
-		song.loadMusic('data/${song.path}/', false);
-		song.loadMusic('songs/${song.path}/', false);
+		var songPaths:Array<String> = ['data/${song.path}/', 'songs/${song.path}/'];
+		for (path in songPaths) song.loadMusic(path, false);
+		if (!song.instLoaded) {
+			Log.warning('song instrumental not found...');
+			Sys.println('verify paths:');
+			for (path in songPaths)
+				Sys.println('- $path${Util.pathSuffix('Inst', song.audioSuffix)}.ogg');
+		}
 		for (chara in [player1, player2, player3]) {
 			if (chara == null) continue;
 			chara.loadVocals(song.path, song.audioSuffix);
@@ -145,6 +153,8 @@ class PlayState extends MusicBeatState {
 		if (player2 != null && !player2.vocalsLoaded && player2.character != song.player2) player2.loadVocals(song.path, song.audioSuffix, song.player2);
 		if (player1 != null && player2 != null && !player1.vocalsLoaded && !player2.vocalsLoaded) {
 			player1.loadVocals(song.path, song.audioSuffix, '');
+			if (!player1.vocalsLoaded)
+				Log.warning('song vocals not found...');
 		}
 		
 		uiGroup = new FlxSpriteGroup();
@@ -564,7 +574,7 @@ class PlayState extends MusicBeatState {
 
 		HScriptBackend.run('playerNoteEventPre', [e]);
 		try e.dispatch()
-		catch (e:haxe.Exception) Sys.println('error dispatching note event -> ${e.message}');
+		catch (e:haxe.Exception) Log.error('error dispatching note event -> ${e.message}');
 		HScriptBackend.run('playerNoteEvent', [e]);
 	}
 	public function opponentNoteEvent(e:Lane.NoteEvent) {
@@ -576,7 +586,7 @@ class PlayState extends MusicBeatState {
 
 		HScriptBackend.run('opponentNoteEventPre', [e]);
 		try e.dispatch()
-		catch (e:haxe.Exception) Sys.println('error dispatching note event -> ${e.message}');
+		catch (e:haxe.Exception) Log.error('error dispatching note event -> ${e.message}');
 		HScriptBackend.run('opponentNoteEvent', [e]);
 	}
 	public dynamic function comboBroken(oldCombo:Int) {

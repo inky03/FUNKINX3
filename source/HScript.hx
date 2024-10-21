@@ -8,6 +8,7 @@ import flixel.addons.display.FlxRuntimeShader;
 
 import crowplexus.iris.Iris;
 import crowplexus.iris.IrisConfig;
+import crowplexus.iris.ErrorSeverity;
 import crowplexus.hscript.Printer;
 import crowplexus.hscript.Expr.Error as IrisError;
 
@@ -20,12 +21,33 @@ class HScript extends Iris {
 	
 	public function new(name:String, code:String) {
 		super('', new IrisConfig(name, false, true, []));
+		Iris.logLevel = customLog;
 		scriptString = code;
 		scriptName = name;
 	}
 	
 	public function errorCaught(e:IrisError, ?extra:String) {
-		trace('HSCRIPT ERROR: ${Printer.errorToString(e)}');
+		Log.fatal(Printer.errorToString(e));
+	}
+	public function customLog(level:ErrorSeverity, x, ?pos:haxe.PosInfos) {
+		if (pos == null) pos = Iris.getDefaultPos();
+
+		var out:String = Std.string(x);
+		if (pos != null && pos.customParams != null)
+			for (i in pos.customParams)
+				out += "," + Std.string(i);
+
+		var posPrefix:String = 'HSCRIPT:${pos.fileName}';
+		if (pos.lineNumber != -1)
+			posPrefix += ':${pos.lineNumber}';
+
+		switch (level) {
+			case FATAL: posPrefix = Log.colorTag(' FATAL:$posPrefix ', black, brightRed);
+			case ERROR: posPrefix = Log.colorTag(' ERROR:$posPrefix ', black, red);
+			case WARN: posPrefix = Log.colorTag(' WARNING:$posPrefix ', black, yellow);
+			default: posPrefix = Log.colorTag(' $posPrefix ', black, blue);
+		}
+		Sys.println('$posPrefix $out');
 	}
 	
 	public function run(?func:String, ?args:Array<Any>, safe:Bool = false):Any {
@@ -105,6 +127,16 @@ class HScript extends Iris {
 		set('FlxAxes', HScriptFlxAxes);
 		set('FlxColor', HScriptFlxColor);
 		set('BlendMode', HScriptBlendMode);
+
+		#if hscriptPos
+		set("trace", Reflect.makeVarArgs(function(x:Array<Dynamic>) { // fix static trace
+			var pos = this.interp != null ? this.interp.posInfos() : Iris.getDefaultPos(this.name);
+			var v = x.shift();
+			if (x.length > 0)
+				pos.customParams = x;
+			Iris.print(Std.isOfType(v, Array) ? v : Std.string(v), pos);
+		}));
+		#end
 	}
 	public function set_scriptString(newCode:String) {
 		if (newCode == scriptString) return scriptString;

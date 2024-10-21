@@ -71,18 +71,18 @@ class DiscordRPC {
 		final discriminator:Int = Std.parseInt(request[0].discriminator);
 		
 		if (discriminator != 0)
-			Sys.println('Discord: Connected to user $username#$discriminator ($globalName)');
+			Log.info('Discord: connected to user $username#$discriminator ($globalName)');
 		else
-			Sys.println('Discord: Connected to user @$username ($globalName)');
+			Log.info('Discord: connected to user @$username ($globalName)');
 		
 		presence.largeImageKey = 'banner';
 		update();
 	}
 	private static function onDisconnected(errorCode:Int, message:cpp.ConstCharStar):Void {
-		Sys.println('Discord: Disconnected ($errorCode:$message)');
+		Log.error('Discord: disconnected ($errorCode:$message)');
 	}
 	private static function onError(errorCode:Int, message:cpp.ConstCharStar):Void {
-		Sys.println('Discord: Error ($errorCode:$message)');
+		Log.error('Discord: $errorCode:$message');
 	}
 	#else
 	public static var presence:Dynamic = {};

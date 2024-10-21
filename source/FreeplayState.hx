@@ -93,9 +93,9 @@ class FreeplayState extends MusicBeatState {
 				item.mod = mod;
 				items.add(item);
 			}
-			Sys.println('level added! (${levels.freeplay.length} songs)');
+			Log.info('level added! (${levels.freeplay.length} songs)');
 		} catch (e:haxe.Exception) {
-			Sys.println('error loading level -> ${e.details()}');
+			Log.error('error loading level -> ${e.details()}');
 		}
 	}
 }

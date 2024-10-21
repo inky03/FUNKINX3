@@ -11,7 +11,14 @@ class Main extends Sprite {
 	
 	public function new() {
 		super();
-		Sys.println('WE REALLY OUT HERE - GAME STARTED ON ${Date.now().toString()}');
+		var flag:String = '               ';
+		Sys.println('');
+		Sys.println(Log.colorTag(flag, cyan, brightCyan));
+		Sys.println(Log.colorTag(flag, magenta, brightMagenta) + ' TRANS RIGHTS');
+		Sys.println(Log.colorTag(flag, white, brightWhite) + ' WE REALLY OUT HERE');
+		Sys.println(Log.colorTag(flag, magenta, brightMagenta) + ' GAME STARTED ON ${Date.now().toString()}');
+		Sys.println(Log.colorTag(flag, cyan, brightCyan));
+		Sys.println('');
 
 		Mods.refresh();
 		DiscordRPC.prepare();

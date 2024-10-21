@@ -60,7 +60,7 @@ class HScriptBackend {
 		}
 		for (dir in dirList) {
 			if (FileSystem.exists(dir)) {
-				Sys.println('loading scripts from $dir');
+				Log.info('loading scripts from $dir');
 				for (file in FileSystem.readDirectory(dir)) {
 					if (!file.endsWith('.hx') && !file.endsWith('.hxs')) continue;
 					loadFromFile('$dir/$file');
@@ -78,7 +78,7 @@ class HScriptBackend {
 		if (!unique) {
 			var found:HScript = find(file);
 			if (found != null) {
-				Sys.println('HScript: found active script $file');
+				// Sys.println('HScript: found active script $file');
 				return found;
 			}
 		}
@@ -88,7 +88,7 @@ class HScriptBackend {
 			Sys.println('HScript: loading script from $file');
 			code = File.getContent(file);
 		} else {
-			Sys.println('HScript: couldn\'t load script from $file!!');
+			Log.error('HScript: couldn\'t load script from $file!!');
 			code = '';
 		}
 		var hs:HScript = new HScript(file, code);

@@ -74,7 +74,7 @@ class Song {
 			var jsonData:Dynamic = TJSON.parse(content);
 			return jsonData;
 		} else {
-			Sys.println('chart JSON not found... (chart not generated)');
+			Log.warning('chart JSON not found... (chart not generated)');
 			Sys.println('verify path:');
 			Sys.println('- chart: $jsonPath');
 			return null;
@@ -98,7 +98,7 @@ class Song {
 		} else if (Paths.exists(legacyChartPath)) {
 			return loadLegacySong(path, difficulty, suffix);
 		} else {
-			Sys.println('chart files of any type not found... (chart not generated)');
+			Log.warning('chart files of any type not found... (chart not generated)');
 			Sys.println('verify paths:');
 			Sys.println('- modern:');
 			Sys.println('  - chart: $modernChartPath');
@@ -121,7 +121,7 @@ class Song {
 		var song:Song = new Song(path, 4); // todo: sm multikey (implement multikey in the first place)
 
 		if (!Paths.exists(smPath) && !useShark) {
-			Sys.println('sm or ssc file not found... (chart not generated)');
+			Log.warning('sm or ssc file not found... (chart not generated)');
 			Sys.println('verify path:');
 			Sys.println('- chart: $smPath OR $sscPath');
 			return song;
@@ -153,9 +153,9 @@ class Song {
 			}
 			Note.baseMetronome = Conductor.metronome;
 
-			Sys.println('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
+			Log.info('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch (e:Exception) {
-			Sys.println('chart error... -> <<< ${e.details()} >>>');
+			Log.error('chart error... -> <<< ${e.details()} >>>');
 			return song;
 		}
 		
@@ -173,7 +173,7 @@ class Song {
 		var song:Song = new Song(path, 4);
 
 		if (!Paths.exists(chartPath) || !Paths.exists(metaPath)) {
-			Sys.println('chart or metadata JSON not found... (chart not generated)');
+			Log.warning('chart or metadata JSON not found... (chart not generated)');
 			Sys.println('verify paths:');
 			Sys.println('- chart: $chartPath');
 			Sys.println('- metadata: $metaPath');
@@ -199,9 +199,9 @@ class Song {
 			}
 			Note.baseMetronome = Conductor.metronome;
 
-			Sys.println('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
+			Log.info('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch (e:Exception) {
-			Sys.println('chart error... -> <<< ${e.details()} >>>');
+			Log.error('chart error... -> <<< ${e.details()} >>>');
 			return song;
 		}
 
@@ -373,9 +373,9 @@ class Song {
 			song.player3 = song.json.player3 ?? song.json.gfVersion ?? 'gf';
 			song.stage = song.json.stage;
 
-			Sys.println('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
+			Log.info('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch(e:Exception) {
-			Sys.println('chart error... -> <<< ${e.details()} >>>');
+			Log.error('chart error... -> <<< ${e.details()} >>>');
 		}
 		
 		return song;
@@ -417,7 +417,7 @@ class Song {
 	public function loadMusic(path:String, overwrite:Bool = true) { // this could be better
 		if (instLoaded && !overwrite) return true;
 		var instPath:String = path + Util.pathSuffix('Inst', audioSuffix);
-		Sys.println('attempting to load instrumental from $instPath...');
+		// Sys.println('attempting to load instrumental from $instPath...');
 		try {
 			inst.loadEmbedded(Paths.ogg(instPath));
 			if (inst.length > 0) {
@@ -425,11 +425,11 @@ class Song {
 				instLoaded = true;
 				inst.play();
 				inst.stop();
-				Sys.println('instrumental loaded!!');
+				Log.info('instrumental loaded!!');
 				return true;
 			}
 		} catch (e:Exception) {
-			Sys.println('error when loading instrumental -> ${e.message}');
+			Log.error('error when loading instrumental -> ${e.message}');
 			instLoaded = false;
 		}
 		return false;

@@ -21,40 +21,41 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
 		// right now only works with vslice stage jsons
 		super();
 
-		if (stageId == null) return;
 		song = songData;
-		var jsonPath:String = 'stages/$stageId.json';
-		if (Paths.exists(jsonPath)) {
-			Sys.println('loading stage "$stageId"');
-			var time:Float = Sys.time();
-			try {
-				var content:String = Paths.text(jsonPath);
-				var jsonData:Dynamic = TJSON.parse(content);
-				loadModernStageData(jsonData);
-				json = jsonData;
-				format = MODERN;
-				stageValid = true;
-				hasContent = true;
-				Sys.println('stage loaded successfully! (${FlxMath.roundDecimal(Sys.time() - time, 3)}s)');
-			} catch (e:haxe.Exception) {
-				format = NONE;
-				Sys.println('error while loading stage "$stageId"... -> ${e.details()}');
-			}
-		}
-		if (!hasContent) {
-			Sys.println('loading fallback stage');
-			loadFallback();
-		}
-		
-		// loads hscript file
-		var scriptPath:String = 'stages/${stageId}.hx';
-		if (Paths.exists(scriptPath)){
-			HScriptBackend.loadFromPaths(scriptPath);
-			hasContent = true;
-		}
+        if (stageId != null) {
+    		var jsonPath:String = 'stages/$stageId.json';
+    		if (Paths.exists(jsonPath)) {
+    			Sys.println('loading stage "$stageId"');
+    			var time:Float = Sys.time();
+    			try {
+    				var content:String = Paths.text(jsonPath);
+    				var jsonData:Dynamic = TJSON.parse(content);
+    				loadModernStageData(jsonData);
+    				json = jsonData;
+    				format = MODERN;
+    				stageValid = true;
+    				hasContent = true;
+    				Log.info('stage loaded successfully! (${FlxMath.roundDecimal(Sys.time() - time, 3)}s)');
+    			} catch (e:haxe.Exception) {
+    				format = NONE;
+    				Log.error('error while loading stage "$stageId"... -> ${e.details()}');
+    			}
+    		}
+    		if (!hasContent) {
+                Log.info('no stage content: loading fallback stage');
+    			loadFallback();
+    		}
 
-		startCharPositions();
-		sortZIndex();
+    		startCharPositions();
+    		sortZIndex();
+        }
+        
+        // loads hscript file
+        var scriptPath:String = 'stages/${stageId}.hx';
+        if (Paths.exists(scriptPath)){
+            HScriptBackend.loadFromPaths(scriptPath);
+            hasContent = true;
+        }
 	}
 
 	public function sortZIndex() {
