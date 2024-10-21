@@ -16,7 +16,9 @@ import openfl.system.System;
 #end
 
 import tjson.TJSON;
+import flxanimate.FlxAnimate;
 
+import Settings;
 import flixel.FlxG;
 import flixel.FlxState;
 import flixel.FlxBasic;

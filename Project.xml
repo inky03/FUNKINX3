@@ -46,6 +46,7 @@
 	<haxelib name="flixel-ui" />
 	<haxelib name="moonchart" />
 	<haxelib name="tjson" />
+	<haxelib name="flxanimate" />
 	<haxelib name="hxdiscord_rpc" if="cpp" />
 	
 	<haxedef name="hscriptPos" if="USE_HSCRIPT" />

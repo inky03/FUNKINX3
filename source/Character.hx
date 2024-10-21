@@ -16,6 +16,9 @@ class Character extends FunkinSprite {
 	public var psychOffset(default, never):FlxPoint = FlxPoint.get();
 	public var originOffset(default, never):FlxPoint = FlxPoint.get();
 	public var cameraOffset(default, never):FlxPoint = FlxPoint.get();
+
+	public var idleSuffix:String = '';
+	public var animSuffix:String = '';
 	
 	public var vocalsLoaded(default, null):Bool = false;
 	public var volume(default, set):Float = 1;
@@ -91,25 +94,34 @@ class Character extends FunkinSprite {
 		animReset = steps * Conductor.stepCrochet * .001;
 	}
 	public function animationIsLooping(anim:String) {
-		return (animation.name == '$anim-loop' || animation.name == '$anim-hold');
+		return (getAnimationName() == '$anim-loop' || getAnimationName() == '$anim-hold');
 	}
-	public function playAnimationSoft(anim:String, forced:Bool = false) {
+	public function playAnimationSoft(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
 		if (!specialAnim)
-			playAnimation(anim, forced);
+			playAnimation(anim, forced, reversed, frame);
 	}
-	public override function playAnimation(anim:String, forced:Bool = false) {
-		preloadAnimAsset(anim);
-		super.playAnimation(anim, forced);
+	public override function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
+		preloadAnimAsset(anim + animSuffix);
+		super.playAnimation(anim + animSuffix, forced, reversed, frame);
+	}
+	public function playAnimationSteps(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0) {
+		if (!specialAnim) {
+			var sameAnim:Bool = (getAnimationName() != anim);
+			if (animationList.exists(anim) && (forced || !sameAnim || isAnimationFinished()))
+				timeAnimSteps(steps ?? singForSteps);
+			playAnimation(anim, forced, reversed, frame);
+		}
 	}
 	public function dance(beat:Int = 0) {
 		if (animReset > 0 || bopFrequency <= 0 || !bop) return false;
 		if (sway)
-			playAnimation(beat % 2 == 0 ? 'danceLeft' : 'danceRight');
+			playAnimation((beat % 2 == 0 ? 'danceLeft' : 'danceRight') + idleSuffix);
 		else if (beat % 2 == 0)
-			playAnimation('idle');
+			playAnimation('idle$idleSuffix');
 		return true;
 	}
 	public function preloadAnimAsset(anim:String) { // preloads animation with a different spritesheet path
+		if (renderType == ANIMATEATLAS) return;
 		var animData:CharacterAnim = animationList[anim];
 		if (animData != null && animData.assetPath != null) {
 			addAtlas(animData.assetPath, true);
@@ -142,6 +154,7 @@ class Character extends FunkinSprite {
 	}
 
 	public function loadCharacter(?character:String) { // no character provided attempts to load fallback
+		unloadAnimate();
 		var charLoad:String = character ?? fallbackCharacter;
 		var charPath:String = 'characters/$charLoad.json';
 		if (!Paths.exists(charPath)) {
@@ -158,7 +171,7 @@ class Character extends FunkinSprite {
 			@:bypassAccessor this.character = character;
 			var content:String = Paths.text(charPath);
 			var json:Dynamic = TJSON.parse(content);
-			if (json.healthbar_colors != null) { // most recognizable Psych engine feature :fire: {
+			if (json.healthbar_colors != null) { // most recognizable Psych engine feature :fire:
 				loadPsychCharData(json);
 			} else {
 				loadModernCharData(json);
@@ -173,13 +186,21 @@ class Character extends FunkinSprite {
 	}
 	public function loadModernCharData(charData:ModernCharacterData) {
 		var renderType:String = charData.renderType ?? 'multisparrow';
-		if (renderType != 'sparrow' && renderType != 'multisparrow')
-			throw new haxe.Exception('Render type "${charData.renderType}" is currently not supported!!');
-		addAtlas(charData.assetPath, true);
+		switch (renderType) {
+			// case 'packer': renderType = PACKER; TODO: implement...
+			case 'sparrow' | 'multisparrow':
+				this.renderType = SPARROW;
+				addAtlas(charData.assetPath, true);
+			case 'animateatlas':
+				this.renderType = ANIMATEATLAS;
+				loadAnimate(charData.assetPath);
+			default: throw new haxe.Exception('Render type "${charData.renderType}" is not supported!!');
+		}
+
 		var animations:Array<ModernCharacterAnim> = charData.animations;
 		for (animation in animations) {
 			addAnimation(animation.name, animation.prefix, animation.frameRate ?? 24, animation.looped ?? false, animation.frameIndices, animation.assetPath);
-			offsets.set(animation.name, FlxPoint.get(animation.offsets[0], animation.offsets[1]));
+			if (animation.offsets != null) offsets.set(animation.name, FlxPoint.get(animation.offsets[0], animation.offsets[1]));
 		}
 		flipX = charData.flipX;
 		smooth = !charData.isPixel;
@@ -198,7 +219,7 @@ class Character extends FunkinSprite {
 		} else {
 			playAnimation(charData.startingAnimation);
 		}
-		animation.finish();
+		finishAnimation();
 	}
 	public function loadPsychCharData(charData:PsychCharacterData) {
 		var sparrows:Array<String> = charData.image.split(',');
@@ -220,12 +241,12 @@ class Character extends FunkinSprite {
 		sway = (animationList.exists('danceLeft') && animationList.exists('danceRight'));
 		setBaseSize();
 		dance();
-		animation.finish();
+		finishAnimation();
 	}
 
 	function setBaseSize() { // lazy, maybe do this without changing cur anim eventually?
 		playAnimation(sway ? 'danceLeft' : 'idle');
-		animation.finish();
+		finishAnimation();
 		updateHitbox();
 	}
 	public function fallback(?attempted:String) {
@@ -237,6 +258,7 @@ class Character extends FunkinSprite {
 		}
 	}
 	public function useDefault() {
+		unloadAnimate();
 		loadAtlas('characters/bf');
 		addAnimation('idle', 'BF idle dance', 24, false);
 		var singAnimations:Array<String> = ['LEFT', 'DOWN', 'UP', 'RIGHT'];
@@ -256,19 +278,52 @@ class Character extends FunkinSprite {
 		psychOffset.set(0, 350);
 		originOffset.set(0, 0);
 		cameraOffset.set(0, 0);
+		renderType = SPARROW;
+		bopFrequency = 2;
 		sway = false;
+		bop = true;
 
 		@:bypassAccessor this.character = null;
 		setBaseSize();
 		dance();
-		animation.finish();
+		finishAnimation();
 	}
+	// would probably be useful to move this to FunkinSprite!
 	public function addAnimation(name:String, prefix:String, fps:Float = 24, loop:Bool = false, ?frameIndices:Array<Int>, ?assetPath:String) {
-		if (assetPath == null) { // wait for the asset to be loaded
+		if (renderType == ANIMATEATLAS) {
+			if (animate == null || animate.anim == null) return;
+			var anim:flxanimate.animate.FlxAnim = animate.anim;
+			var symbolExists:Bool = (anim.symbolDictionary != null && anim.symbolDictionary.exists(name));
 			if (frameIndices == null || frameIndices.length == 0) {
-				animation.addByPrefix(name, prefix, fps, loop);
+				if (symbolExists) {
+					anim.addBySymbol(name, prefix, fps, loop);
+				} else {
+					try { anim.addByFrameLabel(name, prefix, fps, loop); }
+					catch (e:Dynamic) { Sys.println('frame label for $name not found... (verify: $prefix)'); }
+				}
 			} else {
-				animation.addByIndices(name, prefix, frameIndices, '', fps, loop);
+				if (symbolExists) {
+					anim.addBySymbolIndices(name, prefix, frameIndices, fps, loop);
+				} else {
+					var keyFrame = anim.getFrameLabel(prefix);
+					try {
+						var keyFrameIndices:Array<Int> = keyFrame.getFrameIndices();
+						var finalIndices:Array<Int> = [];
+						for (index in frameIndices) finalIndices.push(keyFrameIndices[index] ?? (keyFrameIndices.length - 1));
+						try { anim.addBySymbolIndices(name, anim.stageInstance.symbol.name, finalIndices, fps, loop); }
+						catch (e:Dynamic) { Sys.println('erm AWKWARD!! ($name)'); }
+					} catch (e:Dynamic) {
+						Sys.println('frame label for $name not found... (verify: $prefix)');
+					}
+				}
+			}
+		} else {
+			if (assetPath == null) { // wait for the asset to be loaded
+				if (frameIndices == null || frameIndices.length == 0) {
+					animation.addByPrefix(name, prefix, fps, loop);
+				} else {
+					animation.addByIndices(name, prefix, frameIndices, '', fps, loop);
+				}
 			}
 		}
 		animationList[name] = {prefix: prefix, fps: fps, loop: loop, assetPath: assetPath, frameIndices: frameIndices};
@@ -335,11 +390,11 @@ typedef ModernCharacterIcon = {
 typedef ModernCharacterAnim = {
 	var name:String;
 	var prefix:String;
-	var offsets:Array<Float>;
 	@:optional var flipX:Bool; // todo
 	@:optional var flipY:Bool;
 	@:optional var looped:Bool;
 	@:optional var frameRate:Float;
 	@:optional var assetPath:String;
+	@:optional var offsets:Array<Float>;
 	@:optional var frameIndices:Array<Int>;
 }

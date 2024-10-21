@@ -59,9 +59,9 @@ class MusicBeatState extends FlxUIState {
 		if (FlxG.keys.justPressed.F5) resetState();
 		
 		if (paused) return;
-		super.update(elapsed);
 		
 		if (!conductorPaused) updateConductor(elapsed * 1000);
+		super.update(elapsed);
 	}
 	
 	public function updateConductor(elapsedMS:Float = 0) {

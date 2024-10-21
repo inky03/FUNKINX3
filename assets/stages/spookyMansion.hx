@@ -24,7 +24,7 @@ function doLightningStrike(playSound:Bool, beat:Int) {
 	lightningStrikeOffset = FlxG.random.int(8, 24);
 
 	for (chara in stage.characters)
-		chara.playAnimation('scared', true);
+		chara.playAnimationSteps('scared', true, 8);
 }
 
 function getNamedProp(name:String) {

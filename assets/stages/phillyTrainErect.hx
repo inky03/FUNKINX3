@@ -81,7 +81,7 @@ var startedMoving:Bool = false;
 function updateTrainPos(){
 	if (trainSound.time >= 4700){
 		startedMoving = true;
-		game.player3.playAnimation('hairBlow');
+		game.player3.playAnimationSteps('hairBlow', false, 4);
 	}
 
 	if (startedMoving){
@@ -103,9 +103,10 @@ function updateTrainPos(){
 }
 
 function trainReset(){
-	game.player3.playAnimation('hairFall');
-	getNamedProp('train').x = FlxG.width + 200;
+	game.player3.playAnimationSteps('hairFall', true, 4);
+	game.player3.specialAnim = true;
 
+	getNamedProp('train').x = FlxG.width + 200;
 	trainMoving = false;
 	trainCars = 8;
 	trainFinishing = false;

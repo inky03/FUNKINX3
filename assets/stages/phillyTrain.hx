@@ -16,7 +16,8 @@ var trainCars:Int = 8;
 var trainCooldown:Int = 0;
 
 function createPost() {
-	Paths.sound('train_passes', 'week3');
+	trainSound = new FlxSound().loadEmbedded(Paths.sound('train_passes', 'week3'));
+	FlxG.sound.list.add(trainSound);
 
 	lightShader = new RuntimeShader('building');
 	lightShader.setFloat('alphaShit', 0.0);
@@ -62,7 +63,7 @@ function beatHit(beat:Int){
 
 function trainStart(){
 	trainMoving = true;
-	FlxG.sound.play(Paths.sound('train_passes', 'week3'));
+	trainSound.play();
 }
 
 var startedMoving:Bool = false;
@@ -70,7 +71,7 @@ var startedMoving:Bool = false;
 function updateTrainPos(){
 	if (trainSound.time >= 4700){
 		startedMoving = true;
-		game.player3.playAnimation('hairBlow');
+		game.player3.playAnimationSteps('hairBlow', false, 4);
 	}
 
 	if (startedMoving){
@@ -92,9 +93,10 @@ function updateTrainPos(){
 }
 
 function trainReset(){
-	game.player3.playAnimation('hairFall');
-	getNamedProp('train').x = FlxG.width + 200;
+	game.player3.playAnimationSteps('hairFall', true, 4);
+	game.player3.specialAnim = true;
 
+	getNamedProp('train').x = FlxG.width + 200;
 	trainMoving = false;
 	trainCars = 8;
 	trainFinishing = false;

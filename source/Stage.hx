@@ -145,6 +145,7 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
 			charaSprite.zIndex = chara.zIndex;
 			charaSprite.cameraOffset.set(chara.cameraOffsets[0], chara.cameraOffsets[1]);
 			charaSprite.stagePos.set(chara.position[0] - charaSprite.width * .5, chara.position[1] - charaSprite.height);
+            if (chara.scale != null) charaSprite.scale.set(chara.scale, chara.scale);
 
 			this.characters[name] = charaSprite;
 		}

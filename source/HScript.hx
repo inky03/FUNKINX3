@@ -3,6 +3,7 @@ package;
 import Lane.NoteEventType;
 import flixel.util.FlxAxes;
 import openfl.display.BlendMode;
+import FunkinSprite.SpriteRenderType;
 import flixel.addons.display.FlxRuntimeShader;
 
 import crowplexus.iris.Iris;
@@ -76,8 +77,10 @@ class HScript extends Iris {
 		set('Metronome', Conductor.Metronome);
 		set('RuntimeShader', QuickRuntimeShader);
 		#if static
+		set('SpriteRenderType', {PACKER: SpriteRenderType.PACKER, SPARROW: SpriteRenderType.SPARROW, ANIMATEATLAS: SpriteRenderType.ANIMATEATLAS});
 		set('NoteEventType', {HIT: NoteEventType.HIT, LOST: NoteEventType.LOST, SPAWNED: NoteEventType.SPAWNED, DESPAWNED: NoteEventType.DESPAWNED});
 		#else
+		set('SpriteRenderType', SpriteRenderType);
 		set('NoteEventType', NoteEventType);
 		#end
 		

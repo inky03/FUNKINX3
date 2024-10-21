@@ -265,7 +265,7 @@ class Receptor extends FunkinSprite {
 			playAnimation('press');
 	}
 	
-	public override function playAnimation(anim:String, forced:Bool = false) {
+	public override function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
 		if (anim == 'static') {
 			rgbEnabled = false;
 		} else {
@@ -276,7 +276,7 @@ class Receptor extends FunkinSprite {
 		}
 		if (anim != 'confirm')
 			grayBeat = null;
-		super.playAnimation(anim, forced);
+		super.playAnimation(anim, forced, reversed, frame);
 		centerOffsets();
 		centerOrigin();
 	}
@@ -407,6 +407,7 @@ class NoteSpark extends FunkinSprite {
 	public var type:NoteEventType;
 	public var strumline:Strumline;
 	public var cancelled:Bool = false;
+	public var animSuffix:String = '';
 
 	public var spark:NoteSpark = null;
 	public var splash:NoteSplash = null;
@@ -435,15 +436,8 @@ class NoteSpark extends FunkinSprite {
 				if (targetCharacter != null) targetCharacter.volume = 1;
 				if (note.isHoldPiece) {
 					if (note.isHoldTail && playSound) FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
-					if (playAnimation && targetCharacter != null) {
-						var anim:String = 'sing${game.singAnimations[note.noteData]}';
-						if (targetCharacter.animation.name != anim && !targetCharacter.animationIsLooping(anim)) {
-							targetCharacter.playAnimationSoft(anim, true);
-						}
-					}
 				} else {
 					if (playSound) game.hitsound.play(true);
-					if (playAnimation && targetCharacter != null) targetCharacter.playAnimationSoft('sing${game.singAnimations[note.noteData]}', true);
 					
 					if (applyRating) {
 						window = window ?? Scoring.judgeLegacy(game.hitWindows, note.hitWindow, note.msTime - Conductor.songPosition);
@@ -463,7 +457,13 @@ class NoteSpark extends FunkinSprite {
 					}
 					if (doSplash && (window?.splash ?? true)) splash = lane.splash();
 				}
-				if (playAnimation && targetCharacter != null) targetCharacter.timeAnimSteps(targetCharacter.singForSteps);
+				if (playAnimation && targetCharacter != null) {
+					var anim:String = 'sing${game.singAnimations[note.noteData]}';
+					var suffixAnim:String = anim + targetCharacter.animSuffix;
+					if (!note.isHoldPiece || (targetCharacter.getAnimationName() != suffixAnim && !targetCharacter.animationIsLooping(suffixAnim))) {
+						targetCharacter.playAnimationSteps(anim + animSuffix, true);
+					}
+				}
 
 				if (animateReceptor) lane.receptor.playAnimation('confirm', true);
 				if (!note.isHoldPiece) {
@@ -484,10 +484,7 @@ class NoteSpark extends FunkinSprite {
 			case GHOST:
 				if (animateReceptor) lane.receptor.playAnimation('press', true);
 				if (playSound) FlxG.sound.play(Paths.sound('missnote${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
-				if (playAnimation && targetCharacter != null) {
-					targetCharacter.playAnimationSoft('sing${game.singAnimations[lane.noteData]}miss', true);
-					targetCharacter.timeAnimSteps(targetCharacter.singForSteps);
-				}
+				if (playAnimation && targetCharacter != null) targetCharacter.playAnimationSteps('sing${game.singAnimations[lane.noteData]}miss', true);
 
 				if (applyRating) {
 					game.score -= 10;
@@ -498,10 +495,7 @@ class NoteSpark extends FunkinSprite {
 				if (playSound) FlxG.sound.play(Paths.sound('missnote${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
 				if (targetCharacter != null) {
 					targetCharacter.volume = 0;
-					if (playAnimation) {
-						targetCharacter.playAnimationSoft('sing${game.singAnimations[note.noteData]}miss', true);
-						targetCharacter.timeAnimSteps(targetCharacter.singForSteps);
-					}
+					if (playAnimation) targetCharacter.playAnimationSteps('sing${game.singAnimations[note.noteData]}miss', true);
 				}
 
 				if (applyRating) {
