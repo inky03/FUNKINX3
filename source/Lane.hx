@@ -32,6 +32,9 @@ class Lane extends FlxSpriteGroup {
 	public var noteSplashes:FlxTypedSpriteGroup<NoteSplash>;
 	public var noteSparks:FlxTypedSpriteGroup<NoteSpark>;
 	public var queue:Array<Note> = [];
+
+	public var selfDraw:Bool = false;
+	public var topMembers:Array<FlxSprite> = [];
 	
 	public function set_scrollSpeed(newSpeed:Float) {
 		spawnRadius = Note.distanceToMS(FlxG.height, newSpeed);
@@ -66,10 +69,10 @@ class Lane extends FlxSpriteGroup {
 		receptor.lane = this; //lol
 		this.noteData = data;
 		this.add(receptor);
-		this.add(notes);
-		this.add(noteCover);
-		this.add(noteSparks);
-		this.add(noteSplashes);
+		topMembers.push(notes);
+		topMembers.push(noteCover);
+		topMembers.push(noteSparks);
+		topMembers.push(noteSplashes);
 		noteEvent = new FlxTypedSignal<NoteEvent->Void>();
 
 		noteCover.shader = rgbShader.shader;
@@ -106,6 +109,24 @@ class Lane extends FlxSpriteGroup {
 		}
 
 		super.update(elapsed);
+		for (member in topMembers) member.update(elapsed);
+	}
+	public override function draw() {
+		super.draw();
+		if (selfDraw) drawTop();
+	}
+	public function drawTop() {
+		@:privateAccess {
+			final oldDefaultCameras = FlxCamera._defaultCameras;
+			if (_cameras != null) FlxCamera._defaultCameras = _cameras;
+
+			for (member in topMembers) {
+				if (member != null && member.exists && member.visible)
+					member.draw();
+			}
+
+			FlxCamera._defaultCameras = oldDefaultCameras;
+		}
 	}
 	
 	public function input(key:FlxKey) {
@@ -461,8 +482,9 @@ class NoteSpark extends FunkinSprite {
 					var anim:String = 'sing${game.singAnimations[note.noteData]}';
 					var suffixAnim:String = anim + targetCharacter.animSuffix;
 					if (!note.isHoldPiece || (targetCharacter.getAnimationName() != suffixAnim && !targetCharacter.animationIsLooping(suffixAnim))) {
-						targetCharacter.playAnimationSteps(anim + animSuffix, true);
+						targetCharacter.playAnimationSoft(anim + animSuffix, true);
 					}
+					targetCharacter.timeAnimSteps();
 				}
 
 				if (animateReceptor) lane.receptor.playAnimation('confirm', true);

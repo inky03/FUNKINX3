@@ -78,7 +78,7 @@ class HScript extends Iris {
 		set('RuntimeShader', QuickRuntimeShader);
 		#if static
 		set('SpriteRenderType', {PACKER: SpriteRenderType.PACKER, SPARROW: SpriteRenderType.SPARROW, ANIMATEATLAS: SpriteRenderType.ANIMATEATLAS});
-		set('NoteEventType', {HIT: NoteEventType.HIT, LOST: NoteEventType.LOST, SPAWNED: NoteEventType.SPAWNED, DESPAWNED: NoteEventType.DESPAWNED});
+		set('NoteEventType', {HIT: NoteEventType.HIT, LOST: NoteEventType.LOST, SPAWNED: NoteEventType.SPAWNED, DESPAWNED: NoteEventType.DESPAWNED, GHOST: NoteEventType.GHOST});
 		#else
 		set('SpriteRenderType', SpriteRenderType);
 		set('NoteEventType', NoteEventType);

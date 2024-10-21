@@ -368,7 +368,7 @@ class PlayState extends MusicBeatState {
 	}
 
 	public function finishSong() {
-		var result:Any = HScriptBackend.run('finishSong');
+		var result:Dynamic = HScriptBackend.run('finishSong');
 		if (result == HScript.STOP) {
 			conductorPaused = true;
 			return;
@@ -581,7 +581,7 @@ class PlayState extends MusicBeatState {
 	}
 	public dynamic function comboBroken(oldCombo:Int) {
 		popCombo(0);
-		var result:Any = HScriptBackend.run('comboBroken');
+		var result:Dynamic = HScriptBackend.run('comboBroken');
 		if (result != HScript.STOP && oldCombo >= 10 && player3 != null) player3.playAnimationSteps('sad', true, 8);
 	}
 	public function popCombo(combo:Int) {

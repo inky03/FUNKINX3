@@ -90,8 +90,8 @@ class Character extends FunkinSprite {
 		}
 	}
 	
-	public function timeAnimSteps(steps:Float = 4) {
-		animReset = steps * Conductor.stepCrochet * .001;
+	public function timeAnimSteps(?steps:Float) {
+		animReset = (steps ?? singForSteps) * Conductor.stepCrochet * .001;
 	}
 	public function animationIsLooping(anim:String) {
 		return (getAnimationName() == '$anim-loop' || getAnimationName() == '$anim-hold');

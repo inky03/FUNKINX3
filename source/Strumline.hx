@@ -47,6 +47,7 @@ class Strumline extends FlxSpriteGroup {
 		for (i in laneCount...newCount) {
 			var lane:Lane = new Lane(i * laneSpacing * scale.x, 0, i);
 			lane.strumline = this;
+			lane.selfDraw = false;
 			lanes.add(lane);
 		}
 		return laneCount = newCount;
@@ -128,6 +129,13 @@ class Strumline extends FlxSpriteGroup {
 			i ++;
 		}
 		visible = true;
+	}
+	public override function draw() {
+		super.draw();
+		for (lane in lanes) { // draw on top
+			if (!lane.selfDraw)
+				lane.drawTop();
+		}
 	}
 	
 	public function fitToSize(targetWidth:Float = 0, targetHeight:Float = 0, center:FlxAxes = NONE) {
