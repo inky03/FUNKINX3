@@ -2,7 +2,7 @@ package;
 
 import flixel.util.FlxSignal.FlxTypedSignal;
 
-class MusicBeatState extends FlxState {
+class MusicBeatSubState extends FlxSubState {
 	public var curStep:Int = -1;
 	public var curBeat:Int = -1;
 	public var curBar:Int = -1;

@@ -2,6 +2,7 @@ package;
 
 import openfl.utils.Assets as OFLAssets;
 import lime.utils.Assets as LimeAssets;
+import flxanimate.data.AnimationData;
 import flixel.graphics.FlxGraphic;
 import openfl.display.BitmapData;
 import flixel.graphics.frames.*;
@@ -15,6 +16,7 @@ using StringTools;
 class Paths {
 	public static var workingDir:String = FileSystem.absolutePath('');
 	public static var graphicCache:Map<String, FlxGraphic> = [];
+	public static var dynamicCache:Map<String, Dynamic> = [];
 	public static var soundCache:Map<String, Sound> = [];
 
 	public static var trackedAssets:Array<String> = [];
@@ -182,9 +184,20 @@ class Paths {
 		
 		return File.getContent(assetKey);
 	}
+	static public function cachedDynamic(key:String, dataFunc:Void->Dynamic) {
+		if (dynamicCache[key] != null) {
+			return dynamicCache[key];
+		}
+
+		return dynamicCache[key] = dataFunc();
+	}
 
 	inline static public function font(key:String, ?library:String)
 		return (getPath('fonts/$key', library) ?? 'Nokia Cellphone FC');
+	inline static public function ttf(key:String, ?library:String)
+		return font('$key.ttf', library);
+	inline static public function otf(key:String, ?library:String)
+		return font('$key.otf', library);
 
 	static public function sparrowAtlas(key:String, ?library:String) {
 		var xmlContent:String = text('images/$key.xml', library);

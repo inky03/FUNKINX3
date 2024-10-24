@@ -200,13 +200,6 @@ class StageProp extends FunkinSprite { // maybe unify character with props?
 			playAnimation(startingAnimation ?? 'idle');
 		return true;
 	}
-	public function addAnimation(name:String, prefix:String, fps:Float = 24, loop:Bool = false, ?frameIndices:Array<Int>) {
-		if (frameIndices == null || frameIndices.length == 0) {
-			animation.addByPrefix(name, prefix, fps, loop);
-		} else {
-			animation.addByIndices(name, prefix, frameIndices, '', fps, loop);
-		}
-	}
 }
 
 enum StageFormat {

@@ -369,6 +369,15 @@ class FlxAnim implements IFlxDestroyable
 
 		return curSymbol.curFrame;
 	}
+
+	/**
+	 * Return whether an animation or a symbol exists with the specified name or not
+	 * @param name The name of the animation to check
+	 */
+	public function exists(name:String) {
+		return (animsMap.exists(name) ? true : (symbolDictionary != null && symbolDictionary.exists(name)));
+	}
+
 	/**
 	 * Creates an animation using an already made symbol from a texture atlas
 	 * @param Name The name of the animation

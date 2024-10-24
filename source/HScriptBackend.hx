@@ -60,7 +60,7 @@ class HScriptBackend {
 		}
 		for (dir in dirList) {
 			if (FileSystem.exists(dir)) {
-				Log.info('loading scripts from $dir');
+				Log.info('HScript: loading scripts from $dir');
 				for (file in FileSystem.readDirectory(dir)) {
 					if (!file.endsWith('.hx') && !file.endsWith('.hxs')) continue;
 					loadFromFile('$dir/$file');

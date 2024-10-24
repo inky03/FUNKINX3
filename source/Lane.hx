@@ -24,7 +24,7 @@ class Lane extends FlxSpriteGroup {
 	public var inputKeys:Array<FlxKey> = [];
 	public var strumline:Strumline;
 	
-	public var noteEvent:FlxTypedSignal<NoteEvent->Void>;
+	public var noteEvent:FlxTypedSignal<NoteEvent -> Void> = new FlxTypedSignal();
 	
 	public var receptor:Receptor;
 	public var noteCover:NoteCover;
@@ -73,7 +73,6 @@ class Lane extends FlxSpriteGroup {
 		topMembers.push(noteCover);
 		topMembers.push(noteSparks);
 		topMembers.push(noteSplashes);
-		noteEvent = new FlxTypedSignal<NoteEvent->Void>();
 
 		noteCover.shader = rgbShader.shader;
 		updateHitbox();
@@ -179,12 +178,6 @@ class Lane extends FlxSpriteGroup {
 		if (note.ignore) return;
 		if (Conductor.songPosition >= note.msTime && !note.lost && note.canHit && (cpu || held)) {
 			if (!note.goodHit) hitNote(note, false);
-			if (cpu) {
-				receptor.animation.finishCallback = (anim:String) -> {
-					receptor.playAnimation('static', true);
-					receptor.animation.finishCallback = null;
-				}
-			}
 			if (Conductor.songPosition >= note.endMs) {
 				killNote(note);
 				return;
@@ -268,6 +261,13 @@ class Receptor extends FunkinSprite {
 
 		loadAtlas('notes');
 		reloadAnimations();
+
+		onAnimationComplete.add((anim:String) -> {
+			if (anim != 'confirm') return;
+			if (lane == null || (lane.cpu && !lane.held)) {
+				playAnimation('static', true);
+			}
+		});
 	}
 
 	public function reloadAnimations() {
@@ -481,7 +481,7 @@ class NoteSpark extends FunkinSprite {
 				if (playAnimation && targetCharacter != null) {
 					var anim:String = 'sing${game.singAnimations[note.noteData]}';
 					var suffixAnim:String = anim + targetCharacter.animSuffix;
-					if (!note.isHoldPiece || (targetCharacter.getAnimationName() != suffixAnim && !targetCharacter.animationIsLooping(suffixAnim))) {
+					if (!note.isHoldPiece || (targetCharacter.currentAnimation != suffixAnim && !targetCharacter.animationIsLooping(suffixAnim))) {
 						targetCharacter.playAnimationSoft(anim + animSuffix, true);
 					}
 					targetCharacter.timeAnimSteps();

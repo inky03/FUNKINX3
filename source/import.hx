@@ -1,30 +1,20 @@
-//funkin
-import Util;
-import Paths;
-import Controls;
-import Settings;
-import FunkinSprite;
-import MusicBeatState;
-import lib.DiscordRPC;
-
 //libraries
+import sys.io.File;
+import sys.FileSystem;
 import openfl.media.Sound;
 import openfl.system.System;
-#if !flash
-	import sys.io.File;
-	import sys.FileSystem;
-#end
+import openfl.display.BlendMode;
 
 import tjson.TJSON;
 import flxanimate.FlxAnimate;
 
-import Settings;
 import flixel.FlxG;
 import flixel.FlxState;
 import flixel.FlxBasic;
 import flixel.FlxObject;
 import flixel.FlxSprite;
 import flixel.FlxCamera;
+import flixel.FlxSubState;
 import flixel.util.FlxSort;
 import flixel.text.FlxText;
 import flixel.math.FlxMath;
@@ -40,3 +30,14 @@ import flixel.graphics.FlxGraphic;
 import flixel.group.FlxSpriteGroup;
 import flixel.group.FlxGroup.FlxTypedGroup;
 import flixel.group.FlxSpriteGroup.FlxTypedSpriteGroup;
+
+//funkin
+import Util;
+import Paths;
+import Controls;
+import Settings;
+import FunkinSprite;
+import MusicBeatState;
+import MusicBeatSubState;
+
+import lib.DiscordRPC;

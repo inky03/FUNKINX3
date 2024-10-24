@@ -2,7 +2,6 @@ package;
 
 import Lane.NoteEventType;
 import flixel.util.FlxAxes;
-import openfl.display.BlendMode;
 import FunkinSprite.SpriteRenderType;
 import flixel.addons.display.FlxRuntimeShader;
 
@@ -37,7 +36,7 @@ class HScript extends Iris {
 			for (i in pos.customParams)
 				out += "," + Std.string(i);
 
-		var posPrefix:String = 'HSCRIPT:${pos.fileName}';
+		var posPrefix:String = pos.fileName;
 		if (pos.lineNumber != -1)
 			posPrefix += ':${pos.lineNumber}';
 

@@ -128,15 +128,17 @@ class AlphabetCharacter extends FunkinSprite {
 			var letter:Letter = AlphabetCharacter.getLetter(newChar);
 			
 			var letterAnim:String = letter.name;
-			if (type == 'bold') letterAnim = '$letterAnim bold';
-			else if (isLowerCase(newChar)) letterAnim = '$letterAnim lowercase';
+			if (isLowerCase(newChar)) {
+				var lowercaseAnim:String = '$letterAnim lowercase';
+				if (hasAnimationPrefix(lowercaseAnim + 0)) letterAnim = lowercaseAnim;
+			}
 			
-			if (hasAnimationPrefix(letterAnim + '0')) {
+			if (hasAnimationPrefix(letterAnim + 0)) {
 				var letterOffset:Array<Float> = (type == 'bold' ? letter.boldOffset : letter.blackOffset);
 				visible = true;
 				blank = false;
 				offsets[newChar] = FlxPoint.get(letterOffset[0], letterOffset[1]);
-				animation.addByPrefix(newChar, letterAnim + '0', 24, true);
+				animation.addByPrefix(newChar, letterAnim + 0, 24, true);
 				playAnimation(newChar);
 				updateHitbox();
 				if (letterOffset[1] == 0)
@@ -161,7 +163,7 @@ class AlphabetCharacter extends FunkinSprite {
 	public function set_type(newType:String) {
 		if (type != newType) {
 			offsets.clear();
-			loadAtlas(Util.pathSuffix('alphabet', newType));
+			loadAtlas('fonts/$newType');
 			set_character(character);
 		}
 		return type = newType;

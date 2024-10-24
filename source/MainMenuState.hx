@@ -26,8 +26,8 @@ class MainMenuState extends MusicBeatState {
 		var buttonSpacing:Float = 152;
 		for (i => buttonName in buttonNames) {
 			var button:FunkinSprite = new FunkinSprite(FlxG.width * .5, FlxG.height * .5 + (i - buttonNames.length * .5 + .5) * buttonSpacing).loadAtlas('mainmenu/button-${buttonName}');
-			button.animation.addByPrefix('unselected', '${buttonName} unselected', 24, true);
-			button.animation.addByPrefix('selected', '${buttonName} selected', 24, true);
+			button.addAnimation('unselected', '$buttonName unselected', 24, true);
+			button.addAnimation('selected', '$buttonName selected', 24, true);
 			button.playAnimation('unselected', true);
 			button.scrollFactor.set(.4, .4);
 			menuButtons.push(button);
@@ -47,6 +47,15 @@ class MainMenuState extends MusicBeatState {
 
 		Paths.clean();
 	}
+
+	public function returned(sub:FlxSubState) {
+		bg.visible = true;
+		inputEnabled = true;
+		for (button in menuButtons) {
+			button.visible = true;
+			button.alpha = 1;
+		}
+	}
 	
 	override public function update(elapsed:Float) {
 		super.update(elapsed);
@@ -61,7 +70,7 @@ class MainMenuState extends MusicBeatState {
 			FlxFlicker.flicker(bg, 1.1, 0.15, false);
 			for (i => button in menuButtons) {
 				if (i == selection) {
-					FlxFlicker.flicker(button, 1, 0.06, false, false, (flicker:FlxFlicker) -> menuRedirect(selection));
+					FlxFlicker.flicker(button, 1, 0.06, true, false, (flicker:FlxFlicker) -> menuRedirect(selection));
 				} else {
 					FlxTween.tween(button, {alpha: 0}, 0.4, {ease: FlxEase.quadOut});
 				}
@@ -74,6 +83,7 @@ class MainMenuState extends MusicBeatState {
 			case 'options':
 				FlxG.switchState(() -> new OptionsState());
 			case 'freeplay':
+				// openSubState(new FreeplaySubState());
 				FlxG.switchState(() -> new FreeplayState());
 			default:
 				FlxG.resetState();

@@ -11,7 +11,6 @@ class Character extends FunkinSprite {
 	public var sparrowsList:Array<String>;
 	public var fallbackCharacter:Null<String>;
 	public var character(default, set):Null<String>;
-	public var animationList:Map<String, CharacterAnim> = [];
 	public var stagePos(default, never):FlxPoint = FlxPoint.get();
 	public var psychOffset(default, never):FlxPoint = FlxPoint.get();
 	public var originOffset(default, never):FlxPoint = FlxPoint.get();
@@ -94,19 +93,18 @@ class Character extends FunkinSprite {
 		animReset = (steps ?? singForSteps) * Conductor.stepCrochet * .001;
 	}
 	public function animationIsLooping(anim:String) {
-		return (getAnimationName() == '$anim-loop' || getAnimationName() == '$anim-hold');
+		return (currentAnimation == '$anim-loop' || currentAnimation == '$anim-hold');
 	}
 	public function playAnimationSoft(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
 		if (!specialAnim)
 			playAnimation(anim, forced, reversed, frame);
 	}
 	public override function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
-		preloadAnimAsset(anim + animSuffix);
 		super.playAnimation(anim + animSuffix, forced, reversed, frame);
 	}
 	public function playAnimationSteps(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0) {
 		if (!specialAnim) {
-			var sameAnim:Bool = (getAnimationName() != anim);
+			var sameAnim:Bool = (currentAnimation != anim);
 			if (animationList.exists(anim) && (forced || !sameAnim || isAnimationFinished()))
 				timeAnimSteps(steps ?? singForSteps);
 			playAnimation(anim, forced, reversed, frame);
@@ -120,14 +118,6 @@ class Character extends FunkinSprite {
 			playAnimation('idle$idleSuffix');
 		return true;
 	}
-	public function preloadAnimAsset(anim:String) { // preloads animation with a different spritesheet path
-		if (renderType == ANIMATEATLAS) return;
-		var animData:CharacterAnim = animationList[anim];
-		if (animData != null && animData.assetPath != null) {
-			addAtlas(animData.assetPath, true);
-			addAnimation(anim, animData.prefix, animData.fps, animData.loop, animData.frameIndices);
-		}
-	}
 
 	public function set_character(newChara:Null<String>) {
 		if (character == newChara) return character;
@@ -140,7 +130,6 @@ class Character extends FunkinSprite {
 	}
 
 	public override function loadAtlas(path:String, ?library:String):FunkinSprite {
-		animationList.clear();
 		sparrowsList.resize(0);
 		sparrowsList.push(path);
 		super.loadAtlas(path, library);
@@ -289,54 +278,6 @@ class Character extends FunkinSprite {
 		dance();
 		finishAnimation();
 	}
-	// would probably be useful to move this to FunkinSprite!
-	public function addAnimation(name:String, prefix:String, fps:Float = 24, loop:Bool = false, ?frameIndices:Array<Int>, ?assetPath:String) {
-		if (renderType == ANIMATEATLAS) {
-			if (animate == null || animate.anim == null) return;
-			var anim:flxanimate.animate.FlxAnim = animate.anim;
-			var symbolExists:Bool = (anim.symbolDictionary != null && anim.symbolDictionary.exists(name));
-			if (frameIndices == null || frameIndices.length == 0) {
-				if (symbolExists) {
-					anim.addBySymbol(name, prefix, fps, loop);
-				} else {
-					try { anim.addByFrameLabel(name, prefix, fps, loop); }
-					catch (e:Dynamic) { Log.warning('frame label for $name not found... (verify: $prefix)'); }
-				}
-			} else {
-				if (symbolExists) {
-					anim.addBySymbolIndices(name, prefix, frameIndices, fps, loop);
-				} else {
-					var keyFrame = anim.getFrameLabel(prefix);
-					try {
-						var keyFrameIndices:Array<Int> = keyFrame.getFrameIndices();
-						var finalIndices:Array<Int> = [];
-						for (index in frameIndices) finalIndices.push(keyFrameIndices[index] ?? (keyFrameIndices.length - 1));
-						try { anim.addBySymbolIndices(name, anim.stageInstance.symbol.name, finalIndices, fps, loop); }
-						catch (e:Dynamic) {}
-					} catch (e:Dynamic) {
-						Log.warning('frame label for $name not found... (verify: $prefix)');
-					}
-				}
-			}
-		} else {
-			if (assetPath == null) { // wait for the asset to be loaded
-				if (frameIndices == null || frameIndices.length == 0) {
-					animation.addByPrefix(name, prefix, fps, loop);
-				} else {
-					animation.addByIndices(name, prefix, frameIndices, '', fps, loop);
-				}
-			}
-		}
-		animationList[name] = {prefix: prefix, fps: fps, loop: loop, assetPath: assetPath, frameIndices: frameIndices};
-	}
-}
-
-typedef CharacterAnim = {
-	var prefix:String;
-	var fps:Float;
-	var loop:Bool;
-	@:optional var assetPath:String;
-	@:optional var frameIndices:Array<Int>;
 }
 
 typedef PsychCharacterData = {
