@@ -21,6 +21,7 @@ class Lane extends FlxSpriteGroup {
 	public var direction:Float = 90;
 	public var spawnRadius:Float;
 	public var hitWindow:Float = Scoring.safeFrames / 60 * 1000;
+	public var conductorInUse:Conductor = Conductor.global;
 	public var inputKeys:Array<FlxKey> = [];
 	public var strumline:Strumline;
 	
@@ -89,8 +90,8 @@ class Lane extends FlxSpriteGroup {
 				queue.remove(note);
 				continue;
 			}
-			early = (note.msTime - Conductor.songPosition > spawnRadius);
-			if (!early && (oneWay || (note.endMs - Conductor.songPosition) >= -spawnRadius)) {
+			early = (note.msTime - conductorInUse.songPosition > spawnRadius);
+			if (!early && (oneWay || (note.endMs - conductorInUse.songPosition) >= -spawnRadius)) {
 				queue.remove(note);
 				insertNote(note);
 				limit --;
@@ -176,23 +177,23 @@ class Lane extends FlxSpriteGroup {
 	public function updateNote(note:Note) {
 		note.followLane(this, scrollSpeed);
 		if (note.ignore) return;
-		if (Conductor.songPosition >= note.msTime && !note.lost && note.canHit && (cpu || held)) {
+		if (conductorInUse.songPosition >= note.msTime && !note.lost && note.canHit && (cpu || held)) {
 			if (!note.goodHit) hitNote(note, false);
-			if (Conductor.songPosition >= note.endMs) {
+			if (conductorInUse.songPosition >= note.endMs) {
 				killNote(note);
 				return;
 			}
 		}
 		var canDespawn:Bool = !note.preventDespawn;
 		if (note.lost || note.goodHit || note.isHoldPiece) {
-			if (canDespawn && (note.endMs - Conductor.songPosition) < -spawnRadius) {
+			if (canDespawn && (note.endMs - conductorInUse.songPosition) < -spawnRadius) {
 				if (!oneWay) { // bye bye note
 					queue.push(note);
 				}
 				killNote(note);
 			}
 		} else {
-			if (Conductor.songPosition - hitWindow > note.msTime) {
+			if (conductorInUse.songPosition - hitWindow > note.msTime) {
 				note.lost = true;
 				noteEvent.dispatch(basicEvent(LOST, note));
 			}
@@ -282,7 +283,7 @@ class Receptor extends FunkinSprite {
 
 	public override function update(elapsed:Float) {
 		super.update(elapsed);
-		if (grayBeat != null && Conductor.metronome.beat >= grayBeat)
+		if (grayBeat != null && lane.conductorInUse.metronome.beat >= grayBeat)
 			playAnimation('press');
 	}
 	
@@ -461,7 +462,7 @@ class NoteSpark extends FunkinSprite {
 					if (playSound) game.hitsound.play(true);
 					
 					if (applyRating) {
-						window = window ?? Scoring.judgeLegacy(game.hitWindows, note.hitWindow, note.msTime - Conductor.songPosition);
+						window = window ?? Scoring.judgeLegacy(game.hitWindows, note.hitWindow, note.msTime - lane.conductorInUse.songPosition);
 						window.count ++;
 						
 						note.ratingData = window;

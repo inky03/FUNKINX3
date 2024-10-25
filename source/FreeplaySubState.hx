@@ -21,8 +21,8 @@ class FreeplaySubState extends MusicBeatSubState {
 
 	public override function create() {
 		super.create();
-		Conductor.songPosition = 0;
 
+		playMusic('freeplayRandom');
 		mainCam = new FlxCamera();
 		mainCam.bgColor.alpha = 0;
 		FlxG.cameras.add(mainCam, false);
@@ -125,7 +125,7 @@ class FreeplaySubState extends MusicBeatSubState {
 	}
 
 	public function beatHitEvent(beat:Int) {
-		if (freeplayDJ != null) {
+		if (freeplayDJ != null && beat % 2 == 0) {
 			freeplayDJ.dance(beat);
 		}
 	}

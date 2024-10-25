@@ -16,7 +16,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		[FlxColor.fromRGB(18, 250, 5), FlxColor.fromRGB(10, 68, 71)],
 		[FlxColor.fromRGB(249, 57, 63), FlxColor.fromRGB(101, 16, 56)],
 	];
-	public static var baseMetronome:Metronome = Conductor.metronome; // mostly charting stuff
+	public static var baseMetronome:Metronome = Conductor.global.metronome; // mostly charting stuff
 
 	public var children:Array<Note> = [];
 	public var parent:Note;
@@ -135,7 +135,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		var prevDist:Float = scrollDistance;
 		var holdHeight:Float = 0;
 		var cutHeight:Float = frameHeight;
-		scrollDistance = Note.msToDistance(msTime - Conductor.songPosition, speed);
+		scrollDistance = Note.msToDistance(msTime - Conductor.global.songPosition, speed);
 		
 		if (isHoldPiece) { //im jumping off a building
 			var prevSX:Float = scale.x;

@@ -151,7 +151,7 @@ class Song {
 				var stepCrochet:Float = tempMetronome.getCrochet(tempMetronome.bpm, tempMetronome.timeSignature.denominator) * .25;
 				song.notes.push({player: isPlayer, msTime: note.time, laneIndex: Std.int(note.lane % 4), msLength: note.length});
 			}
-			Note.baseMetronome = Conductor.metronome;
+			Note.baseMetronome = Conductor.global.metronome;
 
 			Log.info('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch (e:Exception) {
@@ -197,7 +197,7 @@ class Song {
 				var stepCrochet:Float = tempMetronome.getCrochet(tempMetronome.bpm, tempMetronome.timeSignature.denominator) * .25;
 				song.notes.push({player: note.lane >= 4, msTime: note.time, laneIndex: Std.int(note.lane % 4), msLength: note.length - stepCrochet});
 			}
-			Note.baseMetronome = Conductor.metronome;
+			Note.baseMetronome = Conductor.global.metronome;
 
 			Log.info('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch (e:Exception) {
@@ -299,7 +299,7 @@ class Song {
 			var stepCrochet:Float = crochet * .25;
 			var focus:Int = -1;
 			
-			var prevMetronome:Metronome = Conductor.metronome;
+			var prevMetronome:Metronome = Conductor.global.metronome;
 			var sections:Array<LegacySongSection> = song.json.notes;
 			if (song.json.events != null) { // todo: implement events.json
 				var eventBlobs:Array<Array<Dynamic>> = song.json.events;
@@ -364,7 +364,7 @@ class Song {
 				}
 			}
 			song.sortNotes();
-			Note.baseMetronome = Conductor.metronome;
+			Note.baseMetronome = Conductor.global.metronome;
 			var lastNote:SongNote = song.notes[song.notes.length - 1];
 			song.songLength = (lastNote == null ? 0 : lastNote.msTime + lastNote.msLength) + 500;
 

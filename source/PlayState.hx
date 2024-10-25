@@ -7,7 +7,6 @@ import flixel.FlxState;
 
 import Scoring.HitWindow;
 import Song.SongEvent;
-import Conductor;
 import Character;
 import Strumline;
 import Scoring;
@@ -82,13 +81,13 @@ class PlayState extends MusicBeatState {
 		if (song == null) song = new Song(''); // lol!
 		super.create();
 		Main.watermark.visible = false;
-		Conductor.metronome.tempoChanges = song.tempoChanges;
+		conductorInUse.metronome.tempoChanges = song.tempoChanges;
 		
 		HScriptBackend.loadFromFolder('scripts');
 		HScriptBackend.loadFromFolder('data/${song.path}');
 		HScriptBackend.run('create');
 		
-		Conductor.metronome.setBeat(playCountdown ? -5 : -1);
+		conductorInUse.metronome.setBeat(playCountdown ? -5 : -1);
 		syncTracker = song.instLoaded ? song.inst : null;
 
 		hitsound = FlxG.sound.load(Paths.sound('hitsound'));
@@ -273,7 +272,7 @@ class PlayState extends MusicBeatState {
 		}
 		
 		if (FlxG.keys.justPressed.Q) {
-			Conductor.songPosition -= 350;
+			conductorInUse.songPosition -= 350;
 		}
 		if (FlxG.keys.justPressed.R) {
 			opponentStrumline.fadeIn();
@@ -296,7 +295,7 @@ class PlayState extends MusicBeatState {
 				track.pause();
 			}
 			resetMusic();
-			Conductor.metronome.setBeat(-5);
+			conductorInUse.metronome.setBeat(-5);
 			resetScore();
 		}
 		if (FlxG.keys.pressed.SHIFT) {
@@ -304,13 +303,13 @@ class PlayState extends MusicBeatState {
 				playerStrumline.cpu = !playerStrumline.cpu;
 			}
 			if (FlxG.keys.justPressed.RIGHT) {
-				Conductor.songPosition += 2000;
-				song.inst.time = Conductor.songPosition + 2000;
+				conductorInUse.songPosition += 2000;
+				song.inst.time = conductorInUse.songPosition + 2000;
 				syncMusic(false, true);
 			}
 			if (FlxG.keys.justPressed.LEFT) {
-				Conductor.songPosition -= 2000;
-				song.inst.time = Conductor.songPosition - 2000;
+				conductorInUse.songPosition -= 2000;
+				song.inst.time = conductorInUse.songPosition - 2000;
 				syncMusic(false, true);
 			}
 		}
@@ -326,13 +325,13 @@ class PlayState extends MusicBeatState {
 		}
 		if (FlxG.keys.justPressed.ENTER) {
 			paused = !paused;
-			var pauseVocals:Bool = (paused || Conductor.songPosition < 0);
+			var pauseVocals:Bool = (paused || conductorInUse.songPosition < 0);
 			if (pauseVocals) {
 				song.inst.pause();
 				for (track in syncVocals) track.pause();
 			} else {
-				if (song.instLoaded) song.inst.play(true, Conductor.songPosition);
-				for (track in syncVocals) track.play(true, Conductor.songPosition);
+				if (song.instLoaded) song.inst.play(true, conductorInUse.songPosition);
+				for (track in syncVocals) track.play(true, conductorInUse.songPosition);
 				syncMusic(false, true);
 			}
 			FlxTimer.globalManager.forEach((timer:FlxTimer) -> { if (!timer.finished) timer.active = !paused; });
@@ -364,7 +363,7 @@ class PlayState extends MusicBeatState {
 		);
 		
 		var limit:Int = 50; //avoid lags
-		while (events.length > 0 && Conductor.songPosition >= events[0].msTime && limit > 0) {
+		while (events.length > 0 && conductorInUse.songPosition >= events[0].msTime && limit > 0) {
 			var event:SongEvent = events.shift();
 			triggerEvent(event);
 			limit --;
@@ -372,7 +371,7 @@ class PlayState extends MusicBeatState {
 		
 		HScriptBackend.run('updatePost', [elapsed]);
 		
-		if (Conductor.songPosition >= song.songLength && !conductorPaused) {
+		if (conductorInUse.songPosition >= song.songLength && !conductorInUse.paused) {
 			finishSong();
 		}
 	}
@@ -380,7 +379,7 @@ class PlayState extends MusicBeatState {
 	public function finishSong() {
 		var result:Dynamic = HScriptBackend.run('finishSong');
 		if (result == HScript.STOP) {
-			conductorPaused = true;
+			conductorInUse.paused = true;
 			return;
 		}
 		FlxG.switchState(() -> new FreeplayState());
@@ -388,8 +387,8 @@ class PlayState extends MusicBeatState {
 	
 	public function syncMusic(forceSongpos:Bool = false, forceTrackTime:Bool = false) {
 		if (song.instLoaded && song.inst.playing) {
-			if ((forceSongpos && Conductor.songPosition < song.inst.time) || Math.abs(song.inst.time - Conductor.songPosition) > 75)
-				Conductor.songPosition = song.inst.time;
+			if ((forceSongpos && conductorInUse.songPosition < song.inst.time) || Math.abs(song.inst.time - conductorInUse.songPosition) > 75)
+				conductorInUse.songPosition = song.inst.time;
 			if (forceTrackTime) {
 				for (track in syncVocals) {
 					if (Math.abs(song.inst.time - track.time) > 75)
@@ -402,7 +401,7 @@ class PlayState extends MusicBeatState {
 		if (song.instLoaded && song.inst.playing)
 			return song.inst.time;
 		else
-			return Conductor.songPosition;
+			return conductorInUse.songPosition;
 	}
 
 	public function pushedEvent(event:SongEvent) {
@@ -512,7 +511,7 @@ class PlayState extends MusicBeatState {
 		pop.camera = camHUD;
 		pop.screenCenter();
 		add(pop);
-		FlxTween.tween(pop, {alpha: 0}, Conductor.crochet * .001, {ease: FlxEase.cubeInOut, onComplete: (tween:FlxTween) -> {
+		FlxTween.tween(pop, {alpha: 0}, conductorInUse.crochet * .001, {ease: FlxEase.cubeInOut, onComplete: (tween:FlxTween) -> {
 			remove(pop);
 			pop.destroy();
 		}});
@@ -542,11 +541,11 @@ class PlayState extends MusicBeatState {
 	}
 	public function inputOn(keybind:Int) { // todo: lanes have the INPUTS and not PLAYSTATE
 		HScriptBackend.run('keyPressed', [keybind]);
-		var oldTime:Float = Conductor.songPosition;
-		Conductor.songPosition = getSongPos();
+		var oldTime:Float = conductorInUse.songPosition;
+		conductorInUse.songPosition = getSongPos();
 		var lane:Lane = playerStrumline.getLane(keybind);
 		var note = lane.getHighestNote((note:Note) -> {
-			var time:Float = note.msTime - Conductor.songPosition;
+			var time:Float = note.msTime - conductorInUse.songPosition;
 			return (time <= note.hitWindow + extraWindow) && (time >= -note.hitWindow);
 		});
 		if (note != null) {
@@ -556,7 +555,7 @@ class PlayState extends MusicBeatState {
 			lane.ghostTapped();
 			extraWindow = Math.min(extraWindow + 15, 200);
 		}
-		Conductor.songPosition = oldTime;
+		conductorInUse.songPosition = oldTime;
 	}
 	public function inputOff(keybind:Int) {
 		HScriptBackend.run('keyReleased', [keybind]);
@@ -660,7 +659,7 @@ class PlayState extends MusicBeatState {
 		FlxTween.tween(rating, {alpha: 0}, .2, {onComplete: (tween:FlxTween) -> {
 			ratingGroup.remove(rating, true);
 			rating.destroy();
-		}, startDelay: Conductor.crochet * .001 * beats});
+		}, startDelay: conductorInUse.crochet * .001 * beats});
 		return rating;
 	}
 	public function updateScore() {

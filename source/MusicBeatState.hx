@@ -8,7 +8,7 @@ class MusicBeatState extends FlxState {
 	public var curBar:Int = -1;
 	public var paused:Bool = false;
 	public var syncTracker:FlxSound = null;
-	public var conductorPaused:Bool = false;
+	public var conductorInUse:Conductor = Conductor.global;
 
 	public var stepHit:FlxTypedSignal<Int->Void> = new FlxTypedSignal<Int->Void>();
 	public var beatHit:FlxTypedSignal<Int->Void> = new FlxTypedSignal<Int->Void>();
@@ -45,7 +45,7 @@ class MusicBeatState extends FlxState {
 		curBar = -1;
 		curBeat = -1;
 		curStep = -1;
-		Conductor.songPosition = 0;
+		conductorInUse.songPosition = 0;
 	}
 	public function resetState() {
 		FlxG.resetState();
@@ -56,25 +56,20 @@ class MusicBeatState extends FlxState {
 		
 		if (paused) return;
 
-		if (!conductorPaused) updateConductor(elapsed * 1000);
+		updateConductor(elapsed);
 		super.update(elapsed);
 	}
 	
-	public function updateConductor(elapsedMS:Float = 0) {
+	public function updateConductor(elapsed:Float = 0) {
 		var prevStep:Int = curStep;
 		var prevBeat:Int = curBeat;
 		var prevBar:Int = curBar;
 
-		var trackerTime:Float = (syncTracker != null && syncTracker.playing ? syncTracker.time : Conductor.songPosition);
-		if (Math.abs(Conductor.songPosition - trackerTime) < 50) {
-			Conductor.songPosition += elapsedMS;
-		} else {
-			Conductor.songPosition = trackerTime;
-		}
+		conductorInUse.update(elapsed * 1000);
 		
-		curStep = Math.floor(Conductor.metronome.step);
-		curBeat = Math.floor(Conductor.metronome.beat);
-		curBar = Math.floor(Conductor.metronome.bar);
+		curStep = Math.floor(conductorInUse.metronome.step);
+		curBeat = Math.floor(conductorInUse.metronome.beat);
+		curBar = Math.floor(conductorInUse.metronome.bar);
 		
 		if (prevBar != curBar) barHit.dispatch(curBar);
 		if (prevBeat != curBeat) beatHit.dispatch(curBeat);
@@ -82,9 +77,7 @@ class MusicBeatState extends FlxState {
 	}
 	
 	public function playMusic(mus:String) {
-		@:privateAccess
-		if (FlxG.sound.music == null || FlxG.sound.music._sound != Paths.music(mus)) {
-			FlxG.sound.playMusic(Paths.music(mus));
-		}
+		MusicHandler.playMusic(mus);
+		MusicHandler.applyMeta(conductorInUse);
 	}
 }

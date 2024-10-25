@@ -17,7 +17,7 @@ class CharterState extends MusicBeatState {
 	private var quants:Array<Int> = [4, 8, 12, 16, 20, 24, 32, 48, 64, 96, 192];
 	
 	override public function create() {
-		Conductor.songPosition = 0;
+		conductorInUse.songPosition = 0;
 		
 		measureLines = new FlxTypedSpriteGroup<MeasureLine>();
 		strumlines = new FlxTypedSpriteGroup<Strumline>();
@@ -54,7 +54,7 @@ class CharterState extends MusicBeatState {
 		add(quantGraphic);
 		
 		for (i in 0...10) {
-			var test:MeasureLine = new MeasureLine(strumlines.x, strumlines.y, i, i * 4, 4, xx - strumlineSpacing, Note.msToDistance(Conductor.crochet, scrollSpeed));
+			var test:MeasureLine = new MeasureLine(strumlines.x, strumlines.y, i, i * 4, 4, xx - strumlineSpacing, Note.msToDistance(conductorInUse.crochet, scrollSpeed));
 			measureLines.add(test);
 		}
 	}
@@ -66,7 +66,7 @@ class CharterState extends MusicBeatState {
 		FlxG.camera.zoom = FlxMath.lerp(FlxG.camera.zoom, .5, elapsed * 5);
 		
 		for (line in measureLines) {
-			line.y = FlxG.height * .5 + Note.msToDistance(Conductor.metronome.convertMeasure(line.startTime, BEAT, MS) - Conductor.songPosition, scrollSpeed);
+			line.y = FlxG.height * .5 + Note.msToDistance(conductorInUse.metronome.convertMeasure(line.startTime, BEAT, MS) - conductorInUse.songPosition, scrollSpeed);
 		}
 		
 		if (!paused)
@@ -97,7 +97,7 @@ class CharterState extends MusicBeatState {
 		
 		var scrollMod:Int = 1;
 		var leniency:Float = 1 / 256;
-		var prevBeat:Float = Conductor.metronome.beat;
+		var prevBeat:Float = conductorInUse.metronome.beat;
 		var quantMultiplier:Float = (quant * .25);
 		switch (key) {
 			case FlxKey.LEFT | FlxKey.RIGHT:
@@ -106,21 +106,21 @@ class CharterState extends MusicBeatState {
 				if (key == FlxKey.UP) scrollMod *= -1;
 				var targetBeat:Float = prevBeat + scrollMod / quantMultiplier;
 				if (Math.abs(prevBeat - Math.round(prevBeat * quantMultiplier) / quantMultiplier) < leniency * 2)
-					Conductor.metronome.setBeat(Math.round(targetBeat * quantMultiplier) / quantMultiplier);
+					conductorInUse.metronome.setBeat(Math.round(targetBeat * quantMultiplier) / quantMultiplier);
 				else
-					Conductor.metronome.setBeat((scrollMod > 0 ? Math.floor : Math.ceil)(targetBeat * quantMultiplier) / quantMultiplier);
+					conductorInUse.metronome.setBeat((scrollMod > 0 ? Math.floor : Math.ceil)(targetBeat * quantMultiplier) / quantMultiplier);
 				updateHolds();
 			case FlxKey.PAGEUP | FlxKey.PAGEDOWN:
 				if (key == FlxKey.PAGEUP) scrollMod *= -1;
-				if (Math.abs(Conductor.metronome.bar - Std.int(Conductor.metronome.bar)) < (1 / quant - .0006))
-					Conductor.metronome.setBar(Conductor.metronome.bar + scrollMod);
-				Conductor.metronome.setBar((scrollMod == -1 ? Math.floor : Math.ceil)(Conductor.metronome.bar));
+				if (Math.abs(conductorInUse.metronome.bar - Std.int(conductorInUse.metronome.bar)) < (1 / quant - .0006))
+					conductorInUse.metronome.setBar(conductorInUse.metronome.bar + scrollMod);
+				conductorInUse.metronome.setBar((scrollMod == -1 ? Math.floor : Math.ceil)(conductorInUse.metronome.bar));
 				updateHolds();
 			case FlxKey.HOME:
-				Conductor.metronome.setMS(0);
+				conductorInUse.metronome.setMS(0);
 			default:
 		}
-		Conductor.metronome.setMS(Math.max(Conductor.metronome.ms, 0));
+		conductorInUse.metronome.setMS(Math.max(conductorInUse.metronome.ms, 0));
 	}
 	public function keyReleaseEvent(event:KeyboardEvent) {
 		var key:FlxKey = event.keyCode;
@@ -150,12 +150,12 @@ class CharterState extends MusicBeatState {
 		var matchingNote:Null<Note> = null;
 		for (note in lane.notes) {
 			if (note.isHoldPiece) continue;
-			if (Math.abs(note.beatTime - Conductor.metronome.beat) <= 1 / quantMultiplier)
+			if (Math.abs(note.beatTime - conductorInUse.metronome.beat) <= 1 / quantMultiplier)
 				matchingNote = note;
 		}
 		if (matchingNote == null) {
 			FlxG.sound.play(Paths.sound('hitsound'), .7);
-			var snappedBeat:Float = Math.round(Conductor.metronome.beat * quantMultiplier) / quantMultiplier;
+			var snappedBeat:Float = Math.round(conductorInUse.metronome.beat * quantMultiplier) / quantMultiplier;
 			var note:Note = new Note(false, 0, data);
 			note.extraData.set('keybind', keybind);
 			note.beatTime = snappedBeat;
@@ -188,7 +188,7 @@ class CharterState extends MusicBeatState {
 	}
 	public function updateHolds() {
 		var quantMultiplier:Float = (quant * .25);
-		var snappedBeat:Float = Math.round(Conductor.metronome.beat * quantMultiplier) / quantMultiplier;
+		var snappedBeat:Float = Math.round(conductorInUse.metronome.beat * quantMultiplier) / quantMultiplier;
 		for (note in heldNotes) {
 			var lane:Lane = note.lane;
 			note.beatLength = snappedBeat - note.beatTime;

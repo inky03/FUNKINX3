@@ -1,23 +1,39 @@
 package;
 
 class Conductor {
-	public static var bpm(get, never):Float;
-	public static var crochet(get, never):Float;
-	public static var stepCrochet(get, never):Float;
-	public static var timeSignature(get, never):TimeSignature;
-	@:isVar public static var songPosition(get, set):Float = 0;
-
-	public static var metronome:Metronome = new Metronome();
+	public var paused:Bool = false;
+	public var bpm(get, never):Float;
+	public var crochet(get, never):Float;
+	public var stepCrochet(get, never):Float;
+	public var timeSignature(get, never):TimeSignature;
+	@:isVar public var songPosition(get, set):Float = 0;
 	
-	public static function get_crochet() return (metronome.getCrochet(metronome.bpm, metronome.timeSignature.denominator));
-	public static function get_stepCrochet() return (crochet * .25);
+	public var metronome:Metronome;
+	public var syncTracker:FlxSound;
+	public static var global(default, never):Conductor = new Conductor();
 	
-	public static function get_songPosition() return metronome.ms;
-	public static function set_songPosition(newMS:Float) return metronome.setMS(newMS);
-	public static function get_timeSignature() return metronome.timeSignature;
-	public static function get_bpm() return metronome.bpm;
+	public function new(?metronome:Metronome) {
+		this.metronome = metronome ?? new Metronome();
+	}
+	public function update(elapsedMS:Float) {
+		if (paused) return;
+		var trackerTime:Float = (syncTracker != null && syncTracker.playing ? syncTracker.time : songPosition);
+		if (Math.abs(songPosition - trackerTime) < 50) {
+			songPosition += elapsedMS;
+		} else {
+			songPosition = trackerTime;
+		}
+	}
 	
-	public static function resetToDefault() {
+	public function get_crochet() return (metronome.getCrochet(metronome.bpm, metronome.timeSignature.denominator));
+	public function get_stepCrochet() return (crochet * .25);
+	
+	public function get_songPosition() return metronome.ms;
+	public function set_songPosition(newMS:Float) return metronome.setMS(newMS);
+	public function get_timeSignature() return metronome.timeSignature;
+	public function get_bpm() return metronome.bpm;
+	
+	public function resetToDefault() {
 		metronome = new Metronome();
 	}
 }
@@ -191,7 +207,7 @@ class TempoChange {
 	public var bpm:Null<Float>;
 	public var timeSignature:Null<TimeSignature>;
 	
-	public function new(beat:Float, bpm:Null<Float> = null, ?timeSignature:TimeSignature) {
+	public function new(beat:Float, ?bpm:Float, ?timeSignature:TimeSignature) {
 		this.bpm = bpm;
 		this.beatTime = beat;
 		this.timeSignature = timeSignature;

@@ -49,6 +49,7 @@ class MainMenuState extends MusicBeatState {
 	}
 
 	public function returned(sub:FlxSubState) {
+		playMusic('title');
 		bg.visible = true;
 		inputEnabled = true;
 		for (button in menuButtons) {
