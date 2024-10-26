@@ -72,39 +72,6 @@ class Metronome {
 		return step = newStep;
 	}
 	
-	public function setBeat(newBeat:Float) {
-		if (beat == newBeat) return newBeat;
-		
-		var firstChange:TempoChange = tempoChanges[0];
-		bpm = firstChange.bpm;
-		timeSignature.copyFrom(firstChange.timeSignature);
-		
-		var tempBeat:Float = 0;
-		var lastBeat:Float = 0;
-		var lastBar:Float = 0;
-		var lastMS:Float = 0;
-		
-		for (change in tempoChanges) {
-			tempBeat += (change.beatTime - lastBeat);
-			if (tempBeat > newBeat) break;
-			
-			lastBeat = tempBeat;
-			lastBar += (change.beatTime - lastBeat) / timeSignature.numerator;
-			lastMS += (change.beatTime - lastBeat) * getCrochet(bpm, timeSignature.denominator);
-			
-			if (change.changeBPM) bpm = change.bpm;
-			if (change.changeSign) timeSignature.copyFrom(change.timeSignature);
-		}
-		
-		var crochet:Float = getCrochet(bpm, timeSignature.denominator);
-		var relBeat = newBeat - lastBeat;
-		step = beat * 4;
-		ms = relBeat * crochet + lastMS;
-		bar = relBeat / timeSignature.numerator + lastBar;
-		
-		return beat = newBeat;
-	}
-	
 	public function setBar(newBar:Float) {
 		if (bar == newBar) return newBar;
 		
@@ -121,8 +88,8 @@ class Metronome {
 			tempBar += (change.beatTime - lastBeat) / timeSignature.numerator;
 			if (tempBar > newBar) break;
 			
-			lastBeat = change.beatTime;
 			lastMS += (change.beatTime - lastBeat) * getCrochet(bpm, timeSignature.denominator);
+			lastBeat = change.beatTime;
 			
 			if (change.changeBPM) bpm = change.bpm;
 			if (change.changeSign) timeSignature.copyFrom(change.timeSignature);
@@ -135,6 +102,39 @@ class Metronome {
 		ms = relBeat * crochet + lastMS;
 		
 		return bar = newBar;
+	}
+	
+	public function setBeat(newBeat:Float) {
+		if (beat == newBeat) return newBeat;
+		
+		var firstChange:TempoChange = tempoChanges[0];
+		bpm = firstChange.bpm;
+		timeSignature.copyFrom(firstChange.timeSignature);
+		
+		var tempBeat:Float = 0;
+		var lastBeat:Float = 0;
+		var lastBar:Float = 0;
+		var lastMS:Float = 0;
+		
+		for (change in tempoChanges) {
+			tempBeat += (change.beatTime - lastBeat);
+			if (tempBeat > newBeat) break;
+			
+			lastBar += (change.beatTime - lastBeat) / timeSignature.numerator;
+			lastMS += (change.beatTime - lastBeat) * getCrochet(bpm, timeSignature.denominator);
+			lastBeat = tempBeat;
+			
+			if (change.changeBPM) bpm = change.bpm;
+			if (change.changeSign) timeSignature.copyFrom(change.timeSignature);
+		}
+		
+		var crochet:Float = getCrochet(bpm, timeSignature.denominator);
+		var relBeat = newBeat - lastBeat;
+		step = beat * 4;
+		ms = relBeat * crochet + lastMS;
+		bar = relBeat / timeSignature.numerator + lastBar;
+		
+		return beat = newBeat;
 	}
 	
 	public function setMS(newMS:Float) { //todo: optimize (dont recalculate every bpm change every update)
