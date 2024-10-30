@@ -88,7 +88,7 @@ class PlayState extends MusicBeatState {
 		HScriptBackend.run('create');
 		
 		conductorInUse.metronome.setBeat(playCountdown ? -5 : -1);
-		syncTracker = song.instLoaded ? song.inst : null;
+		conductorInUse.syncTracker = song.instLoaded ? song.inst : null;
 
 		hitsound = FlxG.sound.load(Paths.sound('hitsound'));
 		hitsound.volume = .7;

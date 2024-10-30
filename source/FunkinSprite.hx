@@ -1,11 +1,11 @@
 package;
 
-import flixel.util.FlxSignal.FlxTypedSignal;
+import flixel.util.FlxAxes;
 import flixel.graphics.frames.FlxAtlasFrames;
 import flixel.graphics.frames.FlxFramesCollection;
 import flixel.math.FlxPoint.FlxCallbackPoint;
+import flixel.util.FlxSignal.FlxTypedSignal;
 import flxanimate.animate.FlxAnim;
-import flixel.util.FlxAxes;
 import haxe.io.Path;
 
 class FunkinSprite extends FlxSprite {
@@ -23,7 +23,7 @@ class FunkinSprite extends FlxSprite {
 
 	var renderType:SpriteRenderType = SPARROW;
 	public var isAnimate(get, never):Bool;
-	public var anim(get, never):Dynamic;
+	public var anim(get, never):Dynamic; // for scripting purposes
 	public var animate:FunkinAnimate;
 	
 	public function new(x:Float = 0, y:Float = 0, isSmooth:Bool = true) {
@@ -161,13 +161,6 @@ class FunkinSprite extends FlxSprite {
 		spriteOffset.set(offset.x * (prevScale.x / scale.x), offset.y * (prevScale.y / scale.y));
 		prevScale.copyFrom(scale);
 	}
-	public function animationExists(anim:String):Bool {
-		if (isAnimate) {
-			return animate.anim.exists(anim);
-		} else {
-			return animation.exists(anim) ?? false;
-		}
-	}
 
 	public function setAnimationOffset(name:String, x:Float = 0, y:Float = 0):FlxPoint {
 		if (offsets.exists(name)) {
@@ -248,6 +241,13 @@ class FunkinSprite extends FlxSprite {
 			addAnimation(anim, animData.prefix, animData.fps, animData.loop, animData.frameIndices);
 		}
 	}
+	public function animationExists(anim:String):Bool {
+		if (isAnimate) {
+			return animate.anim.exists(anim);
+		} else {
+			return animation.exists(anim) ?? false;
+		}
+	}
 	public function isAnimationFinished():Bool {
 		if (isAnimate) {
 			return animate.anim.finished ?? false;
@@ -257,7 +257,7 @@ class FunkinSprite extends FlxSprite {
 	}
 	public function finishAnimation() {
 		if (isAnimate) {
-			anim.finish();
+			animate.anim.finish();
 		} else {
 			animation.finish();
 		}

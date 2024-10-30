@@ -7,7 +7,6 @@ class MusicBeatState extends FlxState {
 	public var curBeat:Int = -1;
 	public var curBar:Int = -1;
 	public var paused:Bool = false;
-	public var syncTracker:FlxSound = null;
 	public var conductorInUse:Conductor = Conductor.global;
 
 	public var stepHit:FlxTypedSignal<Int->Void> = new FlxTypedSignal<Int->Void>();
