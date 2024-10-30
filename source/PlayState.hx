@@ -81,14 +81,13 @@ class PlayState extends MusicBeatState {
 		if (song == null) song = new Song(''); // lol!
 		super.create();
 		Main.watermark.visible = false;
+		
 		conductorInUse.metronome.tempoChanges = song.tempoChanges;
+		conductorInUse.metronome.setBeat(playCountdown ? -5 : -1);
+		conductorInUse.syncTracker = song.instLoaded ? song.inst : null;
 		
 		HScriptBackend.loadFromFolder('scripts');
 		HScriptBackend.loadFromFolder('data/${song.path}');
-		HScriptBackend.run('create');
-		
-		conductorInUse.metronome.setBeat(playCountdown ? -5 : -1);
-		conductorInUse.syncTracker = song.instLoaded ? song.inst : null;
 
 		hitsound = FlxG.sound.load(Paths.sound('hitsound'));
 		hitsound.volume = .7;
@@ -220,12 +219,12 @@ class PlayState extends MusicBeatState {
 		healthBar.screenCenter(X);
 		healthBar.zIndex = 10;
 		uiGroup.add(healthBar);
-		iconP1 = new HealthIcon(0, 0, player1.healthIcon);
+		iconP1 = new HealthIcon(0, 0, player1?.healthIcon ?? 'face');
 		iconP1.origin.x = 0;
 		iconP1.flipX = true; // fuck you
 		iconP1.zIndex = 15;
 		uiGroup.add(iconP1);
-		iconP2 = new HealthIcon(0, 0, player2.healthIcon);
+		iconP2 = new HealthIcon(0, 0, player2?.healthIcon ?? 'face');
 		iconP2.origin.x = iconP2.width;
 		iconP2.zIndex = 15;
 		uiGroup.add(iconP2);
@@ -678,6 +677,7 @@ class PlayState extends MusicBeatState {
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
 		Main.watermark.visible = true;
+		conductorInUse.paused = false;
 		super.destroy();
 	}
 }

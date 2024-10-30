@@ -112,6 +112,7 @@ class HScript extends Iris {
 		set('insert', FlxG.state.insert);
 		if (Std.isOfType(FlxG.state, MusicBeatState)) {
 			var state:MusicBeatState = cast FlxG.state;
+			set('conductor', state.conductorInUse);
 			set('sortZIndex', state.sortZIndex);
 			set('insertZIndex', state.insertZIndex);
 		}

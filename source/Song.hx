@@ -42,7 +42,7 @@ class Song {
 	public var initialBpm:Float = 100;
 	public var notes:Array<SongNote> = [];
 	public var events:Array<SongEvent> = [];
-	public var tempoChanges:Array<TempoChange> = [new TempoChange(0, 100, new TimeSignature())];
+	public var tempoChanges:Array<TempoChange> = [new TempoChange(-4, 100, new TimeSignature())];
 
 	public var instLoaded:Bool;
 	public var inst:FlxSound;
@@ -253,6 +253,7 @@ class Song {
 			}
 		}
 		
+		this.sort();
 		var lastNote:SongNote = notes[notes.length - 1];
 		this.songLength = (lastNote == null ? 0 : lastNote.msTime + lastNote.msLength) + 500;
 		return this;
@@ -286,7 +287,7 @@ class Song {
 			
 			song.name = song.json.song;
 			song.initialBpm = song.json.bpm;
-			song.tempoChanges = [new TempoChange(0, song.initialBpm, new TimeSignature())];
+			song.tempoChanges = [new TempoChange(-4, song.initialBpm, new TimeSignature())];
 			song.scrollSpeed = song.json.speed;
 			
 			var ms:Float = 0;
@@ -363,7 +364,7 @@ class Song {
 					song.notes.push({player: playerNote, msTime: noteTime, laneIndex: noteData % keyCount, msLength: noteLength, kind: noteKind});
 				}
 			}
-			song.sortNotes();
+			song.sort();
 			Note.baseMetronome = Conductor.global.metronome;
 			var lastNote:SongNote = song.notes[song.notes.length - 1];
 			song.songLength = (lastNote == null ? 0 : lastNote.msTime + lastNote.msLength) + 500;
@@ -396,6 +397,11 @@ class Song {
 				while (bitTime < endMs) {
 					tempMetronome.setStep(Std.int(tempMetronome.step + .05) + 1);
 					var newTime:Float = tempMetronome.ms;
+					if (bitTime < note.msTime) {
+						Log.warning('??? $bitTime < ${note.msTime} (sustain bit off by ${note.msTime - bitTime}ms)');
+						bitTime = newTime;
+						break;
+					}
 					var bitLength:Float = Math.min(newTime - bitTime, endMs - bitTime);
 					var holdBit:Note = new Note(note.player, bitTime, note.laneIndex, bitLength, note.kind, true);
 					hitNote.children.push(holdBit);
@@ -435,8 +441,9 @@ class Song {
 		return false;
 	}
 	
-	public function sortNotes() {
+	public function sort() {
 		notes.sort((a, b) -> Std.int(a.msTime - b.msTime));
+		events.sort((a, b) -> Std.int(a.msTime - b.msTime));
 	}
 }
 

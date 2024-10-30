@@ -79,4 +79,12 @@ class MusicBeatState extends FlxState {
 		MusicHandler.playMusic(mus);
 		MusicHandler.applyMeta(conductorInUse);
 	}
+	
+	public static function getCurrentConductor():Conductor {
+		var state:FlxState = FlxG.state;
+		if (Std.isOfType(state, MusicBeatState)) {
+			return cast(state, MusicBeatState).conductorInUse;
+		}
+		return Conductor.global;
+	}
 }

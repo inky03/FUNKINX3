@@ -81,7 +81,7 @@ class Character extends FunkinSprite {
 			}
 		}
 		if (specialAnim) {
-			if (animation.finished && animReset <= 0) {
+			if (isAnimationFinished() && animReset <= 0) {
 				specialAnim = false;
 				animReset = 0;
 				dance();
@@ -100,6 +100,7 @@ class Character extends FunkinSprite {
 			playAnimation(anim, forced, reversed, frame);
 	}
 	public override function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
+		specialAnim = false;
 		super.playAnimation(anim + animSuffix, forced, reversed, frame);
 	}
 	public function playAnimationSteps(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0) {
@@ -111,7 +112,7 @@ class Character extends FunkinSprite {
 		}
 	}
 	public function dance(beat:Int = 0) {
-		if (animReset > 0 || bopFrequency <= 0 || !bop) return false;
+		if (animReset > 0 || bopFrequency <= 0 || !bop || specialAnim) return false;
 		if (sway)
 			playAnimation((beat % 2 == 0 ? 'danceLeft' : 'danceRight') + idleSuffix);
 		else if (beat % 2 == 0)
@@ -218,7 +219,7 @@ class Character extends FunkinSprite {
 		}
 		for (animation in animations) {
 			addAnimation(animation.anim, animation.name, animation.fps, animation.loop, animation.indices, animation.assetPath);
-			offsets.set(animation.anim, FlxPoint.get(animation.offsets[0], animation.offsets[1]));
+			offsets.set(animation.anim, FlxPoint.get(animation.offsets[0] / charData.scale, animation.offsets[1] / charData.scale));
 		}
 		healthIcon = charData.healthicon;
 		smooth = !charData.no_antialiasing;

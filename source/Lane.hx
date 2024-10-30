@@ -21,7 +21,7 @@ class Lane extends FlxSpriteGroup {
 	public var direction:Float = 90;
 	public var spawnRadius:Float;
 	public var hitWindow:Float = Scoring.safeFrames / 60 * 1000;
-	public var conductorInUse:Conductor = Conductor.global;
+	public var conductorInUse:Conductor = MusicBeatState.getCurrentConductor();
 	public var inputKeys:Array<FlxKey> = [];
 	public var strumline:Strumline;
 	
@@ -482,6 +482,7 @@ class NoteSpark extends FunkinSprite {
 				if (playAnimation && targetCharacter != null) {
 					var anim:String = 'sing${game.singAnimations[note.noteData]}';
 					var suffixAnim:String = anim + targetCharacter.animSuffix;
+					if (!targetCharacter.animationExists(suffixAnim)) suffixAnim = anim;
 					if (!note.isHoldPiece || (targetCharacter.currentAnimation != suffixAnim && !targetCharacter.animationIsLooping(suffixAnim))) {
 						targetCharacter.playAnimationSoft(anim + animSuffix, true);
 					}
