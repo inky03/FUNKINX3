@@ -1,4 +1,5 @@
 //libraries
+#if !macro // TYSM TYSM TYSM COBALT
 import sys.io.File;
 import sys.FileSystem;
 import openfl.media.Sound;
@@ -41,3 +42,4 @@ import MusicBeatState;
 import MusicBeatSubState;
 
 import lib.DiscordRPC;
+#end

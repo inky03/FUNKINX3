@@ -19,7 +19,7 @@ class FunkinSprite extends FlxSprite {
 	public var spriteOffset:FlxCallbackPoint;
 	public var animOffset:FlxCallbackPoint;
 	public var rotateOffsets:Bool = false;
-	public var prevScale:FlxPoint;
+	public var scaleOffsets:Bool = true;
 
 	var renderType:SpriteRenderType = SPARROW;
 	public var isAnimate(get, never):Bool;
@@ -30,7 +30,6 @@ class FunkinSprite extends FlxSprite {
 		super(x, y);
 		spriteOffset = new FlxCallbackPoint((point:FlxPoint) -> refreshOffset());
 		animOffset = new FlxCallbackPoint((point:FlxPoint) -> refreshOffset());
-		prevScale = FlxPoint.get(scale.x, scale.y);
 		smooth = isSmooth;
 		animation.finishCallback = (anim:String) -> {
 			if (renderType != ANIMATEATLAS)
@@ -113,10 +112,10 @@ class FunkinSprite extends FlxSprite {
 	}
 	public override function centerOffsets(adjustPosition:Bool = false) {
 		super.centerOffsets(adjustPosition);
-		spriteOffset.set(offset.x / scale.x, offset.y / scale.y);
+		spriteOffset.set(offset.x / (scaleOffsets ? scale.x : 1), offset.y / (scaleOffsets ? scale.y : 1));
 	}
 
-	public function setOffset(x:Float, y:Float) spriteOffset.set(x / scale.x, y / scale.y);
+	public function setOffset(x:Float = 0, y:Float = 0) spriteOffset.set(x / scale.x, y / scale.y);
 	public function hasAnimationPrefix(prefix:String) {
 		var frames:Array<flixel.graphics.frames.FlxFrame> = [];
 		@:privateAccess //why is it private :sob:
@@ -124,8 +123,8 @@ class FunkinSprite extends FlxSprite {
 		return (frames.length > 0);
 	}
 	inline public function refreshOffset() {
-		var xP:Float = (spriteOffset.x + animOffset.x) * scale.x;
-		var yP:Float = (spriteOffset.y + animOffset.y) * scale.y;
+		var xP:Float = (spriteOffset.x + animOffset.x) * (scaleOffsets ? scale.x : 1);
+		var yP:Float = (spriteOffset.y + animOffset.y) * (scaleOffsets ? scale.y : 1);
 		if (rotateOffsets && angle % 360 != 0) {
 			var rad:Float = angle / 180 * Math.PI;
 			var cos:Float = FlxMath.fastCos(rad);
@@ -158,8 +157,7 @@ class FunkinSprite extends FlxSprite {
 		} else {
 			super.updateHitbox();
 		}
-		spriteOffset.set(offset.x * (prevScale.x / scale.x), offset.y * (prevScale.y / scale.y));
-		prevScale.copyFrom(scale);
+		spriteOffset.set(offset.x / (scaleOffsets ? scale.x : 1), offset.y / (scaleOffsets ? scale.y : 1));
 	}
 
 	public function setAnimationOffset(name:String, x:Float = 0, y:Float = 0):FlxPoint {

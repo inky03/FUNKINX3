@@ -17,6 +17,7 @@ class HScriptBackend {
 			return null;
 		}
 	}
+	public static function exists(name:String) return (find(name) != null);
 	public static function findFromSuffix(test:String) {
 		for (hscript in activeScripts) {
 			if (hscript.scriptName.endsWith(test)) return hscript;
@@ -60,7 +61,7 @@ class HScriptBackend {
 		}
 		for (dir in dirList) {
 			if (FileSystem.exists(dir)) {
-				Log.info('HScript: loading scripts from $dir');
+				Log.minor('loading hscripts @ "$dir"');
 				for (file in FileSystem.readDirectory(dir)) {
 					if (!file.endsWith('.hx') && !file.endsWith('.hxs')) continue;
 					loadFromFile('$dir/$file');
@@ -68,33 +69,50 @@ class HScriptBackend {
 			}
 		}
 	}
-	public static function loadFromString(code:String):HScript {
-		var hs:HScript = new HScript(code, code);
-		hs.run();
-		add(hs);
-		return hs;
+	public static function loadFromString(code:String, ?name:String):Null<HScript> {
+		var hs:HScript = new HScript(name ?? code, code);
+		if (hs.success) {
+			Log.info('hscript ${name != null ? '"$name" ' : ''}loaded successfully!');
+			hs.run();
+			add(hs);
+			return hs;
+		} else {
+			hs.destroy();
+			return null;
+		}
 	}
-	public static function loadFromFile(file:String, unique:Bool = false):HScript {
-		if (!unique) {
-			var found:HScript = find(file);
-			if (found != null) {
-				// Sys.println('HScript: found active script $file');
+	public static function loadFromFile(file:String, unique:Bool = false):Null<HScript> {
+		var found:HScript = find(file);
+		var name:String = file;
+		if (found != null) {
+			if (unique) {
+				var n:Int = 1;
+				while (exists('file_$n')) n ++;
+				name = 'file_$n';
+			} else {
+				Log.warning('hscript @ "$file" is already active!');
 				return found;
 			}
 		}
 		
 		var code:String;
 		if (FileSystem.exists(file)) {
-			Sys.println('HScript: loading script from $file');
 			code = File.getContent(file);
 		} else {
-			Log.error('HScript: couldn\'t load script from $file!!');
+			Log.error('hscript @ "$file" wasn\'t found...');
 			code = '';
 		}
-		var hs:HScript = new HScript(file, code);
-		hs.run();
-		add(hs);
-		return hs;
+
+		var hs:HScript = new HScript(name, code);
+		if (hs.success) {
+			Log.info('hscript @ "$file" loaded successfully!');
+			hs.run();
+			add(hs);
+			return hs;
+		} else {
+			hs.destroy();
+			return null;
+		}
 	}
 	public static function loadFromPaths(basepath:String) {
 		var found:Bool = false;

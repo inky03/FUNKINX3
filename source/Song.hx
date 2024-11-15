@@ -75,15 +75,15 @@ class Song {
 			return jsonData;
 		} else {
 			Log.warning('chart JSON not found... (chart not generated)');
-			Sys.println('verify path:');
-			Sys.println('- chart: $jsonPath');
+			Log.minor('verify path:');
+			Log.minor('- chart: $jsonPath');
 			return null;
 		}
 	}
 	
 	public static function loadAutoDetect(path:String, difficulty:String = 'hard', suffix:String = '') {
 		difficulty = difficulty.toLowerCase();
-		Sys.println('detecting format from song "$path"');
+		Log.minor('detecting format from song "$path"');
 		
 		var songPath:String = 'data/$path/$path';
 		var modernChartPath:String = Util.pathSuffix('$songPath-chart', suffix) + '.json';
@@ -99,20 +99,20 @@ class Song {
 			return loadLegacySong(path, difficulty, suffix);
 		} else {
 			Log.warning('chart files of any type not found... (chart not generated)');
-			Sys.println('verify paths:');
-			Sys.println('- modern:');
-			Sys.println('  - chart: $modernChartPath');
-			Sys.println('  - metadata: $modernMetaPath');
-			Sys.println('- stepmania sm: $smChartPath');
-			Sys.println('- stepmania ssc: $sharkChartPath');
-			Sys.println('- legacy: $legacyChartPath');
+			Log.minor('verify paths:');
+			Log.minor('- modern:');
+			Log.minor('  - chart: $modernChartPath');
+			Log.minor('  - metadata: $modernMetaPath');
+			Log.minor('- stepmania sm: $smChartPath');
+			Log.minor('- stepmania ssc: $sharkChartPath');
+			Log.minor('- legacy: $legacyChartPath');
 			return new Song(path, 4);
 		}
 	}
 	
 	public static function loadStepMania(path:String, difficulty:String = 'Hard', suffix:String = '') { // TODO: these could just not be static
 		difficulty = difficulty.toLowerCase();
-		Sys.println('loading StepMania simfile "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
+		Log.minor('loading StepMania simfile "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 
 		var songPath:String = 'data/$path/$path';
 		var sscPath:String = '${Util.pathSuffix(songPath, suffix)}.ssc';
@@ -122,8 +122,8 @@ class Song {
 
 		if (!Paths.exists(smPath) && !useShark) {
 			Log.warning('sm or ssc file not found... (chart not generated)');
-			Sys.println('verify path:');
-			Sys.println('- chart: $smPath OR $sscPath');
+			Log.minor('verify path:');
+			Log.minor('- chart: $smPath OR $sscPath');
 			return song;
 		}
 
@@ -165,7 +165,7 @@ class Song {
 	// suffix is for playable characters
 	public static function loadModernSong(path:String, difficulty:String = 'hard', suffix:String = '') {
 		difficulty = difficulty.toLowerCase();
-		Sys.println('loading modern FNF song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
+		Log.minor('loading modern FNF song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 
 		var songPath:String = 'data/$path/$path';
 		var chartPath:String = '${Util.pathSuffix('$songPath-chart', suffix)}.json';
@@ -174,9 +174,9 @@ class Song {
 
 		if (!Paths.exists(chartPath) || !Paths.exists(metaPath)) {
 			Log.warning('chart or metadata JSON not found... (chart not generated)');
-			Sys.println('verify paths:');
-			Sys.println('- chart: $chartPath');
-			Sys.println('- metadata: $metaPath');
+			Log.minor('verify paths:');
+			Log.minor('- chart: $chartPath');
+			Log.minor('- metadata: $metaPath');
 			return song;
 		}
 
@@ -261,7 +261,7 @@ class Song {
 	
 	public static function loadLegacySong(path:String, difficulty:String = 'normal', suffix:String = '', keyCount:Int = 4) { // move to moonchart format???
 		difficulty = difficulty.toLowerCase();
-		Sys.println('loading legacy FNF song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
+		Log.minor('loading legacy FNF song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 		
 		var song = new Song(path, keyCount);
 		song.json = Song.loadJson(path, difficulty);
@@ -276,7 +276,7 @@ class Song {
 			var eventsPath:String = 'data/$path/events.json';
 			var eventContent:Null<String> = Paths.text(eventsPath);
 			if (eventContent != null) {
-				Sys.println('loading events from "$eventsPath"');
+				Log.minor('loading events from "$eventsPath"');
 				var eventJson:Dynamic = TJSON.parse(eventContent);
 				if (eventJson.song != null && !Std.isOfType(eventJson.song, String)) eventJson = eventJson.song;
 				if (song.json.events == null) song.json.events = [];
@@ -423,7 +423,7 @@ class Song {
 	public function loadMusic(path:String, overwrite:Bool = true) { // this could be better
 		if (instLoaded && !overwrite) return true;
 		var instPath:String = path + Util.pathSuffix('Inst', audioSuffix);
-		// Sys.println('attempting to load instrumental from $instPath...');
+		// Log.minor('attempting to load instrumental from $instPath...');
 		try {
 			inst.loadEmbedded(Paths.ogg(instPath));
 			if (inst.length > 0) {

@@ -20,16 +20,16 @@ function createPost() {
 	FlxG.sound.list.add(trainSound);
 
 	lightShader = new RuntimeShader('building');
-	lightShader.setFloat('alphaShit', 0.0);
+	lightShader.setFloat('alphaShit', 0);
 
-	var light:FlxSprite = getNamedProp('lights');
+	var light = getNamedProp('lights');
 	light.shader = lightShader;
 	light.visible = false;
 }
 
 function update(elapsed:Float, paused:Bool){
 	if (paused) return;
-	var shaderInput:Float = (Conductor.crochet / 1000) * elapsed * 1.5;
+	var shaderInput:Float = (conductor.crochet / 1000) * elapsed * 1.5;
 	lightShader.setFloat('alphaShit', lightShader.getFloat('alphaShit') + shaderInput);
 
 	if (trainMoving)
@@ -75,7 +75,7 @@ function updateTrainPos(){
 	}
 
 	if (startedMoving){
-		var train:FlxSprite = getNamedProp('train');
+		var train = getNamedProp('train');
 		train.x -= 400;
 
 		if (train.x < -2000 && !trainFinishing)

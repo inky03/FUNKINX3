@@ -132,33 +132,35 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		var receptor:Receptor = lane.receptor;
 		var speed:Float = scrollSpeed * scrollMultiplier;
 		var dir:Float = lane.direction + directionOffset;
-		var prevDist:Float = scrollDistance;
+
 		var holdHeight:Float = 0;
+		var holdOffsetX:Float = 0;
+		var holdOffsetY:Float = 0;
 		var cutHeight:Float = frameHeight;
+
 		scrollDistance = Note.msToDistance(msTime - Conductor.global.songPosition, speed);
-		
-		if (isHoldPiece) { //im jumping off a building
-			var prevSX:Float = scale.x;
-			holdHeight = Note.msToDistance(msLength, scrollSpeed);
-			angle = dir - 90;
-			scale.set(1, 1);
-			updateHitbox();
-			noteOffset.x = (receptor.width - width) * .5;
-			noteOffset.y = receptor.height * .5;
+		if (isHoldPiece) {
 			if (isHoldTail) {
-				scrollDistance -= frameHeight * prevSX;
-				holdHeight = frameHeight * prevSX;
-			} else
+				scale.y = scale.x; updateHitbox();
+				scrollDistance -= height;
+				holdHeight = height;
+			} else {
 				cutHeight = frameHeight - 1;
-			origin.set(width * .5, 0);
-			scale.set(prevSX, isHoldTail ? prevSX : (holdHeight / cutHeight));
+				holdHeight = Note.msToDistance(msLength, scrollSpeed);
+				scale.y = holdHeight / cutHeight; updateHitbox();
+			}
+			setOffset();
+			origin.set(frameWidth * .5);
+			holdOffsetX = (receptor.width - frameWidth) * .5;
+			holdOffsetY = receptor.height * .5;
+			angle = dir - 90;
 		}
 		
 		var xP:Float = 0;
 		var yP:Float = scrollDistance;
 		var rad:Float = dir / 180 * Math.PI;
-		x = receptor.x + noteOffset.x + Math.sin(rad) * xP + Math.cos(rad) * yP;
-		y = receptor.y + noteOffset.y + Math.sin(rad) * yP + Math.cos(rad) * xP;
+		x = receptor.x + noteOffset.x + Math.sin(rad) * xP + Math.cos(rad) * yP + holdOffsetX;
+		y = receptor.y + noteOffset.y + Math.sin(rad) * yP + Math.cos(rad) * xP + holdOffsetY;
 		alpha = lane.alpha * receptor.alpha * multAlpha;
 		
 		if (isHoldPiece) { //handle in DISTANCE to support scroll direction
@@ -168,7 +170,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 			var clipBottom:Float = 0;
 			if (parent != null && parent.tail != null) {
 				var tail:Note = parent.tail;
-				clipBottom = (isHoldTail ? 0 : Math.min(0, (Note.msToDistance(tail.msTime - msTime, scrollSpeed) - tail.frameHeight * tail.scale.x - holdHeight) / scale.y));
+				clipBottom = (isHoldTail ? 0 : Math.min(0, (Note.msToDistance(tail.msTime - msTime, scrollSpeed) - tail.height - holdHeight) / scale.y));
 			}
 			
 			if (clipRect == null) clipRect = new FlxRect();

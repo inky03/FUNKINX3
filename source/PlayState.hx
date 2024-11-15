@@ -138,9 +138,9 @@ class PlayState extends MusicBeatState {
 		for (path in songPaths) song.loadMusic(path, false);
 		if (!song.instLoaded) {
 			Log.warning('song instrumental not found...');
-			Sys.println('verify paths:');
+			Log.minor('verify paths:');
 			for (path in songPaths)
-				Sys.println('- $path${Util.pathSuffix('Inst', song.audioSuffix)}.ogg');
+				Log.minor('- $path${Util.pathSuffix('Inst', song.audioSuffix)}.ogg');
 		}
 		for (chara in [player1, player2, player3]) {
 			if (chara == null) continue;
@@ -230,13 +230,13 @@ class PlayState extends MusicBeatState {
 		uiGroup.add(iconP2);
 		
 		scoreTxt = new FlxText(0, FlxG.height - 25, FlxG.width, 'Score: idk');
-		scoreTxt.setFormat(Paths.font('vcr.ttf'), 18, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		scoreTxt.setFormat(Paths.ttf('vcr'), 18, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		scoreTxt.y -= scoreTxt.height * .5;
 		scoreTxt.borderSize = 1.25;
 		uiGroup.add(scoreTxt);
 		updateRating();
 		debugTxt = new FlxText(0, 12, FlxG.width, '');
-		debugTxt.setFormat(Paths.font('vcr.ttf'), 16, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		debugTxt.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		uiGroup.add(debugTxt);
 
 		if (Settings.data.downscroll) {
@@ -270,34 +270,31 @@ class PlayState extends MusicBeatState {
 			return;
 		}
 		
-		if (FlxG.keys.justPressed.Q) {
-			conductorInUse.songPosition -= 350;
-		}
-		if (FlxG.keys.justPressed.R) {
-			opponentStrumline.fadeIn();
-			playerStrumline.fadeIn();
-			
-			opponentStrumline.clearAllNotes();
-			playerStrumline.clearAllNotes();
-			events = [];
-			for (lane in opponentStrumline.lanes) lane.held = false;
-			for (note in notes) {
-				var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
-				var lane:Lane = strumline.getLane(note.noteData);
-				lane.queue.push(note);
-			}
-			for (event in song.events) events.push(event);
-			song.inst.time = 0;
-			song.inst.pause();
-			for (track in syncVocals) {
-				track.time = 0;
-				track.pause();
-			}
-			resetMusic();
-			conductorInUse.metronome.setBeat(-5);
-			resetScore();
-		}
 		if (FlxG.keys.pressed.SHIFT) {
+			if (FlxG.keys.justPressed.R) {
+				opponentStrumline.fadeIn();
+				playerStrumline.fadeIn();
+				
+				opponentStrumline.clearAllNotes();
+				playerStrumline.clearAllNotes();
+				events = [];
+				for (lane in opponentStrumline.lanes) lane.held = false;
+				for (note in notes) {
+					var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
+					var lane:Lane = strumline.getLane(note.noteData);
+					lane.queue.push(note);
+				}
+				for (event in song.events) events.push(event);
+				song.inst.time = 0;
+				song.inst.pause();
+				for (track in syncVocals) {
+					track.time = 0;
+					track.pause();
+				}
+				resetMusic();
+				conductorInUse.metronome.setBeat(-5);
+				resetScore();
+			}
 			if (FlxG.keys.justPressed.B) {
 				playerStrumline.cpu = !playerStrumline.cpu;
 			}

@@ -78,6 +78,7 @@ class MusicBeatState extends FlxState {
 	public function playMusic(mus:String) {
 		MusicHandler.playMusic(mus);
 		MusicHandler.applyMeta(conductorInUse);
+		conductorInUse.syncTracker = FlxG.sound.music;
 	}
 	
 	public static function getCurrentConductor():Conductor {

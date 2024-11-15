@@ -14,7 +14,7 @@ import haxe.io.Path;
 using StringTools;
 
 class Paths {
-	public static var workingDir:String = FileSystem.absolutePath('');
+	public static var workingDirectory:String = FileSystem.absolutePath('');
 	public static var graphicCache:Map<String, FlxGraphic> = [];
 	public static var dynamicCache:Map<String, Dynamic> = [];
 	public static var soundCache:Map<String, Sound> = [];

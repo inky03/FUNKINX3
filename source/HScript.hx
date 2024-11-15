@@ -17,6 +17,7 @@ class HScript extends Iris {
 
 	public var scriptString(default, set):String = '';
 	public var scriptName:String = '';
+	public var success:Bool = false;
 	
 	public function new(name:String, code:String) {
 		super('', new IrisConfig(name, false, true, []));
@@ -94,6 +95,7 @@ class HScript extends Iris {
 		set('HealthIcon', HealthIcon);
 		set('SongEvent', Song.SongEvent);
 		set('NoteEvent', Lane.NoteEvent);
+		set('StageProp', Stage.StageProp);
 		set('FunkinSprite', FunkinSprite);
 		set('Metronome', Conductor.Metronome);
 		set('RuntimeShader', QuickRuntimeShader);
@@ -143,7 +145,9 @@ class HScript extends Iris {
 		scriptCode = newCode;
 		try {
 			parse(true);
+			success = true;
 		} catch (e:IrisError) {
+			success = false;
 			errorCaught(e);
 		}
 		return scriptString = newCode;
@@ -161,7 +165,20 @@ class QuickRuntimeShader extends FlxRuntimeShader {
 	public function new(name:String) {
 		frag = Paths.shaderFrag(name);
 		vert = Paths.shaderVert(name);
-		super(frag, vert);
+		if (frag == null && vert == null) {
+			Log.warning('shader "$name" not found...');
+			Log.minor('verify paths:');
+			Log.minor('vertex: shaders/$name.vert');
+			Log.minor('fragment: shaders/$name.frag');
+		} else {
+			Log.minor('loading shader "$name"');
+		}
+		try {
+			super(frag, vert);
+		} catch (e:Dynamic) {
+			Log.error('shader "$name" failed to compile -> ${e.details()}');
+		}
+		Log.info('shader "$name" loaded!');
 	}
 }
 class HScriptFlxColor { // i hate it in here

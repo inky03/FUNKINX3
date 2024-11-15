@@ -12,7 +12,7 @@ class OptionsState extends MusicBeatState {
 	override public function create() {
 		super.create();
 		
-		playMusic('title');
+		playMusic(MainMenuState.menuMusic);
 		var bg:FunkinSprite = new FunkinSprite().loadTexture('menuBGMagenta');
 		bg.setGraphicSize(bg.width * 1.1);
 		bg.scrollFactor.set();
@@ -102,13 +102,14 @@ class SettingItem extends FlxSpriteGroup {
 		}
 		highlight(false);
 	}
-	inline function hasSave() return (settingSave != null && Reflect.hasField(Settings.data, settingSave));
+	inline function hasSave() return (settingSave != null && Reflect.getProperty(Settings.data, settingSave) != null);
 	public function get_settingValue() {
-		return Reflect.field(Settings.data, settingSave);
+		return Reflect.getProperty(Settings.data, settingSave);
 	}
 	public function set_enabled(on:Bool) {
 		if (type != BOOLEAN) return on;
-		if (hasSave() && on != settingValue) Reflect.setField(Settings.data, settingSave, on);
+		trace('$settingSave -> ${hasSave()}');
+		if (hasSave() && on != settingValue) Reflect.setProperty(Settings.data, settingSave, on);
 		checkbox.playAnimation(on ? 'select' : 'unselect');
 		return enabled = on;
 	}

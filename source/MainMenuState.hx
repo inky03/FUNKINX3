@@ -8,11 +8,12 @@ class MainMenuState extends MusicBeatState {
 	public var bg:FunkinSprite;
 	public var flashBG:FunkinSprite;
 	public static var selection:Int = 0;
+	public static var menuMusic:String = 'ldTitle';
 	
 	override public function create() {
 		super.create();
 		
-		playMusic('title');
+		playMusic(menuMusic);
 		flashBG = new FunkinSprite().loadTexture('menuBGMagenta');
 		bg = new FunkinSprite().loadTexture('menuBG');
 		for (bg in [flashBG, bg]) {
@@ -49,7 +50,7 @@ class MainMenuState extends MusicBeatState {
 	}
 
 	public function returned(sub:FlxSubState) {
-		playMusic('title');
+		playMusic(menuMusic);
 		bg.visible = true;
 		inputEnabled = true;
 		for (button in menuButtons) {
@@ -84,8 +85,10 @@ class MainMenuState extends MusicBeatState {
 			case 'options':
 				FlxG.switchState(() -> new OptionsState());
 			case 'freeplay':
-				// openSubState(new FreeplaySubState());
-				FlxG.switchState(() -> new FreeplayState());
+				if (FlxG.keys.pressed.SHIFT)
+					openSubState(new FreeplaySubState());
+				else
+					FlxG.switchState(() -> new FreeplayState());
 			default:
 				FlxG.resetState();
 		}

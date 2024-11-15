@@ -12,13 +12,12 @@ class MusicHandler {
 	public static function playMusic(mus:String) {
 		var folderPath:String = '$mus';
 		var musPath:String = mus;
-		if (Paths.exists('music/$folderPath')) {
-			musicMeta = loadMeta(mus);
+		if (Paths.exists('music/$folderPath'))
 			musPath = '$folderPath/$mus';
-		}
 		@:privateAccess
 		if (FlxG.sound.music == null || FlxG.sound.music._sound != Paths.music(musPath)) {
 			FlxG.sound.playMusic(Paths.music(musPath));
+			musicMeta = loadMeta(mus);
 		}
 	}
 	public static function loadMeta(mus:String) {
@@ -32,6 +31,8 @@ class MusicHandler {
 			} catch(e:haxe.Exception) {
 				Log.error('failed to get music metadata for "$mus" -> ${e.details()}');
 			}
+		} else {
+			Log.warning('no music metadata found for "$mus"');
 		}
 		return null;
 	}
@@ -46,9 +47,6 @@ class MusicHandler {
 			if (change.n != null && change.d != null)
 				timeSign = new TimeSignature(change.n, change.d);
 			metronome.tempoChanges.push(new TempoChange(beatTime, change.bpm, timeSign));
-		}
-		for (change in metronome.tempoChanges) {
-			trace(change.bpm);
 		}
 		return metronome;
 	}

@@ -52,7 +52,7 @@ class Character extends FunkinSprite {
 			for (path in paths) {
 				if (Paths.exists(path)) {
 					var vocalsPath:String = path + Util.pathSuffix(Util.pathSuffix('Voices', chara), suffix);
-					// Sys.println('attempting to load vocals from $vocalsPath...');
+					// Log.minor('attempting to load vocals from $vocalsPath...');
 					vocals.loadEmbedded(Paths.ogg(vocalsPath));
 					if (vocals.length > 0) {
 						vocalsLoaded = true;
@@ -148,13 +148,13 @@ class Character extends FunkinSprite {
 		var charLoad:String = character ?? fallbackCharacter;
 		var charPath:String = 'characters/$charLoad.json';
 		if (!Paths.exists(charPath)) {
-			Log.warning('failed to load character "$charLoad"');
-			Sys.println('verify path:');
-			Sys.println('- $charPath');
+			Log.warning('character "$charLoad" not found...');
+			Log.minor('verify path:');
+			Log.minor('- $charPath');
 			fallback(character);
 			return this;
 		}
-		if (character != null) Sys.println('loading character "$charLoad"');
+		if (character != null) Log.minor('loading character "$charLoad"');
 		var time:Float = Sys.time();
 		try {
 			frames = null;
@@ -244,7 +244,7 @@ class Character extends FunkinSprite {
 			Log.info('fallback failed lol: loading super fallback character');
 			useDefault();
 		} else {
-			Sys.println('attempting to fall back to "$fallbackCharacter"...');
+			Log.minor('attempting to fall back to "$fallbackCharacter"...');
 			loadCharacter();
 		}
 	}

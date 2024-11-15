@@ -16,7 +16,7 @@ class Strumline extends FlxSpriteGroup {
 	public var topBound(get, never):Float;
 	
 	//all lane setters (getters are Not representative of all lanes)
-	public var cpu(default, set):Bool;
+	public var cpu(default, set):Bool; // todo: macro..?
 	public var oneWay(default, set):Bool;
 	public var laneCount(default, set):Int;
 	public var hitWindow(default, set):Float;
@@ -94,7 +94,7 @@ class Strumline extends FlxSpriteGroup {
 	}
 	public function get_receptorWidth() {
 		var width:Float = 0;
-		for (lane in lanes) height = Math.max(height, lane.receptor.height);
+		for (lane in lanes) width = Math.max(width, lane.receptor.width);
 		return width;
 	}
 	public function get_receptorHeight() {

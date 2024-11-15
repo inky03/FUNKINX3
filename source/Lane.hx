@@ -77,6 +77,9 @@ class Lane extends FlxSpriteGroup {
 
 		noteCover.shader = rgbShader.shader;
 		updateHitbox();
+
+		spark().alpha = .0001;
+		splash().alpha = .0001;
 	}
 	
 	public override function update(elapsed:Float) {

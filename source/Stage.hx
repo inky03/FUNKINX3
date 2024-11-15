@@ -23,9 +23,10 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
 
 		song = songData;
         if (stageId != null) {
+    		Log.minor('loading stage "$stageId"');
+
     		var jsonPath:String = 'stages/$stageId.json';
     		if (Paths.exists(jsonPath)) {
-    			Sys.println('loading stage "$stageId"');
     			var time:Float = Sys.time();
     			try {
     				var content:String = Paths.text(jsonPath);
@@ -40,14 +41,11 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
     				format = NONE;
     				Log.error('error while loading stage "$stageId"... -> ${e.details()}');
     			}
+    		} else {
+    			Log.warning('stage "$stageId" not found...');
+				Log.minor('verify path:');
+				Log.minor('- $jsonPath');
     		}
-    		if (!hasContent) {
-                Log.info('no stage content: loading fallback stage');
-    			loadFallback();
-    		}
-
-    		startCharPositions();
-    		sortZIndex();
         }
         
         // loads hscript file
@@ -56,8 +54,16 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
             HScriptBackend.loadFromPaths(scriptPath);
             hasContent = true;
         }
-	}
 
+        if (!hasContent) {
+			Log.warning('no stage content (json or script): loading fallback stage');
+			loadFallback();
+		}
+
+		startCharPositions();
+		sortZIndex();
+	}
+	
 	public function sortZIndex() {
 		sort(Util.sortZIndex, FlxSort.ASCENDING);
 	}

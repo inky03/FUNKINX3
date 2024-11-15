@@ -22,7 +22,6 @@ class FreeplaySubState extends MusicBeatSubState {
 	public override function create() {
 		super.create();
 
-		playMusic('freeplayRandom');
 		mainCam = new FlxCamera();
 		mainCam.bgColor.alpha = 0;
 		FlxG.cameras.add(mainCam, false);
@@ -66,6 +65,7 @@ class FreeplaySubState extends MusicBeatSubState {
 		var testCaspule:FreeplayCapsule = new FreeplayCapsule(400, 400, 'TESTING!');
 		add(testCaspule);
 
+		playMusic('freeplayRandom');
 		FlxTween.tween(bg, {x: backingCard.back.width * 0.74}, 0.7, {ease: FlxEase.quintOut});
 		FlxTween.tween(overhangStuff, {y: -100}, 0.3, {ease: FlxEase.quartOut});
 

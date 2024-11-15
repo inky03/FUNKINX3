@@ -5,22 +5,27 @@ class Log {
 			if (code < 0) continue;
 			finalStr += code + (i == codes.length - 1 ? 'm' : ';');
 		}
-		return (codes.length > 0 ? finalStr : '');
+		if (codes.length > 0)
+			return finalStr.substr(0, finalStr.length - 1) + 'm';
+		return '';
 	}
 	public static function colorTag(text:String, textColor:TextColor = none, backgroundColor:BackgroundColor = none) {
 		return '${fromCodes([cast textColor, cast backgroundColor])}$text\033[0m';
 	}
 	public static function warning(text:String) {
-		return Sys.println(colorTag(' WARNING ', TextColor.black, BackgroundColor.yellow) + ' $text');
+		return Sys.println(colorTag(' WARNING ', black, yellow) + ' $text');
 	}
 	public static function error(text:String) {
-		return Sys.println(colorTag(' ERROR ', TextColor.black, BackgroundColor.red) + ' $text');
+		return Sys.println(colorTag(' ERROR ', black, red) + ' $text');
 	}
 	public static function fatal(text:String) {
-		return Sys.println(colorTag(' FATAL ', TextColor.black, BackgroundColor.brightRed) + ' $text');
+		return Sys.println(colorTag(' FATAL ', black, brightRed) + ' $text');
 	}
 	public static function info(text:String) {
-		return Sys.println(colorTag(' INFO ', TextColor.black, BackgroundColor.cyan) + ' $text');
+		return Sys.println(colorTag(' INFO ', black, cyan) + ' $text');
+	}
+	public static function minor(text:String) {
+		return Sys.println(colorTag(text, white, none));
 	}
 }
 

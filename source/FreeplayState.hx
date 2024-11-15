@@ -7,7 +7,7 @@ class FreeplayState extends MusicBeatState {
 	override public function create() {
 		super.create();
 		
-		playMusic('title');
+		playMusic(MainMenuState.menuMusic);
 		var bg:FunkinSprite = new FunkinSprite().loadTexture('menuBGBlue');
 		bg.setGraphicSize(bg.width * 1.1);
 		bg.scrollFactor.set();
@@ -25,7 +25,7 @@ class FreeplayState extends MusicBeatState {
 		}
 		for (dir in dirList) {
 			if (FileSystem.exists(dir[0])) {
-				Sys.println('loading weeks from ${dir[0]}');
+				Log.minor('loading freeplay levels @ "${dir[0]}"');
 				for (file in FileSystem.readDirectory(dir[0])) {
 					loadLevel('${dir[0]}/$file', dir[1]);
 				}
