@@ -100,6 +100,7 @@ class HScript extends Iris {
 		set('FunkinSprite', FunkinSprite);
 		set('Metronome', Conductor.Metronome);
 		set('RuntimeShader', QuickRuntimeShader);
+		set('ShaderFilter', openfl.filters.ShaderFilter);
 		#if static
 		set('SpriteRenderType', {PACKER: SpriteRenderType.PACKER, SPARROW: SpriteRenderType.SPARROW, ANIMATEATLAS: SpriteRenderType.ANIMATEATLAS});
 		set('NoteEventType', {HIT: NoteEventType.HIT, LOST: NoteEventType.LOST, SPAWNED: NoteEventType.SPAWNED, DESPAWNED: NoteEventType.DESPAWNED, GHOST: NoteEventType.GHOST});
