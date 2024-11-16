@@ -160,10 +160,11 @@ enum HScriptFunctionEnum {
 }
 
 class QuickRuntimeShader extends FlxRuntimeShader {
-	public var perfect:Bool = true;
 	public var frag:Null<String> = null;
 	public var vert:Null<String> = null;
 	public var name:String;
+	var compiled:Bool;
+	var perfect:Bool;
 
 	public function new(name:String) {
 		this.name = name;
@@ -180,7 +181,27 @@ class QuickRuntimeShader extends FlxRuntimeShader {
 		super(frag, vert);
 	}
 
-	@:noCompletion private override function __createGLShader(source:String, type:Int):openfl.display3D._internal.GLShader {
+	function getLog(infoLog:String, source:String):String {
+		var logLines:Array<String> = infoLog.trim().split('\n');
+		var sourceLines:Array<String> = source.split('\n');
+		var finalLog:StringBuf = new StringBuf();
+		for (i => logLine in logLines) {
+			if (logLine.startsWith('ERROR')) {
+				var info:Array<String> = logLine.split(':');
+
+				var col:Int = Std.parseInt(info[1]);
+				var line:Int = Std.parseInt(info[2]);
+				var codeLine:String = sourceLines[line - 1];
+				var msg:String = logLine.substr((info[0] + info[1] + info[2]).length + 3, logLine.length).trim();
+
+				finalLog.add(Log.colorTag(Std.string(line).lpad(' ', 4) + ' | $codeLine\n', brightYellow));
+				finalLog.add(Log.colorTag('     | ', brightYellow) + Log.colorTag(msg, red));
+				if (i < logLines.length - 1) finalLog.add('\n');
+			}
+		}
+		return finalLog.toString();
+	}
+	@:noCompletion override function __createGLShader(source:String, type:Int):openfl.display3D._internal.GLShader {
 		@:privateAccess var gl = __context.gl;
 
 		var shader = gl.createShader(type);
@@ -190,11 +211,12 @@ class QuickRuntimeShader extends FlxRuntimeShader {
 		var compileStatus = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
 
 		if (compileStatus == 0) {
-			var message:String = 'error compiling ${type == gl.VERTEX_SHADER ? 'vertex' : 'fragment'} code from shader "$name"...'; //$source
+			var isVertex:Bool = type == gl.VERTEX_SHADER;
+			var message:String = 'error compiling ${isVertex ? 'vertex' : 'fragment'} code from shader "$name"...'; //$source
 			Log.error(message);
-			Sys.println(Log.colorTag(shaderInfoLog, brightYellow));
-			perfect = false;
+			Sys.println(getLog(shaderInfoLog, source));
 
+			Log.minor('compiling with default code...');
 			var source:String;
 			if (type == gl.VERTEX_SHADER) {
 				source = FlxRuntimeShader.BASE_VERTEX_SOURCE.replace('#pragma header', FlxRuntimeShader.BASE_VERTEX_HEADER);
@@ -205,20 +227,54 @@ class QuickRuntimeShader extends FlxRuntimeShader {
 			}
 			gl.shaderSource(shader, source);
 			gl.compileShader(shader);
-			return shader;
+			perfect = false;
 			// dev FlxRuntimeShaderMacro.retrieveMetadata('gl${type == gl.VERTEX_SHADER ? 'Vertex' : 'Fragment'}Source', false)
 		}
 
 		return shader;
 	}
-	@:noCompletion private override function __createGLProgram(vert:String, frag:String):openfl.display3D._internal.GLProgram {
+	@:noCompletion override function __createGLProgram(vert:String, frag:String):openfl.display3D._internal.GLProgram {
 		Log.minor('initializing shader "$name"');
-		var program = super.__createGLProgram(vert, frag);
-		if (!perfect)
-			Log.warning('shader "$name" initialized with errors');
-		else
-			Log.info('shader "$name" initialized!');
+		perfect = true;
+
+		@:privateAccess var gl = __context.gl;
+
+		var vertexShader = __createGLShader(vert, gl.VERTEX_SHADER);
+		var fragmentShader = __createGLShader(frag, gl.FRAGMENT_SHADER);
+
+		var program = gl.createProgram();
+
+		// Fix support for drivers that don't draw if attribute 0 is disabled
+		for (param in __paramFloat) {
+			if (param.name.indexOf("Position") > -1 && StringTools.startsWith(param.name, "openfl_")) {
+				gl.bindAttribLocation(program, 0, param.name);
+				break;
+			}
+		}
+
+		try {
+			gl.attachShader(program, vertexShader);
+			gl.attachShader(program, fragmentShader);
+			gl.linkProgram(program);
+			compiled = (gl.getProgramParameter(program, gl.LINK_STATUS) != 0);
+			if (!compiled)
+				Log.error('could not initialize shader program for "$name"...\n${gl.getProgramInfoLog(program)}');
+		} catch(e:Dynamic) {
+			compiled = false;
+			Log.error('could not initialize shader program for "$name"...\n(LINK ERROR)');
+		}
+
+		if (compiled) {
+			if (perfect)
+				Log.info('initialized shader program for "$name"!');
+			else
+				Log.warning('initialized shader program for "$name" with errors');
+		}
+
 		return program;
+	}
+	function resetShader() {
+
 	}
 }
 class HScriptFlxColor { // i hate it in here
