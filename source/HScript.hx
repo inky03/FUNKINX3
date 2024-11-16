@@ -1,5 +1,6 @@
 package;
 
+using StringTools;
 import Lane.NoteEventType;
 import flixel.util.FlxAxes;
 import FunkinSprite.SpriteRenderType;
@@ -159,26 +160,65 @@ enum HScriptFunctionEnum {
 }
 
 class QuickRuntimeShader extends FlxRuntimeShader {
+	public var perfect:Bool = true;
 	public var frag:Null<String> = null;
 	public var vert:Null<String> = null;
+	public var name:String;
 
 	public function new(name:String) {
+		this.name = name;
 		frag = Paths.shaderFrag(name);
 		vert = Paths.shaderVert(name);
 		if (frag == null && vert == null) {
-			Log.warning('shader "$name" not found...');
+			Log.warning('shader code for "$name" not found...');
 			Log.minor('verify paths:');
 			Log.minor('vertex: shaders/$name.vert');
 			Log.minor('fragment: shaders/$name.frag');
 		} else {
-			Log.minor('loading shader "$name"');
+			Log.minor('loaded shader code for "$name"');
 		}
-		try {
-			super(frag, vert);
-		} catch (e:Dynamic) {
-			Log.error('shader "$name" failed to compile -> ${e.details()}');
+		super(frag, vert);
+	}
+
+	@:noCompletion private override function __createGLShader(source:String, type:Int):openfl.display3D._internal.GLShader {
+		@:privateAccess var gl = __context.gl;
+
+		var shader = gl.createShader(type);
+		gl.shaderSource(shader, source);
+		gl.compileShader(shader);
+		var shaderInfoLog = gl.getShaderInfoLog(shader).trim();
+		var compileStatus = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+
+		if (compileStatus == 0) {
+			var message:String = 'error compiling ${type == gl.VERTEX_SHADER ? 'vertex' : 'fragment'} code from shader "$name"...'; //$source
+			Log.error(message);
+			Sys.println(Log.colorTag(shaderInfoLog, brightYellow));
+			perfect = false;
+
+			var source:String;
+			if (type == gl.VERTEX_SHADER) {
+				source = FlxRuntimeShader.BASE_VERTEX_SOURCE.replace('#pragma header', FlxRuntimeShader.BASE_VERTEX_HEADER);
+				source = source.replace('#pragma body', FlxRuntimeShader.BASE_VERTEX_BODY);
+			} else {
+				source = FlxRuntimeShader.BASE_FRAGMENT_SOURCE.replace('#pragma header', FlxRuntimeShader.BASE_FRAGMENT_HEADER);
+				source = source.replace('#pragma body', FlxRuntimeShader.BASE_FRAGMENT_BODY);
+			}
+			gl.shaderSource(shader, source);
+			gl.compileShader(shader);
+			return shader;
+			// dev FlxRuntimeShaderMacro.retrieveMetadata('gl${type == gl.VERTEX_SHADER ? 'Vertex' : 'Fragment'}Source', false)
 		}
-		Log.info('shader "$name" loaded!');
+
+		return shader;
+	}
+	@:noCompletion private override function __createGLProgram(vert:String, frag:String):openfl.display3D._internal.GLProgram {
+		Log.minor('initializing shader "$name"');
+		var program = super.__createGLProgram(vert, frag);
+		if (!perfect)
+			Log.warning('shader "$name" initialized with errors');
+		else
+			Log.info('shader "$name" initialized!');
+		return program;
 	}
 }
 class HScriptFlxColor { // i hate it in here
