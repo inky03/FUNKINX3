@@ -57,6 +57,7 @@
 	
 	<!-- __________________________________ uhh!_________________________________ -->
 	
+	<haxeflag name="--macro" value="addMetadata('@:build(macros.ZIndexMacro.build())', 'flixel.FlxBasic')" />
 	<haxeflag name="--macro" value="include('flixel', true, ['flixel.addons.nape', 'flixel.addons.editors', 'flixel.system.macros'])" if="USE_HSCRIPT" />
 	
 	<!-- ______________________________ Haxedefines _____________________________ -->
