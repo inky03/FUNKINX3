@@ -17,17 +17,19 @@ class Strumline extends FlxSpriteGroup {
 	
 	//all lane setters (getters are Not representative of all lanes)
 	public var cpu(default, set):Bool; // todo: macro..?
-	public var oneWay(default, set):Bool;
 	public var laneCount(default, set):Int;
-	public var hitWindow(default, set):Float;
 	public var direction(default, set):Float;
 	public var scrollSpeed(default, set):Float;
+	public var oneWay(default, set):Bool = true;
+	public var allowInput(default, set):Bool = true;
+	public var hitWindow(default, set):Float = Scoring.safeFrames / 60 * 1000;
 	
 	//oh dear
 	public function set_cpu(isCpu:Bool) { for (lane in lanes) lane.cpu = isCpu; return cpu = isCpu; }
 	public function set_oneWay(isOneWay:Bool) { for (lane in lanes) lane.oneWay = isOneWay; return oneWay = isOneWay; }
 	public function set_direction(newDir:Float) { for (lane in lanes) lane.direction = newDir; return direction = newDir; }
 	public function set_hitWindow(newWindow:Float) { for (lane in lanes) lane.hitWindow = newWindow; return hitWindow = newWindow; }
+	public function set_allowInput(isAllowed:Bool) { for (lane in lanes) lane.allowInput = isAllowed; return allowInput = isAllowed; }
 	public function set_scrollSpeed(newSpeed:Float) { for (lane in lanes) lane.scrollSpeed = newSpeed; return scrollSpeed = newSpeed; }
 	public function set_laneSpacing(newSpacing:Float) {
 		var i:Int = 0;
@@ -109,6 +111,7 @@ class Strumline extends FlxSpriteGroup {
 		super();
 		this.lanes = new FlxTypedSpriteGroup<Lane>();
 		this.add(lanes);
+		this.allowInput = true;
 		this.laneCount = laneCount;
 		this.direction = direction;
 		this.scrollSpeed = scrollSpeed;
@@ -178,7 +181,7 @@ class Strumline extends FlxSpriteGroup {
 		}
 		return this;
 	}
-	public function assignKeys(keybinds:Array<Array<FlxKey>>) {
+	public function assignKeybinds(keybinds:Array<Array<FlxKey>>) {
 		var i = 0;
 		for (keybindSet in keybinds) {
 			var lane:Lane = getLane(i);
@@ -206,5 +209,13 @@ class Strumline extends FlxSpriteGroup {
 		for (lane in lanes)
 			lane.noteEvent.remove(event);
 		return event;
+	}
+	public function fireInput(key:flixel.input.keyboard.FlxKey, pressed:Bool) {
+		var fired:Bool = false;
+		for (lane in lanes) {
+			if (lane.fireInput(key, pressed))
+				fired = true;
+		}
+		return fired;
 	}
 }

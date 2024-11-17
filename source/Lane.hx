@@ -14,7 +14,6 @@ class Lane extends FlxSpriteGroup {
 	public var splashRGB:RGBSwap;
 
 	public var noteData:Int;
-	public var cpu:Bool = true;
 	public var oneWay:Bool = true;
 	public var held(default, set):Bool = false;
 	public var scrollSpeed(default, set):Float = 1;
@@ -24,7 +23,11 @@ class Lane extends FlxSpriteGroup {
 	public var conductorInUse:Conductor = MusicBeatState.getCurrentConductor();
 	public var inputKeys:Array<FlxKey> = [];
 	public var strumline:Strumline;
+	var extraWindow:Float = 0; // antimash mechanic
 	
+	public var cpu:Bool = false;
+	public var allowInput:Bool = true;
+	public var inputFilter:Note -> Bool;
 	public var noteEvent:FlxTypedSignal<NoteEvent -> Void> = new FlxTypedSignal();
 	
 	public var receptor:Receptor;
@@ -49,6 +52,11 @@ class Lane extends FlxSpriteGroup {
 	}
 	public function new(x:Float, y:Float, data:Int) {
 		super(x, y);
+
+		inputFilter = (note:Note) -> {
+			var time:Float = note.msTime - conductorInUse.songPosition;
+			return (time <= note.hitWindow + extraWindow) && (time >= -note.hitWindow);
+		};
 
 		rgbShader = new RGBSwap();
 		rgbShader.green = 0xffffff;
@@ -75,7 +83,7 @@ class Lane extends FlxSpriteGroup {
 		topMembers.push(noteSparks);
 		topMembers.push(noteSplashes);
 
-		noteCover.shader = rgbShader.shader;
+		noteCover.shader = splashRGB.shader;
 		updateHitbox();
 
 		spark().alpha = .0001;
@@ -112,6 +120,7 @@ class Lane extends FlxSpriteGroup {
 		}
 
 		super.update(elapsed);
+		extraWindow = Math.max(extraWindow - elapsed * 200, 0);
 		for (member in topMembers) member.update(elapsed);
 	}
 	public override function draw() {
@@ -132,16 +141,32 @@ class Lane extends FlxSpriteGroup {
 		}
 	}
 	
-	public function input(key:FlxKey) {
-		if (inputKeys.contains(key)) {
-			
+	public function fireInput(key:FlxKey, pressed:Bool):Bool {
+		if (!inputKeys.contains(key) || !allowInput) return false;
+		if (pressed) {
+			var note = getHighestNote(inputFilter);
+			if (note != null) {
+				hitNote(note);
+				extraWindow = Math.min(extraWindow + 6, 200);
+			} else {
+				ghostTapped();
+				extraWindow = Math.min(extraWindow + 15, 200);
+			}
+			if (strumline != null) {
+				for (lane in strumline.lanes)
+					lane.extraWindow = extraWindow;
+			}
+		} else {
+			held = false;
+			receptor.playAnimation('static', true);
 		}
+		return true;
 	}
 	public function ghostTapped()
 		noteEvent.dispatch(basicEvent(GHOST));
 	public function basicEvent(type:NoteEventType, ?note:Note):NoteEvent
 		return {lane: this, strumline: strumline, receptor: receptor, note: note, type: type};
-	public function getHighestNote(filter:Null<(note:Note)->Bool> = null) {
+	public function getHighestNote(?filter:Note -> Bool) {
 		var highNote:Null<Note> = null;
 		for (note in notes) {
 			var valid:Bool = (filter == null ? true : filter(note));

@@ -73,7 +73,6 @@ class PlayState extends MusicBeatState {
 	public var totalNotes:Int = 0;
 	public var totalHits:Int = 0;
 	public var percent:Float = 0;
-	public var extraWindow:Float = 0; //mash mechanic
 
 	public var hitsound:FlxSound;
 	
@@ -168,13 +167,14 @@ class PlayState extends MusicBeatState {
 		opponentStrumline.setPosition(50, strumlineY);
 		opponentStrumline.camera = camHUD;
 		opponentStrumline.zIndex = 40;
+		opponentStrumline.cpu = true;
+		opponentStrumline.allowInput = false;
 		add(opponentStrumline);
 		
 		playerStrumline = new Strumline(4, scrollDir, song.scrollSpeed * 1.08);
 		playerStrumline.fitToSize(strumlineBound, playerStrumline.height * .7);
 		playerStrumline.setPosition(FlxG.width - playerStrumline.width - 50 - 75, strumlineY);
 		playerStrumline.camera = camHUD;
-		playerStrumline.cpu = false;
 		playerStrumline.zIndex = 50;
 		add(playerStrumline);
 
@@ -189,7 +189,7 @@ class PlayState extends MusicBeatState {
 		playerStrumline.visible = false;
 
 		keybinds = Settings.data.keybinds['4k'];
-		playerStrumline.assignKeys(keybinds);
+		playerStrumline.assignKeybinds(keybinds);
 		
 		var noteKinds:Array<String> = [];
 		for (note in song.generateNotes()) {
@@ -297,6 +297,7 @@ class PlayState extends MusicBeatState {
 			}
 			if (FlxG.keys.justPressed.B) {
 				playerStrumline.cpu = !playerStrumline.cpu;
+				playerStrumline.allowInput = !playerStrumline.allowInput;
 			}
 			if (FlxG.keys.justPressed.RIGHT) {
 				conductorInUse.songPosition += 2000;
@@ -347,8 +348,6 @@ class PlayState extends MusicBeatState {
 		iconP2.updateBop(elapsed);
 		iconP1.setPosition(healthBar.barCenter.x + 60 - iconP1.width * .5, healthBar.barCenter.y - iconP1.height * .5);
 		iconP2.setPosition(healthBar.barCenter.x - 60 - iconP2.width * .5, healthBar.barCenter.y - iconP2.height * .5);
-		
-		extraWindow = Math.max(extraWindow - elapsed * 200, 0);
 		
 		syncMusic();
 		if (camZoomLerp) camHUD.zoom = FlxMath.lerp(camHUD.zoom, defaultHUDZoom, elapsed * 3);
@@ -524,8 +523,19 @@ class PlayState extends MusicBeatState {
 		if (!heldKeys.contains(key)) heldKeys.push(key);
 		
 		if (inputDisabled || paused) return;
-		var keybind:Int = Controls.keybindFromArray(keybinds, key);
-		if (keybind >= 0 && FlxG.keys.checkStatus(key, JUST_PRESSED)) inputOn(keybind);
+		if (FlxG.keys.checkStatus(key, JUST_PRESSED)) {
+			var keybind:Int = Controls.keybindFromArray(keybinds, key);
+			var oldTime:Float = conductorInUse.songPosition;
+			conductorInUse.songPosition = getSongPos();
+
+			HScriptBackend.run('keyPressed', [key]);
+			if (keybind >= 0) {
+				HScriptBackend.run('keybindPressed', [keybind]);
+				playerStrumline.fireInput(key, true);
+			}
+
+			conductorInUse.songPosition = oldTime;
+		}
 	}
 	public function keyReleaseEvent(event:KeyboardEvent) {
 		var key:FlxKey = event.keyCode;
@@ -533,32 +543,14 @@ class PlayState extends MusicBeatState {
 		
 		if (inputDisabled || paused) return;
 		var keybind:Int = Controls.keybindFromArray(keybinds, key);
-		if (keybind >= 0) inputOff(keybind);
-	}
-	public function inputOn(keybind:Int) { // todo: lanes have the INPUTS and not PLAYSTATE
-		HScriptBackend.run('keyPressed', [keybind]);
-		var oldTime:Float = conductorInUse.songPosition;
-		conductorInUse.songPosition = getSongPos();
-		var lane:Lane = playerStrumline.getLane(keybind);
-		var note = lane.getHighestNote((note:Note) -> {
-			var time:Float = note.msTime - conductorInUse.songPosition;
-			return (time <= note.hitWindow + extraWindow) && (time >= -note.hitWindow);
-		});
-		if (note != null) {
-			lane.hitNote(note);
-			extraWindow = Math.min(extraWindow + 6, 200);
-		} else {
-			lane.ghostTapped();
-			extraWindow = Math.min(extraWindow + 15, 200);
+
+		HScriptBackend.run('keybindReleased', [key]);
+		if (keybind >= 0) {
+			HScriptBackend.run('keybindReleased', [keybind]);
+			playerStrumline.fireInput(key, false);
 		}
-		conductorInUse.songPosition = oldTime;
 	}
-	public function inputOff(keybind:Int) {
-		HScriptBackend.run('keyReleased', [keybind]);
-		var lane:Lane = playerStrumline.getLane(keybind);
-		lane.receptor.playAnimation('static', true);
-		lane.held = false;
-	}
+
 	public function playerNoteEvent(e:Lane.NoteEvent) {
 		e.targetCharacter = player1;
 		if (e.type == Lane.NoteEventType.GHOST && Settings.data.ghostTapping) {
