@@ -71,7 +71,7 @@ class HScriptBackend {
 	}
 	public static function loadFromString(code:String, ?name:String):Null<HScript> {
 		var hs:HScript = new HScript(name ?? code, code);
-		if (hs.success) {
+		if (hs.compiled) {
 			Log.info('hscript ${name != null ? '"$name" ' : ''}loaded successfully!');
 			hs.run();
 			add(hs);
@@ -104,7 +104,7 @@ class HScriptBackend {
 		}
 
 		var hs:HScript = new HScript(name, code);
-		if (hs.success) {
+		if (hs.compiled) {
 			Log.info('hscript @ "$file" loaded successfully!');
 			hs.run();
 			add(hs);

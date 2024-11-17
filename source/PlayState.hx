@@ -81,6 +81,7 @@ class PlayState extends MusicBeatState {
 		super.create();
 		Main.watermark.visible = false;
 		
+		conductorInUse = new Conductor();
 		conductorInUse.metronome.tempoChanges = song.tempoChanges;
 		conductorInUse.metronome.setBeat(playCountdown ? -5 : -1);
 		conductorInUse.syncTracker = song.instLoaded ? song.inst : null;
@@ -230,7 +231,7 @@ class PlayState extends MusicBeatState {
 		uiGroup.add(iconP2);
 		
 		scoreTxt = new FlxText(0, FlxG.height - 25, FlxG.width, 'Score: idk');
-		scoreTxt.setFormat(Paths.ttf('vcr'), 18, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		scoreTxt.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		scoreTxt.y -= scoreTxt.height * .5;
 		scoreTxt.borderSize = 1.25;
 		uiGroup.add(scoreTxt);
@@ -602,6 +603,24 @@ class PlayState extends MusicBeatState {
 			i ++;
 		}
 	}
+	public function popRating(ratingString:String, scale:Float = .7, beats:Float = 1) {
+		var rating:FunkinSprite = new FunkinSprite(0, 0);
+		rating.loadTexture(ratingString);
+		rating.scale.set(scale, scale);
+		rating.updateHitbox();
+		rating.setOffset(rating.frameWidth * .5, rating.frameHeight * .5);
+
+		rating.acceleration.y = 550;
+		rating.velocity.y = -FlxG.random.int(140, 175);
+		rating.velocity.x = FlxG.random.int(0, 10);
+
+		ratingGroup.add(rating);
+		FlxTween.tween(rating, {alpha: 0}, .2, {onComplete: (tween:FlxTween) -> {
+			ratingGroup.remove(rating, true);
+			rating.destroy();
+		}, startDelay: conductorInUse.crochet * .001 * beats});
+		return rating;
+	}
 	
 	public function set_maxHealth(newHealth:Float) {
 		health = Math.min(health, newHealth);
@@ -631,24 +650,6 @@ class PlayState extends MusicBeatState {
 	public function updateRating() {
 		percent = (accuracyMod / Math.max(1, accuracyDiv)) * 100;
 		updateScore();
-	}
-	public function popRating(ratingString:String, scale:Float = .7, beats:Float = 1) {
-		var rating:FunkinSprite = new FunkinSprite(0, 0);
-		rating.loadTexture(ratingString);
-		rating.scale.set(scale, scale);
-		rating.updateHitbox();
-		rating.setOffset(rating.frameWidth * .5, rating.frameHeight * .5);
-
-		rating.acceleration.y = 550;
-		rating.velocity.y = -FlxG.random.int(140, 175);
-		rating.velocity.x = FlxG.random.int(0, 10);
-
-		ratingGroup.add(rating);
-		FlxTween.tween(rating, {alpha: 0}, .2, {onComplete: (tween:FlxTween) -> {
-			ratingGroup.remove(rating, true);
-			rating.destroy();
-		}, startDelay: conductorInUse.crochet * .001 * beats});
-		return rating;
 	}
 	public function updateScore() {
 		var accuracyString:String = 'NA';

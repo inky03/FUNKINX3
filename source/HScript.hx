@@ -18,7 +18,7 @@ class HScript extends Iris {
 
 	public var scriptString(default, set):String = '';
 	public var scriptName:String = '';
-	public var success:Bool = false;
+	public var compiled:Bool = false;
 	
 	public function new(name:String, code:String) {
 		super('', new IrisConfig(name, false, true, []));
@@ -52,6 +52,7 @@ class HScript extends Iris {
 	}
 	
 	public function run(?func:String, ?args:Array<Any>, safe:Bool = false):Any {
+		if (!compiled) return null;
 		try {
 			if (func != null) {
 				if (safe && !exists(func)) return null;
@@ -101,13 +102,9 @@ class HScript extends Iris {
 		set('Metronome', Conductor.Metronome);
 		set('RuntimeShader', QuickRuntimeShader);
 		set('ShaderFilter', openfl.filters.ShaderFilter);
-		#if static
-		set('SpriteRenderType', {PACKER: SpriteRenderType.PACKER, SPARROW: SpriteRenderType.SPARROW, ANIMATEATLAS: SpriteRenderType.ANIMATEATLAS});
-		set('NoteEventType', {HIT: NoteEventType.HIT, LOST: NoteEventType.LOST, SPAWNED: NoteEventType.SPAWNED, DESPAWNED: NoteEventType.DESPAWNED, GHOST: NoteEventType.GHOST});
-		#else
-		set('SpriteRenderType', SpriteRenderType);
+		
 		set('NoteEventType', NoteEventType);
-		#end
+		set('SpriteRenderType', SpriteRenderType);
 		
 		set('game', FlxG.state);
 		set('state', FlxG.state);
@@ -147,9 +144,9 @@ class HScript extends Iris {
 		scriptCode = newCode;
 		try {
 			parse(true);
-			success = true;
+			compiled = true;
 		} catch (e:IrisError) {
-			success = false;
+			compiled = false;
 			errorCaught(e);
 		}
 		return scriptString = newCode;
@@ -174,8 +171,8 @@ class QuickRuntimeShader extends FlxRuntimeShader {
 		if (frag == null && vert == null) {
 			Log.warning('shader code for "$name" not found...');
 			Log.minor('verify paths:');
-			Log.minor('vertex: shaders/$name.vert');
-			Log.minor('fragment: shaders/$name.frag');
+			Log.minor('- vertex: shaders/$name.vert');
+			Log.minor('- fragment: shaders/$name.frag');
 		} else {
 			Log.minor('loaded shader code for "$name"');
 		}

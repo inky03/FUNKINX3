@@ -16,7 +16,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		[FlxColor.fromRGB(18, 250, 5), FlxColor.fromRGB(10, 68, 71)],
 		[FlxColor.fromRGB(249, 57, 63), FlxColor.fromRGB(101, 16, 56)],
 	];
-	public static var baseMetronome:Metronome = Conductor.global.metronome; // mostly charting stuff
+	public var conductorInUse:Conductor = Conductor.global; // mostly charting stuff
 
 	public var children:Array<Note> = [];
 	public var parent:Note;
@@ -66,9 +66,11 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		super.revive();
 	}
 
-	public function new(player:Bool, msTime:Float, noteData:Int, msLength:Float = 0, type:String = '', isHoldPiece:Bool = false) {
+	public function new(player:Bool, msTime:Float, noteData:Int, msLength:Float = 0, type:String = '', isHoldPiece:Bool = false, ?conductor:Conductor) {
 		super();
 		
+		this.conductorInUse = conductor ?? MusicBeatState.getCurrentConductor();
+
 		this.player = player;
 		this.msTime = msTime;
 		this.noteKind = type;
@@ -101,22 +103,22 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 
 	public function set_msTime(newTime:Float) {
 		if (msTime == newTime) return newTime;
-		@:bypassAccessor beatTime = baseMetronome.convertMeasure(newTime, MS, BEAT);
+		@:bypassAccessor beatTime = conductorInUse.metronome.convertMeasure(newTime, MS, BEAT);
 		return msTime = newTime;
 	}
 	public function set_beatTime(newTime:Float) {
 		if (beatTime == newTime) return newTime;
-		@:bypassAccessor msTime = baseMetronome.convertMeasure(newTime, BEAT, MS);
+		@:bypassAccessor msTime = conductorInUse.metronome.convertMeasure(newTime, BEAT, MS);
 		return beatTime = newTime;
 	}
 	public function set_msLength(newLength:Float) {
 		if (msLength == newLength) return newLength;
-		@:bypassAccessor beatLength = baseMetronome.convertMeasure(msTime + newLength, MS, BEAT) - beatTime;
+		@:bypassAccessor beatLength = conductorInUse.metronome.convertMeasure(msTime + newLength, MS, BEAT) - beatTime;
 		return msLength = newLength;
 	}
 	public function set_beatLength(newLength:Float) {
 		if (beatLength == newLength) return newLength;
-		@:bypassAccessor msLength = baseMetronome.convertMeasure(beatTime + newLength, BEAT, MS) - msTime;
+		@:bypassAccessor msLength = conductorInUse.metronome.convertMeasure(beatTime + newLength, BEAT, MS) - msTime;
 		return beatLength = newLength;
 	}
 	public function get_endMs() return msTime + (isHoldPiece ? msLength : 0);
@@ -138,7 +140,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		var holdOffsetY:Float = 0;
 		var cutHeight:Float = frameHeight;
 
-		scrollDistance = Note.msToDistance(msTime - Conductor.global.songPosition, speed);
+		scrollDistance = Note.msToDistance(msTime - conductorInUse.songPosition, speed);
 		if (isHoldPiece) {
 			if (isHoldTail) {
 				scale.y = scale.x; updateHitbox();

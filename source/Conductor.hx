@@ -1,6 +1,7 @@
 package;
 
 class Conductor {
+	public var maxDisparity = 50;
 	public var paused:Bool = false;
 	public var bpm(get, never):Float;
 	public var crochet(get, never):Float;
@@ -17,11 +18,10 @@ class Conductor {
 	}
 	public function update(elapsedMS:Float) {
 		if (paused) return;
-		var trackerTime:Float = (syncTracker != null && syncTracker.playing ? syncTracker.time : songPosition);
-		if (Math.abs(songPosition - trackerTime) < 50) {
-			songPosition += elapsedMS;
-		} else {
-			songPosition = trackerTime;
+		songPosition += Math.min(elapsedMS, 250);
+		if (syncTracker != null && syncTracker.playing) {
+			if (Math.abs(songPosition - syncTracker.time) > maxDisparity)
+				songPosition = syncTracker.time;
 		}
 	}
 	

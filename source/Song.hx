@@ -142,7 +142,6 @@ class Song {
 
 			var tempMetronome:Metronome = new Metronome();
 			tempMetronome.tempoChanges = song.tempoChanges;
-			Note.baseMetronome = tempMetronome;
 			var notes:Array<BasicNote> = shark.getNotes(difficulty);
 			var dance:StepManiaDance = @:privateAccess shark.resolveDance(notes);
 			for (note in notes) {
@@ -151,7 +150,6 @@ class Song {
 				var stepCrochet:Float = tempMetronome.getCrochet(tempMetronome.bpm, tempMetronome.timeSignature.denominator) * .25;
 				song.notes.push({player: isPlayer, msTime: note.time, laneIndex: Std.int(note.lane % 4), msLength: note.length});
 			}
-			Note.baseMetronome = Conductor.global.metronome;
 
 			Log.info('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch (e:Exception) {
@@ -190,14 +188,12 @@ class Song {
 
 			var tempMetronome:Metronome = new Metronome();
 			tempMetronome.tempoChanges = song.tempoChanges;
-			Note.baseMetronome = tempMetronome;
 			var notes:Array<BasicNote> = vslice.getNotes(difficulty);
 			for (note in notes) {
 				tempMetronome.setMS(note.time + 1);
 				var stepCrochet:Float = tempMetronome.getCrochet(tempMetronome.bpm, tempMetronome.timeSignature.denominator) * .25;
 				song.notes.push({player: note.lane >= 4, msTime: note.time, laneIndex: Std.int(note.lane % 4), msLength: note.length - stepCrochet});
 			}
-			Note.baseMetronome = Conductor.global.metronome;
 
 			Log.info('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch (e:Exception) {
@@ -300,7 +296,6 @@ class Song {
 			var stepCrochet:Float = crochet * .25;
 			var focus:Int = -1;
 			
-			var prevMetronome:Metronome = Conductor.global.metronome;
 			var sections:Array<LegacySongSection> = song.json.notes;
 			if (song.json.events != null) { // todo: implement events.json
 				var eventBlobs:Array<Array<Dynamic>> = song.json.events;
@@ -315,7 +310,6 @@ class Song {
 			}
 			var tempMetronome:Metronome = new Metronome();
 			tempMetronome.tempoChanges = song.tempoChanges;
-			Note.baseMetronome = tempMetronome;
 			for (section in sections) {
 				var sectionFocus:Int = (section.gfSection ? 2 : (section.mustHitSection ? 0 : 1));
 				if (focus != sectionFocus) {
@@ -365,7 +359,6 @@ class Song {
 				}
 			}
 			song.sort();
-			Note.baseMetronome = Conductor.global.metronome;
 			var lastNote:SongNote = song.notes[song.notes.length - 1];
 			song.songLength = (lastNote == null ? 0 : lastNote.msTime + lastNote.msLength) + 500;
 

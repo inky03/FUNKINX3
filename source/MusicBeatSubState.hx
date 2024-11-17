@@ -3,10 +3,12 @@ package;
 import flixel.util.FlxSignal.FlxTypedSignal;
 
 class MusicBeatSubState extends FlxSubState {
-	public var curStep:Int = -1;
-	public var curBeat:Int = -1;
+	var time:Float = -1;
 	public var curBar:Int = -1;
+	public var curBeat:Int = -1;
+	public var curStep:Int = -1;
 	public var paused:Bool = false;
+
 	public var conductorInUse:Conductor = Conductor.global;
 
 	public var stepHit:FlxTypedSignal<Int->Void> = new FlxTypedSignal<Int->Void>();
@@ -46,17 +48,17 @@ class MusicBeatSubState extends FlxSubState {
 		curStep = -1;
 		conductorInUse.songPosition = 0;
 	}
-	public function resetState() {
-		FlxG.resetState();
-	}
 	
 	override function update(elapsed:Float) {
-		if (FlxG.keys.justPressed.F5) resetState();
-		
 		if (paused) return;
 
-		updateConductor(elapsed);
-		super.update(elapsed);
+		var curTime:Float = haxe.Timer.stamp();
+		if (time < 0) time = curTime;
+		var realTime:Float = Math.min(curTime - time, FlxG.maxElapsed);
+		time = curTime;
+
+		updateConductor(realTime);
+		super.update(realTime);
 	}
 	
 	public function updateConductor(elapsed:Float = 0) {
