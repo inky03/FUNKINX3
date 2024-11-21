@@ -50,8 +50,10 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
         
         // loads hscript file
         var scriptPath:String = 'stages/${stageId}.hx';
-        if (Paths.exists(scriptPath)){
-            HScriptBackend.loadFromPaths(scriptPath);
+        if (Paths.exists(scriptPath)) {
+        	var fuck:MusicBeatState = cast(FlxG.state, MusicBeatState);
+            if (fuck != null)
+            	fuck.hscripts.loadFromPaths(scriptPath);
             hasContent = true;
         }
 

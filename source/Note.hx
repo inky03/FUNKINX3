@@ -30,6 +30,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var clipHeight:Float = 0;
 	public var scrollDistance:Float = 0;
 	public var preventDespawn:Bool = false;
+	public var followAngle:Bool = true;
 	
 	public var healthLoss:Float = .0775 * .5;
 	public var healthGain:Float = .033 * .5;
@@ -156,6 +157,8 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 			holdOffsetX = (receptor.width - frameWidth) * .5;
 			holdOffsetY = receptor.height * .5;
 			angle = dir - 90;
+		} else if (followAngle) {
+			angle = lane.receptor.angle;
 		}
 		
 		var xP:Float = 0;

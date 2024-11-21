@@ -18,7 +18,7 @@ class Mods {
 				list.push(mod);
 			}
 		}
-		Log.info('Mods: refreshed mod list!');
+		Log.info('refreshed mod list!');
 		return list;
 	}
 }

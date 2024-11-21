@@ -35,8 +35,8 @@ import flixel.group.FlxSpriteGroup.FlxTypedSpriteGroup;
 //funkin
 import Util;
 import Paths;
+import Options;
 import Controls;
-import Settings;
 import FunkinSprite;
 import MusicBeatState;
 import MusicBeatSubState;

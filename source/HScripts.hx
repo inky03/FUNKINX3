@@ -4,10 +4,13 @@ import flixel.util.typeLimit.OneOfTwo;
 
 using StringTools;
 
-class HScriptBackend {
-	public static var activeScripts:Array<HScript> = [];
+class HScripts {
+	public var activeScripts:Array<HScript>;
 	
-	public static function find(test:OneOfTwo<String, HScript>) {
+	public function new() {
+		activeScripts = [];
+	}
+	public function find(test:OneOfTwo<String, HScript>) {
 		if (Std.isOfType(test, HScript)) {
 			return activeScripts.contains(test) ? test : null;
 		} else {
@@ -17,33 +20,35 @@ class HScriptBackend {
 			return null;
 		}
 	}
-	public static function exists(name:String) return (find(name) != null);
-	public static function findFromSuffix(test:String) {
+	public function exists(name:String) return (find(name) != null);
+	public function findFromSuffix(test:String) {
 		for (hscript in activeScripts) {
 			if (hscript.scriptName.endsWith(test)) return hscript;
 		}
 		return null;
 	}
-	public static function add(hscript:HScript):Void {
+	public function add(hscript:HScript):Void {
 		if (!activeScripts.contains(hscript)) activeScripts.push(hscript);
 	}
-	public static function stop(hscript:HScript):Void {
-		if (activeScripts.contains(hscript)) activeScripts.remove(hscript);
+	public function destroy(hscript:HScript):Void {
+		if (activeScripts.contains(hscript))
+			activeScripts.remove(hscript);
 		hscript.destroy();
 	}
-	public static function stopAllScripts():Void {
-		while (activeScripts.length > 0) stop(activeScripts[0]);
+	public function destroyAll():Void {
+		while (activeScripts.length > 0)
+			destroy(activeScripts[0]);
 	}
-	public static function set(field:String, value:Any):Void {
+	public function set(field:String, value:Any):Void {
 		for (hscript in activeScripts) {
 			hscript.set(field, value);
 		}
 	}
-	public static function run(?name:String, ?args:Array<Any>):Any {
-		var returnValue:Any = null;
+	public function run(?name:String, ?args:Array<Any>):Any {
 		var returnLocked:Bool = false;
+		var returnValue:Dynamic = null;
 		for (hscript in activeScripts) {
-			var result:Any = hscript.run(name, args, true);
+			var result:Dynamic = hscript.run(name, args, true);
 			switch (result) {
 				case null:
 				case HScript.STOPALL: return result;
@@ -53,7 +58,7 @@ class HScriptBackend {
 		}
 		return returnValue;
 	}
-	public static function loadFromFolder(path:String):Void {
+	public function loadFromFolder(path:String):Void {
 		var dirList:Array<String> = [Paths.sharedPath(path)];
 		dirList.push(Paths.modPath(path));
 		for (mod in Mods.get()) {
@@ -69,10 +74,26 @@ class HScriptBackend {
 			}
 		}
 	}
-	public static function loadFromString(code:String, ?name:String):Null<HScript> {
-		var hs:HScript = new HScript(name ?? code, code);
+	function getScriptName(name:String, unique:Bool = false, warn:Bool = false) {
+		var found:HScript = find(name);
+		if (found != null && unique) {
+			var n:Int = 1;
+			while (exists('${name}_$n')) n ++;
+			name = '${name}_$n';
+		}
+		return name;
+	}
+	public function loadFromString(code:String, ?name:String):Null<HScript> {
+		name ??= 'hscript';
+		if (exists(name)) {
+			Log.warning('hscript @ "$name" is already active!');
+			name = getScriptName(name, true);
+			Log.minor('using name "$name"...');
+		}
+
+		var hs:HScript = new HScript(name, code);
 		if (hs.compiled) {
-			Log.info('hscript ${name != null ? '"$name" ' : ''}loaded successfully!');
+			Log.info('hscript "$name" loaded successfully!');
 			hs.run();
 			add(hs);
 			return hs;
@@ -81,20 +102,13 @@ class HScriptBackend {
 			return null;
 		}
 	}
-	public static function loadFromFile(file:String, unique:Bool = false):Null<HScript> {
-		var found:HScript = find(file);
-		var name:String = file;
-		if (found != null) {
-			if (unique) {
-				var n:Int = 1;
-				while (exists('file_$n')) n ++;
-				name = 'file_$n';
-			} else {
-				Log.warning('hscript @ "$file" is already active!');
-				return found;
-			}
+	public function loadFromFile(file:String, unique:Bool = false):Null<HScript> {
+		if (exists(file) && !unique) {
+			Log.warning('hscript @ "$file" is already active!');
+			return find(file);
 		}
-		
+
+		var name:String = getScriptName(file, unique, true);
 		var code:String;
 		if (FileSystem.exists(file)) {
 			code = File.getContent(file);
@@ -114,10 +128,10 @@ class HScriptBackend {
 			return null;
 		}
 	}
-	public static function loadFromPaths(basepath:String) {
+	public function loadFromPaths(basepath:String) {
 		var found:Bool = false;
 		for (path in Paths.getPaths(basepath)) {
-			HScriptBackend.loadFromFile(path);
+			loadFromFile(path);
 			found = true;
 		}
 		return found;

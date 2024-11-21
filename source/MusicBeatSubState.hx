@@ -2,8 +2,10 @@ package;
 
 import flixel.util.FlxSignal.FlxTypedSignal;
 
-class MusicBeatSubState extends FlxSubState {
+class MusicBeatSubState implements IMusicBeat extends FlxSubState {
 	var time:Float = -1;
+	public var realElapsed:Float;
+
 	public var curBar:Int = -1;
 	public var curBeat:Int = -1;
 	public var curStep:Int = -1;
@@ -16,7 +18,6 @@ class MusicBeatSubState extends FlxSubState {
 	public var barHit:FlxTypedSignal<Int->Void> = new FlxTypedSignal<Int->Void>();
 	
 	override function create() {
-		HScriptBackend.stopAllScripts();
 		Paths.trackedAssets.resize(0);
 		super.create();
 	}
@@ -48,17 +49,20 @@ class MusicBeatSubState extends FlxSubState {
 		curStep = -1;
 		conductorInUse.songPosition = 0;
 	}
-	
-	override function update(elapsed:Float) {
-		if (paused) return;
 
+	public function getRealElapsed() {
 		var curTime:Float = haxe.Timer.stamp();
 		if (time < 0) time = curTime;
 		var realTime:Float = Math.min(curTime - time, FlxG.maxElapsed);
+		realElapsed = realTime;
 		time = curTime;
+		return realElapsed;
+	}
+	override function update(elapsed:Float) {
+		if (paused) return;
 
-		updateConductor(realTime);
-		super.update(realTime);
+		updateConductor(elapsed);
+		super.update(elapsed);
 	}
 	
 	public function updateConductor(elapsed:Float = 0) {
@@ -80,5 +84,11 @@ class MusicBeatSubState extends FlxSubState {
 	public function playMusic(mus:String) {
 		MusicHandler.playMusic(mus);
 		MusicHandler.applyMeta(conductorInUse);
+	}
+
+	public static function getCurrentConductor():Conductor {
+		if (Std.isOfType(FlxG.state.subState, IMusicBeat))
+			return cast(FlxG.state.subState, IMusicBeat).conductorInUse;
+		return Conductor.global;
 	}
 }

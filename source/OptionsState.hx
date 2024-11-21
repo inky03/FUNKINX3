@@ -2,10 +2,11 @@ class OptionsState extends MusicBeatState {
 	public var target:FlxObject;
 	public var items:FlxTypedGroup<SettingItem>;
 	public var inputEnabled:Bool = true;
-	public var settingList:Array<Array<String>> = [
-		['downscroll', 'Downscroll'],
-		['middlescroll', 'Middlescroll'],
-		['ghostTapping', 'Ghost Tapping']
+	public var settingList:Array<SettingData> = [
+		{save: 'downscroll', display: 'Downscroll'},
+		{save: 'middlescroll', display: 'Middlescroll'},
+		{save: 'ghostTapping', display: 'Ghost Tapping'},
+		{save: 'xtendScore', display: 'Extended Score Display'}
 	];
 	public static var selection:Int = 0;
 	
@@ -24,7 +25,7 @@ class OptionsState extends MusicBeatState {
 		add(items);
 		
 		for (i => setting in settingList)
-			items.add(new SettingItem(30 * i, 75 * i, setting[0], setting[1]));
+			items.add(new SettingItem(30 * i, 75 * i, setting.save, setting.display, setting.type));
 		
 		FlxG.camera.target = target = new FlxObject();
 		FlxG.camera.followLerp = 9 / 60;
@@ -38,6 +39,8 @@ class OptionsState extends MusicBeatState {
 	}
 	
 	override public function update(elapsed:Float) {
+		elapsed = getRealElapsed();
+		
 		super.update(elapsed);
 		DiscordRPC.update();
 		if (!inputEnabled) return;
@@ -87,6 +90,8 @@ class SettingItem extends FlxSpriteGroup {
 		
 		this.type = type;
 		switch (type) {
+			case NUMBER:
+			case STRING:
 			case BOOLEAN:
 				checkbox = new FunkinSprite(0, -30);
 				checkbox.loadAtlas('options/checkbox');
@@ -102,14 +107,14 @@ class SettingItem extends FlxSpriteGroup {
 		}
 		highlight(false);
 	}
-	inline function hasSave() return (settingSave != null && Reflect.getProperty(Settings.data, settingSave) != null);
+	inline function hasSave() return (settingSave != null && Reflect.getProperty(Options.data, settingSave) != null);
 	public function get_settingValue() {
-		return Reflect.getProperty(Settings.data, settingSave);
+		return Reflect.getProperty(Options.data, settingSave);
 	}
 	public function set_enabled(on:Bool) {
 		if (type != BOOLEAN) return on;
-		trace('$settingSave -> ${hasSave()}');
-		if (hasSave() && on != settingValue) Reflect.setProperty(Settings.data, settingSave, on);
+		// trace('$settingSave -> ${hasSave()}');
+		if (hasSave() && on != settingValue) Reflect.setProperty(Options.data, settingSave, on);
 		checkbox.playAnimation(on ? 'select' : 'unselect');
 		return enabled = on;
 	}
@@ -124,6 +129,12 @@ class SettingItem extends FlxSpriteGroup {
 			text.color = 0xffffff;
 		}
 	}
+}
+
+typedef SettingData = {
+	var save:String;
+	var display:String;
+	var ?type:SettingType;
 }
 
 enum SettingType {

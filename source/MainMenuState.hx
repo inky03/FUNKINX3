@@ -60,6 +60,8 @@ class MainMenuState extends MusicBeatState {
 	}
 	
 	override public function update(elapsed:Float) {
+		elapsed = getRealElapsed();
+		
 		super.update(elapsed);
 		DiscordRPC.update();
 		if (!inputEnabled) return;

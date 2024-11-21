@@ -131,6 +131,8 @@ class FreeplaySubState extends MusicBeatSubState {
 	}
 
 	public override function update(elapsed:Float) {
+		elapsed = getRealElapsed();
+		
 		if (FlxG.keys.justPressed.ESCAPE && inputEnabled) back();
 
 		super.update(elapsed);

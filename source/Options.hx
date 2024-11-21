@@ -2,7 +2,8 @@ package;
 
 import flixel.input.keyboard.FlxKey;
 
-@:structInit class SettingsData {
+@:structInit class OptionsData {
+	public var xtendScore:Bool = false;
 	public var downscroll:Bool = false;
 	public var middlescroll:Bool = false;
 	public var ghostTapping:Bool = true;
@@ -17,7 +18,7 @@ import flixel.input.keyboard.FlxKey;
 	];
 }
 
-class Settings {
-	public static var defaultData:SettingsData = {};
-	public static var data:SettingsData = {};
+class Options {
+	public static var defaultData:OptionsData = {};
+	public static var data:OptionsData = {};
 }

@@ -17,8 +17,10 @@ class HScript extends Iris {
 	public static var STOPALL(default, never):HScriptFunctionEnum = STOPALL;
 
 	public var scriptString(default, set):String = '';
+	public var scriptPath:Null<String> = null;
 	public var scriptName:String = '';
 	public var compiled:Bool = false;
+	public var active:Bool = true;
 	
 	public function new(name:String, code:String) {
 		super('', new IrisConfig(name, false, true, []));
@@ -51,8 +53,8 @@ class HScript extends Iris {
 		Sys.println('$posPrefix $out');
 	}
 	
-	public function run(?func:String, ?args:Array<Any>, safe:Bool = false):Any {
-		if (!compiled) return null;
+	public function run(?func:String, ?args:Array<Any>, safe:Bool = true):Any {
+		if (!compiled || !active) return null;
 		try {
 			if (func != null) {
 				if (safe && !exists(func)) return null;
@@ -65,6 +67,10 @@ class HScript extends Iris {
 			errorCaught(e);
 			return null;
 		}
+	}
+	public override function destroy() {
+		run('destroy');
+		super.destroy();
 	}
 	public override function preset() {
 		super.preset();
@@ -88,8 +94,8 @@ class HScript extends Iris {
 		set('Note', Note);
 		set('Paths', Paths);
 		set('HScript', HScript);
+		set('Options', Options);
 		set('Controls', Controls);
-		set('Settings', Settings);
 		set('PlayState', PlayState);
 		set('Conductor', Conductor);
 		set('Character', Character);
@@ -102,7 +108,7 @@ class HScript extends Iris {
 		set('Metronome', Conductor.Metronome);
 		set('RuntimeShader', QuickRuntimeShader);
 		set('ShaderFilter', openfl.filters.ShaderFilter);
-		
+
 		set('NoteEventType', NoteEventType);
 		set('SpriteRenderType', SpriteRenderType);
 		

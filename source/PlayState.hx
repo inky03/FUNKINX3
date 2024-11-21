@@ -44,18 +44,13 @@ class PlayState extends MusicBeatState {
 	public var inputDisabled:Bool = false;
 	public var playCountdown:Bool = true;
 	
-	public var camHUD:FlxCamera;
-	public var camGame:FlxCamera;
-	public var camOther:FlxCamera;
-	public var camFocus:FlxObject;
-	public var camFocusTarget:FlxPoint;
+	public var camHUD:FunkinCamera;
+	public var camGame:FunkinCamera;
+	public var camOther:FunkinCamera;
+	public var camFocusTarget:FlxObject;
 	
 	public var camZoomIntensity:Float = 1;
-	public var HUDZoomIntensity:Float = 1;
-	public var defaultHUDZoom:Float = 1;
-	public var defaultCamZoom:Float = 1;
-	public var camZoomLerp:Bool = true;
-	public var HUDZoomLerp:Bool = true;
+	public var hudZoomIntensity:Float = 1;
 	
 	public static var song:Song = null;
 	public var syncVocals:Array<FlxSound> = [];
@@ -86,8 +81,8 @@ class PlayState extends MusicBeatState {
 		conductorInUse.metronome.setBeat(playCountdown ? -5 : -1);
 		conductorInUse.syncTracker = song.instLoaded ? song.inst : null;
 		
-		HScriptBackend.loadFromFolder('scripts');
-		HScriptBackend.loadFromFolder('data/${song.path}');
+		hscripts.loadFromFolder('scripts');
+		hscripts.loadFromFolder('data/${song.path}');
 
 		hitsound = FlxG.sound.load(Paths.sound('hitsound'));
 		hitsound.volume = .7;
@@ -96,9 +91,9 @@ class PlayState extends MusicBeatState {
 		beatHit.add(beatHitEvent);
 		barHit.add(barHitEvent);
 		
-		camHUD = new FlxCamera();
-		camGame = new FlxCamera();
-		camOther = new FlxCamera();
+		camHUD = new FunkinCamera();
+		camGame = new FunkinCamera();
+		camOther = new FunkinCamera();
 		camHUD.bgColor.alpha = 0;
 		camGame.bgColor.alpha = 0;
 		camOther.bgColor.alpha = 0;
@@ -111,16 +106,18 @@ class PlayState extends MusicBeatState {
 			FlxG.cameras.defaults.push(camGame);
 		}
 		
-		camFocusTarget = new FlxPoint(0, FlxG.height * .5);
-		camFocus = new FlxObject(camFocusTarget.x, camFocusTarget.y, 1, 1);
-		camGame.follow(camFocus, LOCKON, 1);
-		add(camFocus);
+		camFocusTarget = new FlxObject(0, FlxG.height * .5);
+		camGame.follow(camFocusTarget, LOCKON, 3);
+		add(camFocusTarget);
+
+		camGame.zoomFollowLerp = camHUD.zoomFollowLerp = 3;
 
 		curStage = song.stage;
 		stage = new Stage(curStage, song);
-		defaultCamZoom = stage.zoom;
+		camGame.zoomTarget = stage.zoom;
+		camHUD.zoomTarget = 1;
 		add(stage);
-		HScriptBackend.set('stage', stage);
+		hscripts.set('stage', stage);
 
 		player1 = stage.getCharacter('bf');
 		player2 = stage.getCharacter('dad');
@@ -130,7 +127,7 @@ class PlayState extends MusicBeatState {
 		// update: i did ( it sucks i think )
 
 		focusOnCharacter(player3 ?? player1);
-		camFocus.setPosition(camFocusTarget.x, camFocusTarget.y);
+		camGame.snapToTarget();
 		
 		songName = song.name;
 		song.instLoaded = false;
@@ -159,7 +156,7 @@ class PlayState extends MusicBeatState {
 		uiGroup.camera = camHUD;
 		add(uiGroup);
 		
-		var scrollDir:Float = (Settings.data.downscroll ? 270 : 90);
+		var scrollDir:Float = (Options.data.downscroll ? 270 : 90);
 		var strumlineBound:Float = (FlxG.width - 300) * .5;
 		var strumlineY:Float = 50;
 		
@@ -170,16 +167,16 @@ class PlayState extends MusicBeatState {
 		opponentStrumline.zIndex = 40;
 		opponentStrumline.cpu = true;
 		opponentStrumline.allowInput = false;
-		add(opponentStrumline);
+		uiGroup.add(opponentStrumline);
 		
 		playerStrumline = new Strumline(4, scrollDir, song.scrollSpeed * 1.08);
 		playerStrumline.fitToSize(strumlineBound, playerStrumline.height * .7);
 		playerStrumline.setPosition(FlxG.width - playerStrumline.width - 50 - 75, strumlineY);
 		playerStrumline.camera = camHUD;
 		playerStrumline.zIndex = 50;
-		add(playerStrumline);
+		uiGroup.add(playerStrumline);
 
-		if (Settings.data.middlescroll) {
+		if (Options.data.middlescroll) {
 			playerStrumline.screenCenter(X);
 			opponentStrumline.fitToSize(opponentStrumline.width * .7);
 		}
@@ -189,7 +186,7 @@ class PlayState extends MusicBeatState {
 		opponentStrumline.visible = false;
 		playerStrumline.visible = false;
 
-		keybinds = Settings.data.keybinds['4k'];
+		keybinds = Options.data.keybinds['4k'];
 		playerStrumline.assignKeybinds(keybinds);
 		
 		var noteKinds:Array<String> = [];
@@ -201,10 +198,10 @@ class PlayState extends MusicBeatState {
 			notes.push(note);
 		}
 		for (noteKind in noteKinds) {
-			HScriptBackend.loadFromPaths('notekinds/$noteKind.hx');
+			hscripts.loadFromPaths('notekinds/$noteKind.hx');
 		}
 		
-		if (Settings.data.middlescroll) {
+		if (Options.data.middlescroll) {
 			playerStrumline.center(X);
 			opponentStrumline.fitToSize(playerStrumline.leftBound - 50 - opponentStrumline.leftBound, 0, Y);
 		}
@@ -240,10 +237,9 @@ class PlayState extends MusicBeatState {
 		debugTxt.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		uiGroup.add(debugTxt);
 
-		if (Settings.data.downscroll) {
-			for (sprite in [opponentStrumline, playerStrumline, healthBar, iconP1, iconP2, scoreTxt]) {
-				sprite.y = FlxG.height - sprite.y - sprite.height;
-			}
+		if (Options.data.downscroll) {
+			for (mem in uiGroup)
+				mem.y = FlxG.height - mem.y - mem.height;
 		}
 
 		for (event in song.events) {
@@ -261,11 +257,13 @@ class PlayState extends MusicBeatState {
 		DiscordRPC.presence.details = '${song.name} [${song.difficulty.toUpperCase()}]';
 		DiscordRPC.dirty = true;
 		
-		HScriptBackend.run('createPost');
+		hscripts.run('createPost');
 		sortZIndex();
 	}
 
 	override public function update(elapsed:Float) {
+		elapsed = getRealElapsed();
+
 		if (FlxG.keys.justPressed.ESCAPE) {
 			FlxG.switchState(() -> new FreeplayState());
 			return;
@@ -314,8 +312,8 @@ class PlayState extends MusicBeatState {
 		
 		if (FlxG.keys.justPressed.Z) {
 			var strumlineY:Float = 50;
-			Settings.data.downscroll = !Settings.data.downscroll;
-			if (Settings.data.downscroll) strumlineY = FlxG.height - opponentStrumline.receptorHeight - strumlineY;
+			Options.data.downscroll = !Options.data.downscroll;
+			if (Options.data.downscroll) strumlineY = FlxG.height - opponentStrumline.receptorHeight - strumlineY;
 			for (strumline in [opponentStrumline, playerStrumline]) {
 				strumline.direction += 180;
 				strumline.y = strumlineY;
@@ -338,25 +336,19 @@ class PlayState extends MusicBeatState {
 		
 		DiscordRPC.update();
 		super.update(elapsed);
-		HScriptBackend.run('update', [elapsed, paused]);
+		hscripts.run('update', [elapsed, paused]);
 
 		if (paused) {
-			HScriptBackend.run('updatePost', [elapsed, paused]);
+			hscripts.run('updatePost', [elapsed, paused]);
 			return;
 		}
-		
+
 		iconP1.updateBop(elapsed);
 		iconP2.updateBop(elapsed);
 		iconP1.setPosition(healthBar.barCenter.x + 60 - iconP1.width * .5, healthBar.barCenter.y - iconP1.height * .5);
 		iconP2.setPosition(healthBar.barCenter.x - 60 - iconP2.width * .5, healthBar.barCenter.y - iconP2.height * .5);
 		
 		syncMusic();
-		if (camZoomLerp) camHUD.zoom = FlxMath.lerp(camHUD.zoom, defaultHUDZoom, elapsed * 3);
-		if (HUDZoomLerp) camGame.zoom = FlxMath.lerp(camGame.zoom, defaultCamZoom, elapsed * 3);
-		camFocus.setPosition(
-			Util.smoothLerp(camFocus.x, camFocusTarget.x, elapsed * 3),
-			Util.smoothLerp(camFocus.y, camFocusTarget.y, elapsed * 3)
-		);
 		
 		var limit:Int = 50; //avoid lags
 		while (events.length > 0 && conductorInUse.songPosition >= events[0].msTime && limit > 0) {
@@ -365,7 +357,7 @@ class PlayState extends MusicBeatState {
 			limit --;
 		}
 		
-		HScriptBackend.run('updatePost', [elapsed]);
+		hscripts.run('updatePost', [elapsed]);
 		
 		if (conductorInUse.songPosition >= song.songLength && !conductorInUse.paused) {
 			finishSong();
@@ -373,7 +365,7 @@ class PlayState extends MusicBeatState {
 	}
 
 	public function finishSong() {
-		var result:Dynamic = HScriptBackend.run('finishSong');
+		var result:Dynamic = hscripts.run('finishSong');
 		if (result == HScript.STOP) {
 			conductorInUse.paused = true;
 			return;
@@ -401,7 +393,7 @@ class PlayState extends MusicBeatState {
 	}
 
 	public function pushedEvent(event:SongEvent) {
-		HScriptBackend.loadFromPaths('events/${event.name}.hx');
+		hscripts.loadFromPaths('events/${event.name}.hx');
 		
 		var params:Map<String, Dynamic> = event.params;
 		switch (event.name) {
@@ -413,7 +405,7 @@ class PlayState extends MusicBeatState {
 					case 'dad': focusChara = player2;
 				} if (focusChara != null) focusChara.preloadAnimAsset(params['anim']);
 		}
-		HScriptBackend.run('eventPushed', [event]);
+		hscripts.run('eventPushed', [event]);
 	}
 	
 	public function triggerEvent(event:SongEvent) {
@@ -457,7 +449,7 @@ class PlayState extends MusicBeatState {
 					}
 				}
 		}
-		HScriptBackend.run('eventTriggered', [event]);
+		hscripts.run('eventTriggered', [event]);
 	}
 	public function focusOnCharacter(chara:Character) {
 		if (chara != null) {
@@ -468,7 +460,7 @@ class PlayState extends MusicBeatState {
 	
 	public function stepHitEvent(step:Int) {
 		syncMusic(true);
-		HScriptBackend.run('stepHit', [step]);
+		hscripts.run('stepHit', [step]);
 	}
 	public function beatHitEvent(beat:Int) {
 		try {
@@ -500,7 +492,7 @@ class PlayState extends MusicBeatState {
 			for (track in syncVocals) track.play(true);
 			syncMusic(true, true);
 		}
-		HScriptBackend.run('beatHit', [beat]);
+		hscripts.run('beatHit', [beat]);
 	}
 	public function popCountdown(image:String) {
 		var pop = new FunkinSprite().loadTexture(image);
@@ -511,12 +503,12 @@ class PlayState extends MusicBeatState {
 			remove(pop);
 			pop.destroy();
 		}});
-		HScriptBackend.run('countdownTick', [image]);
+		hscripts.run('countdownTick', [image]);
 	}
 	public function barHitEvent(bar:Int) {
-		camHUD.zoom += .03 * HUDZoomIntensity;
+		camHUD.zoom += .03 * hudZoomIntensity;
 		camGame.zoom += .015 * camZoomIntensity;
-		HScriptBackend.run('barHit', [bar]);
+		hscripts.run('barHit', [bar]);
 	}
 	
 	public function keyPressEvent(event:KeyboardEvent) {
@@ -529,9 +521,9 @@ class PlayState extends MusicBeatState {
 			var oldTime:Float = conductorInUse.songPosition;
 			conductorInUse.songPosition = getSongPos();
 
-			HScriptBackend.run('keyPressed', [key]);
+			hscripts.run('keyPressed', [key]);
 			if (keybind >= 0) {
-				HScriptBackend.run('keybindPressed', [keybind]);
+				hscripts.run('keybindPressed', [keybind]);
 				playerStrumline.fireInput(key, true);
 			}
 
@@ -545,25 +537,25 @@ class PlayState extends MusicBeatState {
 		if (inputDisabled || paused) return;
 		var keybind:Int = Controls.keybindFromArray(keybinds, key);
 
-		HScriptBackend.run('keybindReleased', [key]);
+		hscripts.run('keybindReleased', [key]);
 		if (keybind >= 0) {
-			HScriptBackend.run('keybindReleased', [keybind]);
+			hscripts.run('keybindReleased', [keybind]);
 			playerStrumline.fireInput(key, false);
 		}
 	}
 
 	public function playerNoteEvent(e:Lane.NoteEvent) {
 		e.targetCharacter = player1;
-		if (e.type == Lane.NoteEventType.GHOST && Settings.data.ghostTapping) {
+		if (e.type == Lane.NoteEventType.GHOST && Options.data.ghostTapping) {
 			e.playAnimation = false;
 			e.applyRating = false;
 			e.playSound = false;
 		}
 
-		HScriptBackend.run('playerNoteEventPre', [e]);
+		hscripts.run('playerNoteEventPre', [e]);
 		try e.dispatch()
 		catch (e:haxe.Exception) Log.error('error dispatching note event -> ${e.message}');
-		HScriptBackend.run('playerNoteEvent', [e]);
+		hscripts.run('playerNoteEvent', [e]);
 	}
 	public function opponentNoteEvent(e:Lane.NoteEvent) {
 		e.targetCharacter = player2;
@@ -572,14 +564,14 @@ class PlayState extends MusicBeatState {
 		e.doSplash = false;
 		e.doSpark = false;
 
-		HScriptBackend.run('opponentNoteEventPre', [e]);
+		hscripts.run('opponentNoteEventPre', [e]);
 		try e.dispatch()
 		catch (e:haxe.Exception) Log.error('error dispatching note event -> ${e.message}');
-		HScriptBackend.run('opponentNoteEvent', [e]);
+		hscripts.run('opponentNoteEvent', [e]);
 	}
 	public dynamic function comboBroken(oldCombo:Int) {
 		popCombo(0);
-		var result:Dynamic = HScriptBackend.run('comboBroken');
+		var result:Dynamic = hscripts.run('comboBroken');
 		if (result != HScript.STOP && oldCombo >= 10 && player3 != null) player3.playAnimationSteps('sad', true, 8);
 	}
 	public function popCombo(combo:Int) {
@@ -608,7 +600,7 @@ class PlayState extends MusicBeatState {
 		rating.loadTexture(ratingString);
 		rating.scale.set(scale, scale);
 		rating.updateHitbox();
-		rating.setOffset(rating.frameWidth * .5, rating.frameHeight * .5);
+		rating.centerOffsets();
 
 		rating.acceleration.y = 550;
 		rating.velocity.y = -FlxG.random.int(140, 175);
@@ -652,10 +644,15 @@ class PlayState extends MusicBeatState {
 		updateScore();
 	}
 	public function updateScore() {
-		var accuracyString:String = 'NA';
-		if (totalNotes > 0) accuracyString = '${Util.padDecimals(percent, 2)}%';
-		scoreTxt.text = 'Score: ${Util.thousandSep(Std.int(score))} (${accuracyString}) | Misses: ${misses}';
-		HScriptBackend.run('updateScore');
+		var scoreStr:String = Util.thousandSep(Std.int(score));
+		if (Options.data.xtendScore) {
+			var accuracyString:String = 'NA';
+			if (totalNotes > 0) accuracyString = '${Util.padDecimals(percent, 2)}%';
+			scoreTxt.text = 'Score: $scoreStr (${accuracyString}) | Misses: ${misses}';
+		} else {
+			scoreTxt.text = 'Score: $scoreStr';
+		}
+		hscripts.run('updateScore');
 	}
 	public function set_combo(newCombo:Int) {
 		if (combo > 0 && newCombo == 0) comboBroken(combo);
@@ -663,7 +660,6 @@ class PlayState extends MusicBeatState {
 	}
 	
 	override public function destroy() {
-		HScriptBackend.run('destroy');
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
 		Main.watermark.visible = true;

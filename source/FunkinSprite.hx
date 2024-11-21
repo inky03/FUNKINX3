@@ -16,8 +16,8 @@ class FunkinSprite extends FlxSprite {
 	public var offsets:Map<String, FlxPoint> = new Map<String, FlxPoint>();
 	public var animationList:Map<String, AnimationInfo> = [];
 	public var smooth(default, set):Bool = true;
-	public var spriteOffset:FlxCallbackPoint;
-	public var animOffset:FlxCallbackPoint;
+	public var spriteOffset:FlxPoint;
+	public var animOffset:FlxPoint;
 	public var rotateOffsets:Bool = false;
 	public var scaleOffsets:Bool = true;
 
@@ -28,8 +28,8 @@ class FunkinSprite extends FlxSprite {
 	
 	public function new(x:Float = 0, y:Float = 0, isSmooth:Bool = true) {
 		super(x, y);
-		spriteOffset = new FlxCallbackPoint((point:FlxPoint) -> refreshOffset());
-		animOffset = new FlxCallbackPoint((point:FlxPoint) -> refreshOffset());
+		spriteOffset = new FlxPoint();
+		animOffset = new FlxPoint();
 		smooth = isSmooth;
 		animation.finishCallback = (anim:String) -> {
 			if (renderType != ANIMATEATLAS)
@@ -38,12 +38,10 @@ class FunkinSprite extends FlxSprite {
 	}
 	public override function destroy() {
 		if (animate != null) animate.destroy();
-		spriteOffset.destroy();
-		animOffset.destroy();
+		offset.destroy();
 		super.destroy();
 	}
 	public override function update(elapsed:Float) {
-		refreshOffset();
 		super.update(elapsed);
 		if (isAnimate) {
 			animate.update(elapsed);
@@ -51,7 +49,32 @@ class FunkinSprite extends FlxSprite {
 			frameHeight = Std.int(animate.height);
 		}
 	}
+	public override function draw() {
+		refreshOffset();
+		if (renderType == ANIMATEATLAS && animate != null) {
+			animate.colorTransform = colorTransform; // lmao
+			animate.scrollFactor = scrollFactor;
+			animate.antialiasing = antialiasing;
+			animate.setPosition(x, y);
+			animate.cameras = cameras;
+			animate.shader = shader;
+			animate.offset = offset;
+			animate.origin = origin;
+			animate.scale = scale;
+			animate.alpha = alpha;
+			animate.angle = angle;
+			animate.flipX = flipX;
+			animate.flipY = flipY;
+			if (visible) animate.draw();
+		} else
+			super.draw();
+	}
 	
+	function resetData() {
+		unloadAnimate();
+		offsets.clear();
+		animationList.clear();
+	}
 	public function loadAuto(path:String, ?library:String) {
 		final pngExists:Bool = Paths.exists('images/$path.png', library);
 		if (Paths.exists('images/${Path.addTrailingSlash(path)}Animation.json', library)) {
@@ -68,14 +91,13 @@ class FunkinSprite extends FlxSprite {
 		return this;
 	}
 	public function loadTexture(path:String, ?library:String) {
-		animationList.clear();
+		resetData();
 		loadGraphic(Paths.image(path, library));
 		renderType = SPARROW;
 		return this;
 	}
 	public function loadAtlas(path:String, ?library:String) {
-		unloadAnimate();
-		animationList.clear();
+		resetData();
 		switch (renderType) {
 			// implement packer
 			default:
@@ -85,8 +107,7 @@ class FunkinSprite extends FlxSprite {
 		return this;
 	}
 	public function loadAnimate(path:String, ?library:String) {
-		unloadAnimate();
-		animationList.clear();
+		resetData();
 		animate = new FunkinAnimate().loadAnimate(path, library);
 		animate.anim.onComplete.add(() -> {
 			if (renderType == ANIMATEATLAS)
@@ -114,8 +135,8 @@ class FunkinSprite extends FlxSprite {
 		super.centerOffsets(adjustPosition);
 		spriteOffset.set(offset.x / (scaleOffsets ? scale.x : 1), offset.y / (scaleOffsets ? scale.y : 1));
 	}
+	public function setOffset(x:Float = 0, y:Float = 0) spriteOffset.set(x / (scaleOffsets ? scale.x : 1), y / (scaleOffsets ? scale.y : 1));
 
-	public function setOffset(x:Float = 0, y:Float = 0) spriteOffset.set(x / scale.x, y / scale.y);
 	public function hasAnimationPrefix(prefix:String) {
 		var frames:Array<flixel.graphics.frames.FlxFrame> = [];
 		@:privateAccess //why is it private :sob:
@@ -271,29 +292,10 @@ class FunkinSprite extends FlxSprite {
 	}
 
 	public function set_smooth(newSmooth:Bool) {
-		antialiasing = (newSmooth && Settings.data.antialiasing);
+		antialiasing = (newSmooth && Options.data.antialiasing);
 		return (smooth = newSmooth);
 	}
 
-	public override function draw() {
-		if (renderType == ANIMATEATLAS && animate != null) {
-			animate.colorTransform = colorTransform; // lmao
-			animate.scrollFactor = scrollFactor;
-			animate.antialiasing = antialiasing;
-			animate.setPosition(x, y);
-			animate.cameras = cameras;
-			animate.shader = shader;
-			animate.offset = offset;
-			animate.origin = origin;
-			animate.scale = scale;
-			animate.alpha = alpha;
-			animate.angle = angle;
-			animate.flipX = flipX;
-			animate.flipY = flipY;
-			if (visible) animate.draw();
-		} else
-			super.draw();
-	}
 	public override function get_width() {
 		if (isAnimate) return animate.width;
 		else return width;

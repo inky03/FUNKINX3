@@ -1,7 +1,6 @@
 package;
 
 class Conductor {
-	public var maxDisparity = 50;
 	public var paused:Bool = false;
 	public var bpm(get, never):Float;
 	public var crochet(get, never):Float;
@@ -11,6 +10,7 @@ class Conductor {
 	
 	public var metronome:Metronome;
 	public var syncTracker:FlxSound;
+	public var maxDisparity:Float = 33.34;
 	public static var global(default, never):Conductor = new Conductor();
 	
 	public function new(?metronome:Metronome) {

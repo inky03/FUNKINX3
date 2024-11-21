@@ -175,6 +175,7 @@ class Character extends FunkinSprite {
 		return this;
 	}
 	public function loadModernCharData(charData:ModernCharacterData) {
+		frames = null;
 		var renderType:String = charData.renderType ?? 'multisparrow';
 		switch (renderType) {
 			// case 'packer': renderType = PACKER; TODO: implement...
@@ -190,7 +191,8 @@ class Character extends FunkinSprite {
 		var animations:Array<ModernCharacterAnim> = charData.animations;
 		for (animation in animations) {
 			addAnimation(animation.name, animation.prefix, animation.frameRate ?? 24, animation.looped ?? false, animation.frameIndices, animation.assetPath);
-			if (animation.offsets != null) offsets.set(animation.name, FlxPoint.get(animation.offsets[0], animation.offsets[1]));
+			if (animation.offsets != null)
+				setAnimationOffset(animation.name, animation.offsets[0], animation.offsets[1]);
 		}
 		flipX = charData.flipX;
 		smooth = !charData.isPixel;
@@ -212,6 +214,7 @@ class Character extends FunkinSprite {
 		finishAnimation();
 	}
 	public function loadPsychCharData(charData:PsychCharacterData) {
+		frames = null;
 		var sparrows:Array<String> = charData.image.split(',');
 		var animations:Array<PsychCharacterAnim> = charData.animations;
 		for (sparrow in sparrows) { // no choice with psych 1 multisparrow lmao
@@ -219,7 +222,7 @@ class Character extends FunkinSprite {
 		}
 		for (animation in animations) {
 			addAnimation(animation.anim, animation.name, animation.fps, animation.loop, animation.indices, animation.assetPath);
-			offsets.set(animation.anim, FlxPoint.get(animation.offsets[0] / charData.scale, animation.offsets[1] / charData.scale));
+			setAnimationOffset(animation.anim, animation.offsets[0] / charData.scale, animation.offsets[1] / charData.scale);
 		}
 		healthIcon = charData.healthicon;
 		smooth = !charData.no_antialiasing;
@@ -257,15 +260,15 @@ class Character extends FunkinSprite {
 			addAnimation('sing$ani', 'BF NOTE ${ani}0', 24, false);
 			addAnimation('sing${ani}miss', 'BF NOTE ${ani} MISS', 24, false);
 		}
-		offsets.set('idle', FlxPoint.get(-5, 0));
-		offsets.set('singLEFT', FlxPoint.get(5, -6));
-		offsets.set('singDOWN', FlxPoint.get(-20, -51));
-		offsets.set('singUP', FlxPoint.get(-46, 27));
-		offsets.set('singRIGHT', FlxPoint.get(-48, -7));
-		offsets.set('singLEFTmiss', FlxPoint.get(7, 19));
-		offsets.set('singDOWNmiss', FlxPoint.get(-15, -19));
-		offsets.set('singUPmiss', FlxPoint.get(-46, 27));
-		offsets.set('singRIGHTmiss', FlxPoint.get(-44, 19));
+		setAnimationOffset('idle', -5, 0);
+		setAnimationOffset('singLEFT', 5, -6);
+		setAnimationOffset('singDOWN', -20, -51);
+		setAnimationOffset('singUP', -46, 27);
+		setAnimationOffset('singRIGHT', -48, -7);
+		setAnimationOffset('singLEFTmiss', 7, 19);
+		setAnimationOffset('singDOWNmiss', -15, -19);
+		setAnimationOffset('singUPmiss', -46, 27);
+		setAnimationOffset('singRIGHTmiss', -44, 19);
 		psychOffset.set(0, 350);
 		originOffset.set(0, 0);
 		cameraOffset.set(0, 0);
