@@ -189,7 +189,7 @@ class FunkinSprite extends FlxSprite {
 			return offsets[name] = FlxPoint.get(x, y);
 		}
 	}
-	public function addAnimation(name:String, prefix:String, fps:Float = 24, loop:Bool = false, ?frameIndices:Array<Int>, ?assetPath:String) {
+	public function addAnimation(name:String, prefix:String, fps:Float = 24, loop:Bool = false, ?frameIndices:Array<Int>, ?assetPath:String, flipX:Bool = false, flipY:Bool = false) {
 		if (isAnimate) {
 			if (animate == null || animate.anim == null) return;
 			var anim:flxanimate.animate.FlxAnim = animate.anim;
@@ -220,9 +220,9 @@ class FunkinSprite extends FlxSprite {
 		} else {
 			if (assetPath == null) { // wait for the asset to be loaded
 				if (frameIndices == null || frameIndices.length == 0) {
-					animation.addByPrefix(name, prefix, fps, loop);
+					animation.addByPrefix(name, prefix, fps, loop, flipX, flipY);
 				} else {
-					animation.addByIndices(name, prefix, frameIndices, '', fps, loop);
+					animation.addByIndices(name, prefix, frameIndices, '', fps, loop, flipX, flipY);
 				}
 			}
 		}

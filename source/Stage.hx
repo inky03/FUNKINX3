@@ -121,7 +121,7 @@ class Stage extends FlxSpriteGroup {
 					default: propSprite.loadAtlas(prop.assetPath, library);
 				}
 				for (animation in prop.animations) {
-					propSprite.addAnimation(animation.name, animation.prefix, animation.frameRate ?? 24, animation.looped ?? false, animation.frameIndices);
+					propSprite.addAnimation(animation.name, animation.prefix, animation.frameRate ?? 24, animation.looped ?? false, animation.frameIndices, animation.flipX, animation.flipY);
 					if (animation.offsets != null) propSprite.setAnimationOffset(animation.name, animation.offsets[0], animation.offsets[1]);
 				}
 				if (prop.startingAnimation != null) propSprite.playAnimation(prop.startingAnimation);

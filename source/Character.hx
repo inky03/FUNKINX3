@@ -194,7 +194,7 @@ class Character extends FunkinSprite {
 
 		var animations:Array<ModernCharacterAnim> = charData.animations;
 		for (animation in animations) {
-			addAnimation(animation.name, animation.prefix, animation.frameRate ?? 24, animation.looped ?? false, animation.frameIndices, animation.assetPath);
+			addAnimation(animation.name, animation.prefix, animation.frameRate ?? 24, animation.looped ?? false, animation.frameIndices, animation.assetPath, animation.flipX, animation.flipY);
 			if (animation.offsets != null)
 				setAnimationOffset(animation.name, animation.offsets[0], animation.offsets[1]);
 		}
@@ -348,7 +348,7 @@ typedef ModernCharacterIcon = {
 typedef ModernCharacterAnim = {
 	var name:String;
 	var prefix:String;
-	@:optional var flipX:Bool; // todo
+	@:optional var flipX:Bool;
 	@:optional var flipY:Bool;
 	@:optional var looped:Bool;
 	@:optional var frameRate:Float;

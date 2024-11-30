@@ -120,8 +120,6 @@ function createPost() {
 	}
 	stage.getProp('grey1').blend = BlendMode.ADD;
 	stage.getProp('grey2').blend = BlendMode.MULTIPLY;
-	stage.getProp('phillyCars2').flipX = true;
-	// flipX on animations is currently not implemented... setting on sprite
 
 	stage.sortZIndex();
 }
@@ -166,7 +164,6 @@ function beatHit(beat) {
 }
 
 function paperBlow() {
-	trace('blowing thos paper');
 	var paper = stage.getProp('paper');
 	paper.alpha = 1;
 	paper.playAnimation('paperBlow');

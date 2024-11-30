@@ -35,9 +35,12 @@
 	<assets path="assets" />
 	<assets path="mods" />
 
-	<!-- _______________________________ i forgot _______________________________ -->
+	<!-- ______________________________ Game flags ______________________________ -->
 
 	<define name="USE_HSCRIPT" />
+
+	<!-- disable hardcoded assets layer -->
+	<define name="SOFT_ASSETS" />
 
 	<!-- if you want to disable console colors... -->
 	<!-- define name="I_AM_BORING_ZZZ" -->
@@ -58,7 +61,7 @@
 	<!--In case you want to use nape with flixel-->
 	<!--<haxelib name="nape-haxe4" />-->
 	
-	<!-- __________________________________ uhh!_________________________________ -->
+	<!-- ________________________________ Macroes _______________________________ -->
 	
 	<haxeflag name="--macro" value="addMetadata('@:build(macros.ZIndexMacro.build())', 'flixel.FlxBasic')" />
 	<haxeflag name="--macro" value="include('flixel', true, ['flixel.addons.nape', 'flixel.addons.editors', 'flixel.system.macros'])" if="USE_HSCRIPT" />

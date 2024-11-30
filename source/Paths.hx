@@ -162,9 +162,12 @@ class Paths {
 		var assetKey:String = getPath(bmdKey, library);
 
 		var bmd:BitmapData = null;
+		#if !SOFT_ASSETS
 		if (assetKey == sharedPath(bmdKey, library) && OFLAssets.exists(assetKey, IMAGE)) {
 			return OFLAssets.getBitmapData(assetKey);
-		} else {
+		} else
+		#end
+		{
 			if (assetKey == null) return null;
 			return BitmapData.fromFile(assetKey);
 		}
@@ -178,9 +181,12 @@ class Paths {
 			return soundCache[assetKey];
 		}
 
+		#if !SOFT_ASSETS
 		if (assetKey == sharedPath(sndKey, library) && OFLAssets.exists(assetKey, SOUND)) {
 			return (isMusic ? OFLAssets.getMusic : OFLAssets.getSound)(assetKey);
-		} else if (assetKey == null) {
+		} else
+		#end
+		if (assetKey == null) {
 			return new Sound();
 		}
 		
@@ -191,9 +197,12 @@ class Paths {
 
 	static public function text(key:String, ?library:String) {
 		var assetKey:String = getPath(key, library);
+		#if !SOFT_ASSETS
 		if (assetKey == sharedPath(key, library) && OFLAssets.exists(assetKey, TEXT)) {
 			return OFLAssets.getText(sharedPath(key, library));
-		} else if (assetKey == null) {
+		} else
+		#end
+		if (assetKey == null) {
 			return null;
 		}
 		
