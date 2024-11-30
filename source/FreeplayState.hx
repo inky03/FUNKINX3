@@ -29,7 +29,7 @@ class FreeplayState extends MusicBeatState {
 		displayItems = new FlxTypedGroup<SongItem>();
 		add(displayItems);
 		
-		var paths:Array<Paths.PathsFile> = Paths.getPaths('data/levels/');
+		var paths:Array<Paths.PathsFile> = Paths.getPaths('data/levels/', true, true);
 		for (path in paths) {
 			var folder:String = Paths.typePath('data/levels', path.type, path.mod);
 			if (FileSystem.exists(folder)) {

@@ -3,7 +3,7 @@ package;
 using StringTools;
 
 //THIS IS ALL KINDOF A MESS BUT IT WORKS??? I THINK
-class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
+class Stage extends FlxSpriteGroup {
 	var song:Song;
 	public var name:String;
 	public var json:Dynamic;

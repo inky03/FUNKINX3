@@ -196,7 +196,7 @@ class QuickRuntimeShader extends FlxRuntimeShader {
 		var logLines:Array<String> = infoLog.trim().split('\n');
 		var sourceLines:Array<String> = source.split('\n');
 		var finalLog:StringBuf = new StringBuf();
-		var first:Bool = false;
+		var first:Bool = true;
 		for (i => logLine in logLines) {
 			if (!first) finalLog.add('\n');
 			if (logLine.startsWith('ERROR')) {
@@ -214,7 +214,7 @@ class QuickRuntimeShader extends FlxRuntimeShader {
 				finalLog.add(Log.colorTag(Std.string(line).lpad(' ', 4) + ' | $codeLine\n', brightYellow));
 				finalLog.add(Log.colorTag('     | ', brightYellow) + Log.colorTag(msg, red));
 				#end
-				first = true;
+				first = false;
 			}
 		}
 		return finalLog.toString();
