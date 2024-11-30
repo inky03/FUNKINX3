@@ -1,15 +1,14 @@
 var lights:Int = 5;
 var lightShader:RuntimeShader;
-var colorShader:RuntimeShader;
-var trainSound:FlxSound;
 var lightColors:Array =[
-	0xffb66f43,
-	0xff329a6d,
-	0xff932c28,
-	0xff2663ac,
-	0xff502d64
+	0xfffba633,
+	0xff31a2fd,
+	0xff31fd8c,
+	0xfffb33f5,
+	0xfffd4531
 ];
 
+var trainSound:FlxSound;
 var trainMoving:Bool = false;
 var trainFinishing:Bool = false;
 var trainFrameTiming:Float = 0;
@@ -17,30 +16,20 @@ var trainCars:Int = 8;
 var trainCooldown:Int = 0;
 
 function createPost() {
-	Paths.sound('train_passes', 'week3');
+	trainSound = new FlxSound().loadEmbedded(Paths.sound('train_passes', 'week3'));
+	FlxG.sound.list.add(trainSound);
 
 	lightShader = new RuntimeShader('building');
-	lightShader.setFloat('alphaShit', 0.0);
+	lightShader.setFloat('alphaShit', 0);
 
-	colorShader = new RuntimeShader('adjustColor');
-	colorShader.setFloat('hue', -26.0);
-	colorShader.setFloat('saturation', -16.0);
-	colorShader.setFloat('contrast', 0.0);
-	colorShader.setFloat('brightness', -5.0);
-
-	var light:Funkinsprite = getNamedProp('lights');
+	var light = getNamedProp('lights');
 	light.shader = lightShader;
 	light.visible = false;
-
-	getNamedProp('train').shader = colorShader;
-	state.player1.shader = colorShader;
-	state.player2.shader = colorShader;
-	state.player3.shader = colorShader;
 }
 
 function update(elapsed:Float, paused:Bool){
 	if (paused) return;
-	var shaderInput:Float = (Conductor.crochet / 1000) * elapsed * 1.5;
+	var shaderInput:Float = (conductor.crochet / 1000) * elapsed * 1.5;
 	lightShader.setFloat('alphaShit', lightShader.getFloat('alphaShit') + shaderInput);
 
 	if (trainMoving)
@@ -64,7 +53,8 @@ function beatHit(beat:Int){
 	}
 
 	if (beat % 4 == 0){
-		lightShader.setFloat('alphaShit', 0.0);
+		getNamedProp('lights').visible = true;
+		lightShader.setFloat('alphaShit', 0);
 
 		curLight = FlxG.random.int(0, 4);
 		getNamedProp('lights').color = lightColors[curLight];
@@ -73,7 +63,7 @@ function beatHit(beat:Int){
 
 function trainStart(){
 	trainMoving = true;
-	FlxG.sound.play(Paths.sound('train_passes', 'week3'));
+	trainSound.play();
 }
 
 var startedMoving:Bool = false;
@@ -85,7 +75,7 @@ function updateTrainPos(){
 	}
 
 	if (startedMoving){
-		var train:FlxSprite = getNamedProp('train');
+		var train = getNamedProp('train');
 		train.x -= 400;
 
 		if (train.x < -2000 && !trainFinishing)

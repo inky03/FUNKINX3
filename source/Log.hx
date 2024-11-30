@@ -1,4 +1,13 @@
 class Log {
+	public static var reset:String = '\033[0m';
+	#if I_AM_BORING_ZZZ
+	public static function colorTag(text:String, _, __) return text;
+	public static function warning(text:String) return Sys.println('WARNING: $text');
+	public static function error(text:String) return Sys.println('ERROR: $text');
+	public static function fatal(text:String) return Sys.println('FATAL: $text');
+	public static function info(text:String) return Sys.println(text);
+	public static function minor(text:String) return Sys.println(text);
+	#else
 	public static function fromCodes(codes:Array<Int>) {
 		var finalStr = '\033[';
 		for (i => code in codes) {
@@ -10,23 +19,15 @@ class Log {
 		return '';
 	}
 	public static function colorTag(text:String, textColor:TextColor = none, backgroundColor:BackgroundColor = none) {
-		return '${fromCodes([cast textColor, cast backgroundColor])}$text\033[0m';
+		var tags:String = fromCodes([cast textColor, cast backgroundColor]);
+		return '$tags$text$reset';
 	}
-	public static function warning(text:String) {
-		return Sys.println(colorTag(' WARNING ', black, yellow) + ' $text');
-	}
-	public static function error(text:String) {
-		return Sys.println(colorTag(' ERROR ', black, red) + ' $text');
-	}
-	public static function fatal(text:String) {
-		return Sys.println(colorTag(' FATAL ', black, brightRed) + ' $text');
-	}
-	public static function info(text:String) {
-		return Sys.println(colorTag(' INFO ', black, cyan) + ' $text');
-	}
-	public static function minor(text:String) {
-		return Sys.println(colorTag(text, white, none));
-	}
+	public static function warning(text:String) return Sys.println(colorTag(' WARNING ', black, yellow) + ' $text');
+	public static function error(text:String) return Sys.println(colorTag(' ERROR ', black, red) + ' $text');
+	public static function fatal(text:String) return Sys.println(colorTag(' FATAL ', black, brightRed) + ' $text');
+	public static function info(text:String) return Sys.println(colorTag(' INFO ', black, cyan) + ' $text');
+	public static function minor(text:String) return Sys.println(colorTag(text, white, none));
+	#end
 }
 
 enum abstract TextColor(Int) {

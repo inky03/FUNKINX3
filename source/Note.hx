@@ -27,7 +27,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var goodHit:Bool = false;
 	public var lost:Bool = false;
 	public var noteOffset:FlxPoint;
-	public var clipHeight:Float = 0;
+	public var clipDistance:Float = 0;
 	public var scrollDistance:Float = 0;
 	public var preventDespawn:Bool = false;
 	public var followAngle:Bool = true;
@@ -63,7 +63,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public override function revive() {
 		lost = false;
 		goodHit = false;
-		clipHeight = frameHeight;
+		clipDistance = 0;
 		super.revive();
 	}
 
@@ -99,7 +99,6 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 			playAnimation(this.isHoldTail ? 'tail' : 'hold', true);
 		}
 		updateHitbox();
-		clipHeight = frameHeight;
 	}
 
 	public function set_msTime(newTime:Float) {
@@ -122,35 +121,30 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		@:bypassAccessor msLength = conductorInUse.metronome.convertMeasure(beatTime + newLength, BEAT, MS) - msTime;
 		return beatLength = newLength;
 	}
-	public function get_endMs() return msTime + (isHoldPiece ? msLength : 0);
-	public function get_endBeat() return beatTime + (isHoldPiece ? beatLength : 0);
+	public function get_endMs()
+		return msTime + (isHoldPiece ? msLength : 0);
+	public function get_endBeat()
+		return beatTime + (isHoldPiece ? beatLength : 0);
 	
-	public static function distanceToMS(distance:Float, scrollSpeed:Float) {
+	public static function distanceToMS(distance:Float, scrollSpeed:Float)
 		return distance / (.45 * scrollSpeed);
-	}
-	public static function msToDistance(ms:Float, scrollSpeed:Float) {
+	public static function msToDistance(ms:Float, scrollSpeed:Float)
 		return ms * (.45 * scrollSpeed);
-	}
 	public dynamic function followLane(lane:Lane, scrollSpeed:Float) {
 		var receptor:Receptor = lane.receptor;
 		var speed:Float = scrollSpeed * scrollMultiplier;
 		var dir:Float = lane.direction + directionOffset;
 
-		var holdHeight:Float = 0;
 		var holdOffsetX:Float = 0;
 		var holdOffsetY:Float = 0;
-		var cutHeight:Float = frameHeight;
 
 		scrollDistance = Note.msToDistance(msTime - conductorInUse.songPosition, speed);
 		if (isHoldPiece) {
 			if (isHoldTail) {
 				scale.y = scale.x; updateHitbox();
 				scrollDistance -= height;
-				holdHeight = height;
 			} else {
-				cutHeight = frameHeight - 1;
-				holdHeight = Note.msToDistance(msLength, scrollSpeed);
-				scale.y = holdHeight / cutHeight; updateHitbox();
+				scrollDistance -= scale.y;
 			}
 			setOffset();
 			origin.set(frameWidth * .5);
@@ -167,22 +161,31 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		x = receptor.x + noteOffset.x + Math.sin(rad) * xP + Math.cos(rad) * yP + holdOffsetX;
 		y = receptor.y + noteOffset.y + Math.sin(rad) * yP + Math.cos(rad) * xP + holdOffsetY;
 		alpha = lane.alpha * receptor.alpha * multAlpha;
-		
+
 		if (isHoldPiece) { //handle in DISTANCE to support scroll direction
-			var clip:Bool = (lane.held);
-			if (clip) clipHeight = Math.min(Math.max(0, (holdHeight + scrollDistance) / scale.y), cutHeight);
-			
-			var clipBottom:Float = 0;
-			if (parent != null && parent.tail != null) {
-				var tail:Note = parent.tail;
-				clipBottom = (isHoldTail ? 0 : Math.min(0, (Note.msToDistance(tail.msTime - msTime, scrollSpeed) - tail.height - holdHeight) / scale.y));
+			if (lane.held)
+				clipDistance = Math.max(0, -scrollDistance);
+
+			var cropTop:Float = 0;
+			var cropBottom:Float = frameHeight;
+			var cropY:Float = clipDistance / scale.y;
+			var cropHeight:Float = frameHeight;
+			if (!isHoldTail) {
+				final holdDist:Float = Note.msToDistance(msLength, scrollSpeed);
+				cropTop ++;
+				cropHeight --;
+				scale.y = holdDist / (cropHeight - cropTop);
+				tail = parent?.tail;
+				if (tail != null)
+					cropBottom += Math.min(0, (Note.msToDistance(tail.msTime - msTime, scrollSpeed) - tail.height) / scale.y - (cropHeight - cropTop));
+				// if anyone can help me figure out how to make it clip exactly to the tail id appreciate it
 			}
-			
-			if (clipRect == null) clipRect = new FlxRect();
-			clipRect.y = cutHeight - clipHeight;
-			clipRect.width = frameWidth;
-			clipRect.height = clipHeight + clipBottom;
+			clipRect ??= new FlxRect();
+			clipto(Math.max(cropTop, cropY), Math.min(cropHeight, cropBottom));
+
 			clipRect = clipRect; //refresh clip rect
 		}
 	}
+	inline function clipto(ya:Float = 0, yb:Float = 0)
+		clipRect.set(0, ya, frameWidth, yb - ya);
 }

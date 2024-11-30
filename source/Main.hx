@@ -2,24 +2,33 @@ package;
 
 import flixel.FlxGame;
 import openfl.display.Sprite;
+import openfl.events.UncaughtErrorEvent;
 
 class Main extends Sprite {
 	public static var debugDisplay:DebugDisplay;
-	public static var engineVersion = '0.0.2';
+	public static var engineVersion = '0.0.4';
 	public static var watermark:FlxText;
 	public static var showWatermark(default, set):Bool;
 	
 	public function new() {
 		super();
-		var flag:String = '               ';
+		
+		final timeText:String = 'GAME STARTED ON ${Date.now().toString()}';
 		Sys.println('');
+		#if I_AM_BORING_ZZZ
+		Sys.println('TRANS RIGHTS');
+		Sys.println('WE REALLY OUT HERE');
+		Sys.println(timeText);
+		#else
+		final flag:String = '               ';
 		Sys.println(Log.colorTag(flag, cyan, brightCyan));
 		Sys.println(Log.colorTag(flag, magenta, brightMagenta) + ' TRANS RIGHTS');
 		Sys.println(Log.colorTag(flag, white, brightWhite) + ' WE REALLY OUT HERE');
-		Sys.println(Log.colorTag(flag, magenta, brightMagenta) + ' GAME STARTED ON ${Date.now().toString()}');
+		Sys.println(Log.colorTag(flag, magenta, brightMagenta) + ' $timeText');
 		Sys.println(Log.colorTag(flag, cyan, brightCyan));
+		#end
 		Sys.println('');
-
+		
 		Mods.refresh();
 		DiscordRPC.prepare();
 		var game:FlxGame = new FlxGame(0, 0, MainMenuState);

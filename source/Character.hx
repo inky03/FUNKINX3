@@ -10,6 +10,7 @@ class Character extends FunkinSprite {
 	public var healthIcon:String = 'bf';
 	public var sparrowsList:Array<String>;
 	public var fallbackCharacter:Null<String>;
+	public var characterDataType:CharacterDataType;
 	public var character(default, set):Null<String>;
 	public var stagePos(default, never):FlxPoint = FlxPoint.get();
 	public var psychOffset(default, never):FlxPoint = FlxPoint.get();
@@ -39,14 +40,14 @@ class Character extends FunkinSprite {
 			playAnimation('$anim-hold');
 		};
 	}
-	
+
 	public function set_volume(newVolume:Float) {
 		vocals.volume = newVolume;
 		return volume = newVolume;
 	}
 	public function loadVocals(songPath:String, suffix:String = '', ?chara:String) {
 		vocalsLoaded = false;
-		var paths:Array<String> = ['data/$songPath/', 'songs/$songPath/'];
+		var paths:Array<String> = ['data/songs/$songPath/', 'songs/$songPath/'];
 		if (chara == null) chara = character;
 		try {
 			for (path in paths) {
@@ -142,11 +143,13 @@ class Character extends FunkinSprite {
 		super.addAtlas(path, overwrite);
 		return cast this; // kys
 	}
+	public function flip()
+		return flipX = !flipX;
 
 	public function loadCharacter(?character:String) { // no character provided attempts to load fallback
 		unloadAnimate();
 		var charLoad:String = character ?? fallbackCharacter;
-		var charPath:String = 'characters/$charLoad.json';
+		var charPath:String = 'data/characters/$charLoad.json';
 		if (!Paths.exists(charPath)) {
 			Log.warning('character "$charLoad" not found...');
 			Log.minor('verify path:');
@@ -176,6 +179,7 @@ class Character extends FunkinSprite {
 	}
 	public function loadModernCharData(charData:ModernCharacterData) {
 		frames = null;
+		characterDataType = MODERN;
 		var renderType:String = charData.renderType ?? 'multisparrow';
 		switch (renderType) {
 			// case 'packer': renderType = PACKER; TODO: implement...
@@ -215,6 +219,7 @@ class Character extends FunkinSprite {
 	}
 	public function loadPsychCharData(charData:PsychCharacterData) {
 		frames = null;
+		characterDataType = PSYCH;
 		var sparrows:Array<String> = charData.image.split(',');
 		var animations:Array<PsychCharacterAnim> = charData.animations;
 		for (sparrow in sparrows) { // no choice with psych 1 multisparrow lmao
@@ -224,6 +229,7 @@ class Character extends FunkinSprite {
 			addAnimation(animation.anim, animation.name, animation.fps, animation.loop, animation.indices, animation.assetPath);
 			setAnimationOffset(animation.anim, animation.offsets[0] / charData.scale, animation.offsets[1] / charData.scale);
 		}
+		flipX = charData.flip_x;
 		healthIcon = charData.healthicon;
 		smooth = !charData.no_antialiasing;
 		singForSteps = charData.sing_duration;
@@ -253,6 +259,7 @@ class Character extends FunkinSprite {
 	}
 	public function useDefault() {
 		unloadAnimate();
+		characterDataType = MODERN;
 		loadAtlas('characters/bf');
 		addAnimation('idle', 'BF idle dance', 24, false);
 		var singAnimations:Array<String> = ['LEFT', 'DOWN', 'UP', 'RIGHT'];
@@ -282,6 +289,11 @@ class Character extends FunkinSprite {
 		dance();
 		finishAnimation();
 	}
+}
+
+enum CharacterDataType {
+	PSYCH;
+	MODERN;
 }
 
 typedef PsychCharacterData = {

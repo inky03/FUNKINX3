@@ -85,30 +85,45 @@ class Paths {
 
 		return (library == null ? null : getPath(key, allowMods));
 	}
-	static public function getPaths(key:String, allowMods:Bool = true, ?library:String):Array<String> {
-		var files:Array<String> = [];
+	static public function getPaths(key:String, allowMods:Bool = true, allMods:Bool = false, ?library:String):Array<PathsFile> {
+		var files:Array<PathsFile> = [];
+
+		if (FileSystem.exists(key))
+			files.push({path: key, type: ABSOLUTE});
+		if (FileSystem.exists(sharedPath(key, library)))
+			files.push({path: sharedPath(key, library), type: SHARED});
 		if (allowMods) {
-			var currentMod:String = Mods.currentMod;
-			if (currentMod != '') {
-				var path:String = modPath(key, currentMod, library);
-				if (FileSystem.exists(path)) files.push(path);
+			if (FileSystem.exists(globalModPath(key)))
+				files.push({path: globalModPath(key), type: GLOBAL});
+			if (!allMods) {
+				var currentMod:String = Mods.currentMod;
+				if (currentMod != '') {
+					var path:String = modPath(key, currentMod, library);
+					if (FileSystem.exists(path)) files.push({mod: currentMod, path: path});
+				}
 			}
 			for (mod in Mods.get()) {
-				if (!mod.global) continue;
+				if (!allMods && (!mod.global || mod.directory == Mods.currentMod))
+					continue;
 				var path:String = modPath(key, mod.directory, library);
-				if (FileSystem.exists(path)) files.push(path);
+				if (FileSystem.exists(path)) files.push({mod: '', path: path});
 			}
-			if (FileSystem.exists(globalModPath(key))) files.push(globalModPath(key));
 		}
-		if (FileSystem.exists(sharedPath(key, library))) files.push(sharedPath(key, library));
-		if (FileSystem.exists(key)) files.push(key);
 
 		return files;
 	}
+	inline static public function typePath(key:String, type:PathsType, ?mod:String, ?library:String) {
+		return switch (type) {
+			case ABSOLUTE: key;
+			case SHARED: sharedPath(key, library);
+			case GLOBAL: globalModPath(key, library);
+			case MOD: modPath(key, mod, library);
+		}
+	}
 	inline static public function modPath(key:String, mod:String = '', library:String = '')
 		return mod.trim() == '' ? globalModPath(key) : 'mods/$mod/${library == '' ? key : '$library/$key'}';
-	inline static public function globalModPath(key:String)
-		return 'mods/$key';
+	inline static public function globalModPath(key:String, library:String = '')
+		return 'mods/${library == '' ? key : '$library/$key'}';
 	inline static public function sharedPath(key:String, library:String = '')
 		return 'assets/${library == '' ? key : '$library/$key'}';
 	inline static public function exists(key:String, allowMods:Bool = true, ?library:String)
@@ -204,4 +219,17 @@ class Paths {
 		if (xmlContent == null) return null;
 		return FlxAtlasFrames.fromSparrow(image(key, library), xmlContent);
 	}
+}
+
+@:structInit class PathsFile {
+	public var path:String;
+	public var mod:String = '';
+	public var type:PathsType = MOD;
+}
+
+enum PathsType {
+	ABSOLUTE;
+	SHARED;
+	GLOBAL;
+	MOD;
 }

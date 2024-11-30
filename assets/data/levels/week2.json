@@ -1,0 +1,21 @@
+{
+	"variations": ["default", "erect", "pico"],
+	"songList": [
+		{
+			"displayName": "Spookeez",
+			"songPath": "spookeez",
+			"icon": "spooky"
+		},
+		{
+			"displayName": "South",
+			"songPath": "south",
+			"icon": "spooky"
+		},
+		{
+			"displayName": "Monster",
+			"songPath": "monster",
+			"icon": "monster",
+			"variations": ["default"]
+		}
+	]
+}

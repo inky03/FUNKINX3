@@ -4,7 +4,7 @@
 
 	<!-- _________________________ Application Settings _________________________ -->
 
-	<app title="funkin" file="funkin" main="Main" version="0.0.1" company="HaxeFlixel" />
+	<app title="FRIDAY NIGHT FUNKIN'" file="funkin" main="Main" version="0.0.4" company="HaxeFlixel" />
 
 	<!--The flixel preloader is not accurate in Chrome. You can use it regularly if you embed the swf into a html file
 		or you can set the actual size of your file manually at "FlxPreloaderBase-onUpdate-bytesTotal"-->
@@ -38,6 +38,9 @@
 	<!-- _______________________________ i forgot _______________________________ -->
 
 	<define name="USE_HSCRIPT" />
+
+	<!-- if you want to disable console colors... -->
+	<!-- define name="I_AM_BORING_ZZZ" -->
 
 	<!-- _______________________________ Libraries ______________________________ -->
 

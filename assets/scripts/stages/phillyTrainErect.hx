@@ -1,14 +1,14 @@
-var lights:Int = 5;
 var lightShader:RuntimeShader;
+var colorShader:RuntimeShader;
+var trainSound:FlxSound;
 var lightColors:Array =[
-	0xfffba633,
-	0xff31a2fd,
-	0xff31fd8c,
-	0xfffb33f5,
-	0xfffd4531
+	0xffb66f43,
+	0xff329a6d,
+	0xff932c28,
+	0xff2663ac,
+	0xff502d64
 ];
 
-var trainSound:FlxSound;
 var trainMoving:Bool = false;
 var trainFinishing:Bool = false;
 var trainFrameTiming:Float = 0;
@@ -22,9 +22,20 @@ function createPost() {
 	lightShader = new RuntimeShader('building');
 	lightShader.setFloat('alphaShit', 0);
 
-	var light = getNamedProp('lights');
+	colorShader = new RuntimeShader('adjustColor');
+	colorShader.setFloat('hue', -26);
+	colorShader.setFloat('saturation', -16);
+	colorShader.setFloat('contrast', 0);
+	colorShader.setFloat('brightness', -5);
+
+	var light:FunkinSprite = getNamedProp('lights');
 	light.shader = lightShader;
 	light.visible = false;
+
+	getNamedProp('train').shader = colorShader;
+	game.player1.shader = colorShader;
+	game.player2.shader = colorShader;
+	game.player3.shader = colorShader;
 }
 
 function update(elapsed:Float, paused:Bool){
@@ -53,10 +64,10 @@ function beatHit(beat:Int){
 	}
 
 	if (beat % 4 == 0){
-		getNamedProp('lights').visible = true;
-		lightShader.setFloat('alphaShit', 0.0);
+		lightShader.setFloat('alphaShit', 0);
 
 		curLight = FlxG.random.int(0, 4);
+		getNamedProp('lights').visible = true;
 		getNamedProp('lights').color = lightColors[curLight];
 	}
 }
@@ -75,7 +86,7 @@ function updateTrainPos(){
 	}
 
 	if (startedMoving){
-		var train = getNamedProp('train');
+		var train:FlxSprite = getNamedProp('train');
 		train.x -= 400;
 
 		if (train.x < -2000 && !trainFinishing)

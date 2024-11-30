@@ -1,0 +1,10 @@
+{
+	"variations": ["default"],
+	"songList": [
+		{
+			"displayName": "Tutorial",
+			"songPath": "tutorial",
+			"icon": "gf"
+		}
+	]
+}

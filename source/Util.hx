@@ -28,8 +28,12 @@ class Util { // maybe these utils can be on their own specific purpose classes
 	}
 
 	// math
+	public static function clamp(n:Float, ?min:Float, ?max:Float):Float {
+		if (min != null && n < min) return min;
+		return (max != null && n > max ? max : n);
+	}
 	public static function smoothLerp(a:Float, b:Float, t:Float):Float {
-		return FlxMath.lerp(a, b, 1 - Math.exp(-t));
+		return FlxMath.lerp(a, b, clamp(1 - Math.exp(-t), 0, 1));
 	}
 
 	// idfk

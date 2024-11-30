@@ -45,10 +45,17 @@ class HScript extends Iris {
 			posPrefix += ':${pos.lineNumber}';
 
 		switch (level) {
+			#if I_AM_BORING_ZZZ
+			case FATAL: posPrefix = 'FATAL:$posPrefix:';
+			case ERROR: posPrefix = 'ERROR:$posPrefix:';
+			case WARN: posPrefix = 'WARNING:$posPrefix:';
+			default:
+			#else
 			case FATAL: posPrefix = Log.colorTag(' FATAL:$posPrefix ', black, brightRed);
 			case ERROR: posPrefix = Log.colorTag(' ERROR:$posPrefix ', black, red);
 			case WARN: posPrefix = Log.colorTag(' WARNING:$posPrefix ', black, yellow);
 			default: posPrefix = Log.colorTag(' $posPrefix ', black, blue);
+			#end
 		}
 		Sys.println('$posPrefix $out');
 	}
@@ -189,7 +196,9 @@ class QuickRuntimeShader extends FlxRuntimeShader {
 		var logLines:Array<String> = infoLog.trim().split('\n');
 		var sourceLines:Array<String> = source.split('\n');
 		var finalLog:StringBuf = new StringBuf();
+		var first:Bool = false;
 		for (i => logLine in logLines) {
+			if (!first) finalLog.add('\n');
 			if (logLine.startsWith('ERROR')) {
 				var info:Array<String> = logLine.split(':');
 
@@ -198,9 +207,14 @@ class QuickRuntimeShader extends FlxRuntimeShader {
 				var codeLine:String = sourceLines[line - 1];
 				var msg:String = logLine.substr((info[0] + info[1] + info[2]).length + 3, logLine.length).trim();
 
+				#if I_AM_BORING_ZZZ
+				finalLog.add('ERROR: $msg');
+				finalLog.add('@ LINE $line: $codeLine');
+				#else
 				finalLog.add(Log.colorTag(Std.string(line).lpad(' ', 4) + ' | $codeLine\n', brightYellow));
 				finalLog.add(Log.colorTag('     | ', brightYellow) + Log.colorTag(msg, red));
-				if (i < logLines.length - 1) finalLog.add('\n');
+				#end
+				first = true;
 			}
 		}
 		return finalLog.toString();

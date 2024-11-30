@@ -1,0 +1,20 @@
+{
+	"variations": ["default", "erect", "pico"],
+	"songList": [
+		{
+			"displayName": "Pico",
+			"songPath": "pico",
+			"icon": "pico"
+		},
+		{
+			"displayName": "Philly Nice",
+			"songPath": "philly-nice",
+			"icon": "pico"
+		},
+		{
+			"displayName": "Blammed",
+			"songPath": "blammed",
+			"icon": "pico"
+		}
+	]
+}

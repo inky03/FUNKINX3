@@ -25,7 +25,7 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
         if (stageId != null) {
     		Log.minor('loading stage "$stageId"');
 
-    		var jsonPath:String = 'stages/$stageId.json';
+    		var jsonPath:String = 'data/stages/$stageId.json';
     		if (Paths.exists(jsonPath)) {
     			var time:Float = Sys.time();
     			try {
@@ -49,7 +49,7 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
         }
         
         // loads hscript file
-        var scriptPath:String = 'stages/${stageId}.hx';
+        var scriptPath:String = 'scripts/stages/${stageId}.hx';
         if (Paths.exists(scriptPath)) {
         	var fuck:MusicBeatState = cast(FlxG.state, MusicBeatState);
             if (fuck != null)
@@ -118,14 +118,13 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
 			propSprite.bopFrequency = prop.danceEvery ?? 0;
 			if (propSprite.animated) { // this is stupid
 				switch (prop.animType) {
-					case 'sparrow': propSprite.loadAtlas(prop.assetPath, library);
-					default:
+					default: propSprite.loadAtlas(prop.assetPath, library);
 				}
 				for (animation in prop.animations) {
 					propSprite.addAnimation(animation.name, animation.prefix, animation.frameRate ?? 24, animation.looped ?? false, animation.frameIndices);
-					if (animation.offsets != null) propSprite.offsets.set(animation.name, FlxPoint.get(animation.offsets[0], animation.offsets[1]));
+					if (animation.offsets != null) propSprite.setAnimationOffset(animation.name, animation.offsets[0], animation.offsets[1]);
 				}
-				if (prop.startingAnimation != null) propSprite.animation.play(prop.startingAnimation);
+				if (prop.startingAnimation != null) propSprite.playAnimation(prop.startingAnimation);
 			} else {
 				if (prop.assetPath.startsWith('#'))
 					propSprite.makeGraphic(1, 1, FlxColor.fromString(prop.assetPath));
@@ -158,6 +157,7 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
 
 			this.characters[name] = charaSprite;
 		}
+		this.characters['bf']?.flip();
 	}
 	public function loadFallback() {
 		var basicBG:StageProp = props['basicBG'] = new StageProp();
@@ -179,6 +179,7 @@ class Stage extends FlxTypedSpriteGroup<FunkinSprite> {
 		player1.zIndex = 300;
 		player2.zIndex = 200;
 		player3.zIndex = 100;
+		player1.flip();
 		characters['bf'] = player1;
 		characters['dad'] = player2;
 		characters['gf'] = player3;

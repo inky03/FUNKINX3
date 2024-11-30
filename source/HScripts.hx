@@ -131,7 +131,7 @@ class HScripts {
 	public function loadFromPaths(basepath:String) {
 		var found:Bool = false;
 		for (path in Paths.getPaths(basepath)) {
-			loadFromFile(path);
+			loadFromFile(path.path);
 			found = true;
 		}
 		return found;

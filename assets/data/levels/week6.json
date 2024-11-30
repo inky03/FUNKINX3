@@ -1,0 +1,20 @@
+{
+	"variations": ["default", "erect"],
+	"songList": [
+		{
+			"displayName": "Senpai",
+			"songPath": "senpai",
+			"icon": "senpai"
+		},
+		{
+			"displayName": "Roses",
+			"songPath": "roses",
+			"icon": "senpai"
+		},
+		{
+			"displayName": "Thorns",
+			"songPath": "thorns",
+			"icon": "spirit"
+		}
+	]
+}

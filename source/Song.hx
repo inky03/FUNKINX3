@@ -64,7 +64,7 @@ class Song {
 	}
 	
 	public static function loadJson(path:String, difficulty:String = 'normal') {
-		var jsonPathD:String = 'data/$path/$path';
+		var jsonPathD:String = 'data/songs/$path/$path';
 		var diffSuffix:String = '-$difficulty';
 		
 		var jsonPath:String = '$jsonPathD$diffSuffix.json';
@@ -85,7 +85,7 @@ class Song {
 		difficulty = difficulty.toLowerCase();
 		Log.minor('detecting format from song "$path"');
 		
-		var songPath:String = 'data/$path/$path';
+		var songPath:String = 'data/songs/$path/$path';
 		var modernChartPath:String = Util.pathSuffix('$songPath-chart', suffix) + '.json';
 		var modernMetaPath:String = Util.pathSuffix('$songPath-metadata', suffix) + '.json';
 		var sharkChartPath:String = Util.pathSuffix(songPath, suffix) + '.ssc';
@@ -114,7 +114,7 @@ class Song {
 		difficulty = difficulty.toLowerCase();
 		Log.minor('loading StepMania simfile "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 
-		var songPath:String = 'data/$path/$path';
+		var songPath:String = 'data/songs/$path/$path';
 		var sscPath:String = '${Util.pathSuffix(songPath, suffix)}.ssc';
 		var smPath:String = '$songPath.sm';
 		var useShark:Bool = Paths.exists(sscPath);
@@ -165,7 +165,7 @@ class Song {
 		difficulty = difficulty.toLowerCase();
 		Log.minor('loading modern FNF song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 
-		var songPath:String = 'data/$path/$path';
+		var songPath:String = 'data/songs/$path/$path';
 		var chartPath:String = '${Util.pathSuffix('$songPath-chart', suffix)}.json';
 		var metaPath:String = '${Util.pathSuffix('$songPath-metadata', suffix)}.json';
 		var song:Song = new Song(path, 4);
@@ -269,7 +269,7 @@ class Song {
 		
 		var time = Sys.time();
 		try {
-			var eventsPath:String = 'data/$path/events.json';
+			var eventsPath:String = 'data/songs/$path/events.json';
 			var eventContent:Null<String> = Paths.text(eventsPath);
 			if (eventContent != null) {
 				Log.minor('loading events from "$eventsPath"');

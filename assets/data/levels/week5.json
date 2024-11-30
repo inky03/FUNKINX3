@@ -1,0 +1,21 @@
+{
+	"variations": ["default", "erect", "pico"],
+	"songList": [
+		{
+			"displayName": "Cocoa",
+			"songPath": "cocoa",
+			"icon": "duo"
+		},
+		{
+			"displayName": "Eggnog",
+			"songPath": "eggnog",
+			"icon": "duo"
+		},
+		{
+			"displayName": "Winter Horrorland",
+			"songPath": "winter-horrorland",
+			"icon": "monster",
+			"variations": ["default"]
+		}
+	]
+}

@@ -1,0 +1,21 @@
+{
+	"variations": ["default"],
+	"songList": [
+		{
+			"displayName": "Darnell",
+			"songPath": "darnell",
+			"icon": "darnell",
+			"variations": ["default", "bf"]
+		},
+		{
+			"displayName": "Lit Up",
+			"songPath": "lit-up",
+			"icon": "darnell"
+		},
+		{
+			"displayName": "2HOT",
+			"songPath": "2hot",
+			"icon": "darnell"
+		}
+	]
+}

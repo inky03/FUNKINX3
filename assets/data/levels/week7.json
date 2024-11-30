@@ -1,0 +1,22 @@
+{
+	"variations": ["default", "erect", "pico"],
+	"songList": [
+		{
+			"displayName": "Ugh",
+			"songPath": "ugh",
+			"icon": "tankman"
+		},
+		{
+			"displayName": "Guns",
+			"songPath": "guns",
+			"icon": "tankman",
+			"variations": ["default", "pico"]
+		},
+		{
+			"displayName": "Stress",
+			"songPath": "stress",
+			"icon": "tankman",
+			"variations": ["default"]
+		}
+	]
+}

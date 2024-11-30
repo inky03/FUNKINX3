@@ -1,0 +1,20 @@
+{
+	"variations": ["default", "erect", "pico"],
+	"songList": [
+		{
+			"displayName": "Bopeebo",
+			"songPath": "bopeebo",
+			"icon": "daddy"
+		},
+		{
+			"displayName": "Fresh",
+			"songPath": "fresh",
+			"icon": "daddy"
+		},
+		{
+			"displayName": "DadBattle",
+			"songPath": "dadbattle",
+			"icon": "daddy"
+		}
+	]
+}

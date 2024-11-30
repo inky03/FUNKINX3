@@ -81,8 +81,8 @@ class PlayState extends MusicBeatState {
 		conductorInUse.metronome.setBeat(playCountdown ? -5 : -1);
 		conductorInUse.syncTracker = song.instLoaded ? song.inst : null;
 		
-		hscripts.loadFromFolder('scripts');
-		hscripts.loadFromFolder('data/${song.path}');
+		hscripts.loadFromFolder('scripts/global');
+		hscripts.loadFromFolder('scripts/songs/${song.path}');
 
 		hitsound = FlxG.sound.load(Paths.sound('hitsound'));
 		hitsound.volume = .7;
@@ -131,7 +131,7 @@ class PlayState extends MusicBeatState {
 		
 		songName = song.name;
 		song.instLoaded = false;
-		var songPaths:Array<String> = ['data/${song.path}/', 'songs/${song.path}/'];
+		var songPaths:Array<String> = ['data/songs/${song.path}/', 'songs/${song.path}/'];
 		for (path in songPaths) song.loadMusic(path, false);
 		if (!song.instLoaded) {
 			Log.warning('song instrumental not found...');
@@ -197,9 +197,8 @@ class PlayState extends MusicBeatState {
 			if (note.noteKind.trim() != '' && !noteKinds.contains(note.noteKind)) noteKinds.push(note.noteKind);
 			notes.push(note);
 		}
-		for (noteKind in noteKinds) {
-			hscripts.loadFromPaths('notekinds/$noteKind.hx');
-		}
+		for (noteKind in noteKinds)
+			hscripts.loadFromPaths('scripts/notekinds/$noteKind.hx');
 		
 		if (Options.data.middlescroll) {
 			playerStrumline.center(X);
@@ -228,13 +227,13 @@ class PlayState extends MusicBeatState {
 		uiGroup.add(iconP2);
 		
 		scoreTxt = new FlxText(0, FlxG.height - 25, FlxG.width, 'Score: idk');
-		scoreTxt.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		scoreTxt.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, CENTER, OUTLINE, FlxColor.BLACK);
 		scoreTxt.y -= scoreTxt.height * .5;
 		scoreTxt.borderSize = 1.25;
 		uiGroup.add(scoreTxt);
 		updateRating();
 		debugTxt = new FlxText(0, 12, FlxG.width, '');
-		debugTxt.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		debugTxt.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, CENTER, OUTLINE, FlxColor.BLACK);
 		uiGroup.add(debugTxt);
 
 		if (Options.data.downscroll) {
@@ -295,8 +294,9 @@ class PlayState extends MusicBeatState {
 				resetScore();
 			}
 			if (FlxG.keys.justPressed.B) {
-				playerStrumline.cpu = !playerStrumline.cpu;
 				playerStrumline.allowInput = !playerStrumline.allowInput;
+				playerStrumline.cpu = !playerStrumline.cpu;
+				updateScoreText();
 			}
 			if (FlxG.keys.justPressed.RIGHT) {
 				conductorInUse.songPosition += 2000;
@@ -339,7 +339,7 @@ class PlayState extends MusicBeatState {
 		hscripts.run('update', [elapsed, paused]);
 
 		if (paused) {
-			hscripts.run('updatePost', [elapsed, paused]);
+			hscripts.run('updatePost', [elapsed, true]);
 			return;
 		}
 
@@ -357,7 +357,7 @@ class PlayState extends MusicBeatState {
 			limit --;
 		}
 		
-		hscripts.run('updatePost', [elapsed]);
+		hscripts.run('updatePost', [elapsed, false]);
 		
 		if (conductorInUse.songPosition >= song.songLength && !conductorInUse.paused) {
 			finishSong();
@@ -393,7 +393,7 @@ class PlayState extends MusicBeatState {
 	}
 
 	public function pushedEvent(event:SongEvent) {
-		hscripts.loadFromPaths('events/${event.name}.hx');
+		hscripts.loadFromPaths('scripts/events/${event.name}.hx');
 		
 		var params:Map<String, Dynamic> = event.params;
 		switch (event.name) {
@@ -537,7 +537,7 @@ class PlayState extends MusicBeatState {
 		if (inputDisabled || paused) return;
 		var keybind:Int = Controls.keybindFromArray(keybinds, key);
 
-		hscripts.run('keybindReleased', [key]);
+		hscripts.run('keyReleased', [key]);
 		if (keybind >= 0) {
 			hscripts.run('keybindReleased', [keybind]);
 			playerStrumline.fireInput(key, false);
@@ -599,8 +599,7 @@ class PlayState extends MusicBeatState {
 		var rating:FunkinSprite = new FunkinSprite(0, 0);
 		rating.loadTexture(ratingString);
 		rating.scale.set(scale, scale);
-		rating.updateHitbox();
-		rating.centerOffsets();
+		rating.setOffset(rating.frameWidth * .5, rating.frameHeight * .5);
 
 		rating.acceleration.y = 550;
 		rating.velocity.y = -FlxG.random.int(140, 175);
@@ -641,18 +640,20 @@ class PlayState extends MusicBeatState {
 	}
 	public function updateRating() {
 		percent = (accuracyMod / Math.max(1, accuracyDiv)) * 100;
-		updateScore();
+		updateScoreText();
 	}
-	public function updateScore() {
+	public function updateScoreText() {
 		var scoreStr:String = Util.thousandSep(Std.int(score));
 		if (Options.data.xtendScore) {
 			var accuracyString:String = 'NA';
-			if (totalNotes > 0) accuracyString = '${Util.padDecimals(percent, 2)}%';
-			scoreTxt.text = 'Score: $scoreStr (${accuracyString}) | Misses: ${misses}';
+			if (totalNotes > 0) accuracyString = Util.padDecimals(percent, 2);
+			if (playerStrumline.cpu) accuracyString = 'BOT';
+			scoreTxt.text = '$accuracyString% | Misses: $misses | Score: $scoreStr';
 		} else {
 			scoreTxt.text = 'Score: $scoreStr';
+			if (playerStrumline.cpu) scoreTxt.text = '(BOT) ${scoreTxt.text}';
 		}
-		hscripts.run('updateScore');
+		hscripts.run('updateScoreText');
 	}
 	public function set_combo(newCombo:Int) {
 		if (combo > 0 && newCombo == 0) comboBroken(combo);
