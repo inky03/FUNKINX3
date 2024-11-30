@@ -15,6 +15,51 @@ import crowplexus.hscript.Expr.Error as IrisError;
 class HScript extends Iris {
 	public static var STOP(default, never):HScriptFunctionEnum = STOP;
 	public static var STOPALL(default, never):HScriptFunctionEnum = STOPALL;
+	public static var defaultVariables:Map<String, Dynamic> = [
+		#if hl
+		'Math' => HScriptMath,
+		#end
+		'Type' => Type,
+		'Reflect' => Reflect,
+		'HScript' => HScript,
+		'FlxG' => flixel.FlxG,
+		'FlxSprite' => flixel.FlxSprite,
+		'FlxCamera' => flixel.FlxCamera,
+		'FlxMath' => flixel.math.FlxMath,
+		'FlxText' => flixel.text.FlxText,
+		'FlxEase' => flixel.tweens.FlxEase,
+		'FlxTimer' => flixel.util.FlxTimer,
+		'FlxSound' => flixel.sound.FlxSound,
+		'FlxTween' => flixel.tweens.FlxTween,
+		'FlxRuntimeShader' => FlxRuntimeShader,
+
+		'Lane' => Lane,
+		'Note' => Note,
+		'Paths' => Paths,
+		'Options' => Options,
+		'Controls' => Controls,
+		'PlayState' => PlayState,
+		'Conductor' => Conductor,
+		'Character' => Character,
+		'Strumline' => Strumline,
+		'HealthIcon' => HealthIcon,
+		'SongEvent' => Song.SongEvent,
+		'NoteEvent' => Lane.NoteEvent,
+		'StageProp' => Stage.StageProp,
+		'FunkinSprite' => FunkinSprite,
+		'Metronome' => Conductor.Metronome,
+		'RuntimeShader' => QuickRuntimeShader,
+		'ShaderFilter' => openfl.filters.ShaderFilter,
+
+		'NoteEventType' => NoteEventType,
+		'SpriteRenderType' => SpriteRenderType,
+
+		'STOP' => STOP,
+		'STOPALL' => STOPALL,
+		'FlxAxes' => HScriptFlxAxes,
+		'FlxColor' => HScriptFlxColor,
+		'BlendMode' => HScriptBlendMode
+	];
 
 	public var scriptString(default, set):String = '';
 	public var scriptPath:Null<String> = null;
@@ -81,50 +126,16 @@ class HScript extends Iris {
 	}
 	public override function preset() {
 		super.preset();
-		set('this', this);
-		set('Type', Type);
-		set('Reflect', Reflect);
-		set('HScript', HScript);
-		
-		set('FlxG', flixel.FlxG);
-		set('FlxSprite', flixel.FlxSprite);
-		set('FlxCamera', flixel.FlxCamera);
-		set('FlxMath', flixel.math.FlxMath);
-		set('FlxText', flixel.text.FlxText);
-		set('FlxEase', flixel.tweens.FlxEase);
-		set('FlxTimer', flixel.util.FlxTimer);
-		set('FlxSound', flixel.sound.FlxSound);
-		set('FlxTween', flixel.tweens.FlxTween);
-		set('FlxRuntimeShader', FlxRuntimeShader);
 
-		set('Lane', Lane);
-		set('Note', Note);
-		set('Paths', Paths);
-		set('HScript', HScript);
-		set('Options', Options);
-		set('Controls', Controls);
-		set('PlayState', PlayState);
-		set('Conductor', Conductor);
-		set('Character', Character);
-		set('Strumline', Strumline);
-		set('HealthIcon', HealthIcon);
-		set('SongEvent', Song.SongEvent);
-		set('NoteEvent', Lane.NoteEvent);
-		set('StageProp', Stage.StageProp);
-		set('FunkinSprite', FunkinSprite);
-		set('Metronome', Conductor.Metronome);
-		set('RuntimeShader', QuickRuntimeShader);
-		set('ShaderFilter', openfl.filters.ShaderFilter);
-
-		set('NoteEventType', NoteEventType);
-		set('SpriteRenderType', SpriteRenderType);
+		for (field => val in defaultVariables)
+			set(field, val);
 		
 		set('game', FlxG.state);
 		set('state', FlxG.state);
 		set('add', FlxG.state.add);
 		set('remove', FlxG.state.remove);
 		set('insert', FlxG.state.insert);
-		if (Std.isOfType(FlxG.state, MusicBeatState)) {
+		if (Std.isOfType(FlxG.state, IMusicBeat)) {
 			var state:MusicBeatState = cast FlxG.state;
 			set('conductor', state.conductorInUse);
 			set('sortZIndex', state.sortZIndex);
@@ -134,13 +145,6 @@ class HScript extends Iris {
 			var playState:PlayState = cast FlxG.state;
 			set('stage', playState.stage);
 		}
-		
-		// abstract classes and special
-		set('STOP', STOP);
-		set('STOPALL', STOPALL);
-		set('FlxAxes', HScriptFlxAxes);
-		set('FlxColor', HScriptFlxColor);
-		set('BlendMode', HScriptBlendMode);
 
 		#if hscriptPos
 		set("trace", Reflect.makeVarArgs(function(x:Array<Dynamic>) { // fix static trace
@@ -295,6 +299,41 @@ class QuickRuntimeShader extends FlxRuntimeShader {
 
 	}
 }
+
+#if hl // curse you, hashlink externs
+// TODO: make this a macro...
+// (and probably everything else, by extension)
+class HScriptMath {
+	public static var PI:Float = Math.PI;
+	public static var NaN:Float = Math.NaN;
+	public static var NEGATIVE_INFINITY:Float = Math.NEGATIVE_INFINITY;
+	public static var POSITIVE_INFINITY:Float = Math.POSITIVE_INFINITY;
+
+	public static function abs(n:Float):Float return Math.abs(n);
+	public static function acos(n:Float):Float return Math.acos(n);
+	public static function asin(n:Float):Float return Math.asin(n);
+	public static function atan(n:Float):Float return Math.atan(n);
+	public static function atan2(y:Float, x:Float):Float return Math.atan2(y, x);
+	public static function ceil(n:Float):Int return Math.ceil(n);
+	public static function cos(n:Float):Float return Math.cos(n);
+	public static function exp(n:Float):Float return Math.exp(n);
+	public static function fceil(n:Float):Float return Math.fceil(n);
+	public static function ffloor(n:Float):Float return Math.ffloor(n);
+	public static function floor(n:Float):Int return Math.floor(n);
+	public static function fround(n:Float):Float return Math.fround(n);
+	public static function isFinite(n:Float):Bool return Math.isFinite(n);
+	public static function isNaN(n:Float):Bool return Math.isNaN(n);
+	public static function log(n:Float):Float return Math.log(n);
+	public static function max(a:Float, b:Float):Float return Math.max(a, b);
+	public static function min(a:Float, b:Float):Float return Math.min(a, b);
+	public static function pow(n:Float, exp:Float):Float return Math.pow(n, exp);
+	public static function random():Float return Math.random();
+	public static function round(n:Float):Int return Math.round(n);
+	public static function sin(n:Float):Float return Math.sin(n);
+	public static function sqrt(n:Float):Float return Math.sqrt(n);
+	public static function tan(n:Float):Float return Math.tan(n);
+}
+#end
 class HScriptFlxColor { // i hate it in here
 	public static var BLACK(default, never):Int = cast FlxColor.BLACK;
 	public static var GRAY(default, never):Int = cast FlxColor.GRAY;
