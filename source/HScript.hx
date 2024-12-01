@@ -33,6 +33,7 @@ class HScript extends Iris {
 		'FlxTween' => flixel.tweens.FlxTween,
 		'FlxRuntimeShader' => FlxRuntimeShader,
 
+		'Util' => Util,
 		'Lane' => Lane,
 		'Note' => Note,
 		'Paths' => Paths,
@@ -47,6 +48,7 @@ class HScript extends Iris {
 		'NoteEvent' => Lane.NoteEvent,
 		'StageProp' => Stage.StageProp,
 		'FunkinSprite' => FunkinSprite,
+		'SongFormat' => Song.SongFormat,
 		'Metronome' => Conductor.Metronome,
 		'RuntimeShader' => QuickRuntimeShader,
 		'ShaderFilter' => openfl.filters.ShaderFilter,

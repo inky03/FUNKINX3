@@ -75,7 +75,7 @@ class FreeplayState extends MusicBeatState {
 				var selectedItem:SongItem = displayItems.members[selection];
 				var variation:Variation = findVariation(currentVariation);
 				Mods.currentMod = selectedItem.mod;
-				PlayState.song = Song.loadAutoDetect(selectedItem.songPath, variation.difficulties[selectedDifficulty], variation.suffix);
+				PlayState.song = Song.loadSong(selectedItem.songPath, variation.difficulties[selectedDifficulty], variation.suffix);
 				FlxG.switchState(() -> new PlayState());
 			});
 		}
