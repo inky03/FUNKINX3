@@ -434,7 +434,7 @@ class PlayState extends MusicBeatState {
 				if (params.exists('x')) camFocusTarget.x += Util.parseFloat(params['x']);
 				if (params.exists('y')) camFocusTarget.y += Util.parseFloat(params['y']);
 				switch (params['ease']) {
-					case 'CLASSIC':
+					case 'CLASSIC' | null:
 					case 'INSTANT':
 						camGame.snapToTarget();
 					default:
