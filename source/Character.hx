@@ -46,15 +46,20 @@ class Character extends FunkinSprite {
 		return volume = newVolume;
 	}
 	public function loadVocals(songPath:String, suffix:String = '', ?chara:String) {
+		chara ??= character;
 		vocalsLoaded = false;
 		var paths:Array<String> = ['data/songs/$songPath/', 'songs/$songPath/'];
-		if (chara == null) chara = character;
 		try {
 			for (path in paths) {
 				if (Paths.exists(path)) {
 					var vocalsPath:String = path + Util.pathSuffix(Util.pathSuffix('Voices', chara), suffix);
 					// Log.minor('attempting to load vocals from $vocalsPath...');
 					vocals.loadEmbedded(Paths.ogg(vocalsPath));
+					if (vocals.length == 0 && chara.contains('-')) {
+						var charaNoSuffix:String = chara.split('-').slice(0, -1).join('-');
+						vocalsPath = path + Util.pathSuffix(Util.pathSuffix('Voices', charaNoSuffix), suffix);
+						vocals.loadEmbedded(Paths.ogg(vocalsPath));
+					}
 					if (vocals.length > 0) {
 						vocalsLoaded = true;
 						vocals.play();

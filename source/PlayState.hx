@@ -711,7 +711,7 @@ class PlayState extends MusicBeatState {
 			scoreTxt.text = '$accuracyString% | Misses: $misses | Score: $scoreStr';
 		} else {
 			scoreTxt.text = 'Score: $scoreStr';
-			if (playerStrumline.cpu) scoreTxt.text = '(BOT) ${scoreTxt.text}';
+			if (playerStrumline.cpu) scoreTxt.text = 'BOT ${scoreTxt.text}';
 		}
 		hscripts.run('updateScoreText');
 	}

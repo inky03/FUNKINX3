@@ -270,5 +270,6 @@
       "cameraOffsets": [500, -100]
     }
   },
+  "library": "weekend1",
   "name": "Philly (Streets)"
 }
