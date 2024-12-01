@@ -13,8 +13,8 @@ import crowplexus.hscript.Printer;
 import crowplexus.hscript.Expr.Error as IrisError;
 
 class HScript extends Iris {
-	public static var STOP(default, never):HScriptFunctionEnum = STOP;
-	public static var STOPALL(default, never):HScriptFunctionEnum = STOPALL;
+	public static var STOP(default, never):HScriptFunctionEnum = HScriptFunctionEnum.STOP;
+	public static var STOPALL(default, never):HScriptFunctionEnum = HScriptFunctionEnum.STOPALL;
 	public static var defaultVariables:Map<String, Dynamic> = [
 		#if hl
 		'Math' => HScriptMath,
