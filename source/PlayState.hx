@@ -433,15 +433,18 @@ class PlayState extends MusicBeatState {
 				}
 				if (params.exists('x')) camFocusTarget.x += Util.parseFloat(params['x']);
 				if (params.exists('y')) camFocusTarget.y += Util.parseFloat(params['y']);
+				FlxTween.cancelTweensOf(camGame.scroll);
 				switch (params['ease']) {
-					case 'CLASSIC':
+					case 'CLASSIC' | null:
+						camGame.pauseFollowLerp = false;
 					case 'INSTANT':
 						camGame.snapToTarget();
+						camGame.pauseFollowLerp = false;
 					default:
 						var duration:Float = Util.parseFloat(params['duration'], 4) * conductorInUse.stepCrochet * .001;
 						if (duration <= 0) {
 							camGame.snapToTarget();
-							return;
+							camGame.pauseFollowLerp = false;
 						} else {
 							var easeFunction:Null<Float -> Float> = Reflect.field(FlxEase, params['ease'] ?? 'linear');
 							if (easeFunction == null) {
@@ -449,7 +452,6 @@ class PlayState extends MusicBeatState {
 								easeFunction = FlxEase.linear;
 							}
 							camGame.pauseFollowLerp = true;
-							FlxTween.cancelTweensOf(camGame.scroll);
 							FlxTween.tween(camGame.scroll, {x: camFocusTarget.x - FlxG.width * .5, y: camFocusTarget.y - FlxG.height * .5}, duration, {ease: easeFunction, onComplete: (_) -> {
 								camGame.pauseFollowLerp = false;
 							}});
@@ -460,13 +462,16 @@ class PlayState extends MusicBeatState {
 				var direct:Bool = (params['mode'] ?? 'direct' == 'direct');
 				targetZoom *= (direct ? FlxCamera.defaultZoom : (stage?.zoom ?? 1));
 				camGame.zoomTarget = targetZoom;
+				FlxTween.cancelTweensOf(camGame, ['zoom']);
 				switch (params['ease']) {
 					case 'INSTANT':
 						camGame.zoom = targetZoom;
+						camGame.pauseZoomLerp = false;
 					default:
 						var duration:Float = Util.parseFloat(params['duration'], 4) * conductorInUse.stepCrochet * .001;
 						if (duration <= 0) {
 							camGame.zoom = targetZoom;
+							camGame.pauseZoomLerp = false;
 						} else {
 							var easeFunction:Null<Float -> Float> = Reflect.field(FlxEase, params['ease'] ?? 'linear');
 							if (easeFunction == null) {
@@ -474,7 +479,6 @@ class PlayState extends MusicBeatState {
 								easeFunction = FlxEase.linear;
 							}
 							camGame.pauseZoomLerp = true;
-							FlxTween.cancelTweensOf(camGame);
 							FlxTween.tween(camGame, {zoom: targetZoom}, duration, {ease: easeFunction, onComplete: (_) -> {
 								camGame.pauseZoomLerp = false;
 							}});
