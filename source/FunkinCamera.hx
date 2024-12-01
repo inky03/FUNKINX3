@@ -1,4 +1,6 @@
 class FunkinCamera extends FlxCamera {
+	public var pauseZoomLerp:Bool = false; // OK, this is hacky but i cant be arsed
+	public var pauseFollowLerp:Bool = false;
 	public var zoomTarget:Null<Float> = null;
 	public var zoomFollowLerp:Float = -1;
 	var time:Float = -1;
@@ -78,18 +80,20 @@ class FunkinCamera extends FlxCamera {
 			}
 		}
 
+		if (pauseFollowLerp) return;
 		if (followLerp < 0) {
 			scroll.copyFrom(_scrollTarget); // no easing
-		} else {
+		} else if (followLerp > 0) {
 			scroll.x = Util.smoothLerp(scroll.x, _scrollTarget.x, followLerp * elapsed);
 			scroll.y = Util.smoothLerp(scroll.y, _scrollTarget.y, followLerp * elapsed);
 		}
 	}
 
 	public function updateZoomFollow(elapsed:Float) {
+		if (pauseZoomLerp) return;
 		if (zoomFollowLerp < 0) {
 			zoom = zoomTarget;
-		} else {
+		} else if (zoomFollowLerp > 0) {
 			zoom = Util.smoothLerp(zoom, zoomTarget, zoomFollowLerp * elapsed);
 		}
 	}

@@ -151,6 +151,7 @@ class Song {
 				song.notes.push({player: isPlayer, msTime: note.time, laneIndex: Std.int(note.lane % 4), msLength: note.length});
 			}
 
+			song.findSongLength();
 			Log.info('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch (e:Exception) {
 			Log.error('chart error... -> <<< ${e.details()} >>>');
@@ -208,6 +209,7 @@ class Song {
 		song.stage = meta.extraData['FNF_STAGE'] ?? 'placeholder';
 		time = Sys.time();
 		song.audioSuffix = suffix;
+		song.findSongLength();
 
 		return song;
 	}
@@ -250,9 +252,16 @@ class Song {
 		}
 		
 		this.sort();
-		var lastNote:SongNote = notes[notes.length - 1];
-		this.songLength = (lastNote == null ? 0 : lastNote.msTime + lastNote.msLength) + 500;
 		return this;
+	}
+	public function findSongLength() {
+		if (instLoaded) {
+			this.songLength = inst.length;
+		} else {
+			var lastNote:SongNote = notes[notes.length - 1];
+			this.songLength = (lastNote == null ? 0 : lastNote.msTime + lastNote.msLength) + 500;
+		}
+		return this.songLength;
 	}
 	
 	public static function loadLegacySong(path:String, difficulty:String = 'normal', suffix:String = '', keyCount:Int = 4) { // move to moonchart format???
@@ -359,8 +368,7 @@ class Song {
 				}
 			}
 			song.sort();
-			var lastNote:SongNote = song.notes[song.notes.length - 1];
-			song.songLength = (lastNote == null ? 0 : lastNote.msTime + lastNote.msLength) + 500;
+			song.findSongLength();
 
 			song.player1 = song.json.player1;
 			song.player2 = song.json.player2;

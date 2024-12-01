@@ -9,8 +9,8 @@ class MusicBeatState implements IMusicBeat extends FlxState {
 	public var curBar:Int = -1;
 	public var curBeat:Int = -1;
 	public var curStep:Int = -1;
-	public var paused:Bool = false;
 
+	public var paused:Bool = false;
 	public var conductorInUse:Conductor = Conductor.global;
 
 	public var stepHit:FlxTypedSignal<Int->Void> = new FlxTypedSignal<Int->Void>();

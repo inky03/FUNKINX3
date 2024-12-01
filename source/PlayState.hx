@@ -49,8 +49,9 @@ class PlayState extends MusicBeatState {
 	public var camOther:FunkinCamera;
 	public var camFocusTarget:FlxObject;
 	
+	public var camZoomRate:Int = -1; // 0: no bop - <0: every measure (always)
 	public var camZoomIntensity:Float = 1;
-	public var hudZoomIntensity:Float = 1;
+	public var hudZoomIntensity:Float = 2;
 	
 	public static var song:Song = null;
 	public var syncVocals:Array<FlxSound> = [];
@@ -163,7 +164,6 @@ class PlayState extends MusicBeatState {
 		opponentStrumline = new Strumline(4, scrollDir, song.scrollSpeed);
 		opponentStrumline.fitToSize(strumlineBound, opponentStrumline.height * .7);
 		opponentStrumline.setPosition(50, strumlineY);
-		opponentStrumline.camera = camHUD;
 		opponentStrumline.zIndex = 40;
 		opponentStrumline.cpu = true;
 		opponentStrumline.allowInput = false;
@@ -172,7 +172,6 @@ class PlayState extends MusicBeatState {
 		playerStrumline = new Strumline(4, scrollDir, song.scrollSpeed * 1.08);
 		playerStrumline.fitToSize(strumlineBound, playerStrumline.height * .7);
 		playerStrumline.setPosition(FlxG.width - playerStrumline.width - 50 - 75, strumlineY);
-		playerStrumline.camera = camHUD;
 		playerStrumline.zIndex = 50;
 		uiGroup.add(playerStrumline);
 
@@ -210,7 +209,7 @@ class PlayState extends MusicBeatState {
 		ratingGroup.zIndex = (player3?.zIndex ?? 0) + 10;
 		add(ratingGroup);
 		
-		healthBar = new Bar(0, FlxG.height - 50, 'healthBar', () -> return health);
+		healthBar = new Bar(0, FlxG.height - 50, 'healthBar', (_) -> health);
 		healthBar.bounds.max = maxHealth;
 		healthBar.y -= healthBar.height;
 		healthBar.screenCenter(X);
@@ -262,6 +261,7 @@ class PlayState extends MusicBeatState {
 
 	override public function update(elapsed:Float) {
 		elapsed = getRealElapsed();
+		hscripts.run('updatePre', [elapsed, paused]);
 
 		if (FlxG.keys.justPressed.ESCAPE) {
 			FlxG.switchState(() -> new FreeplayState());
@@ -433,6 +433,59 @@ class PlayState extends MusicBeatState {
 				}
 				if (params.exists('x')) camFocusTarget.x += Util.parseFloat(params['x']);
 				if (params.exists('y')) camFocusTarget.y += Util.parseFloat(params['y']);
+				switch (params['ease']) {
+					case 'CLASSIC':
+					case 'INSTANT':
+						camGame.snapToTarget();
+					default:
+						var duration:Float = Util.parseFloat(params['duration'], 4) * conductorInUse.stepCrochet * .001;
+						if (duration <= 0) {
+							camGame.snapToTarget();
+							return;
+						} else {
+							var easeFunction:Null<Float -> Float> = Reflect.field(FlxEase, params['ease'] ?? 'linear');
+							if (easeFunction == null) {
+								Log.warning('FocusCamera event: ease function invalid');
+								easeFunction = FlxEase.linear;
+							}
+							camGame.pauseFollowLerp = true;
+							FlxTween.cancelTweensOf(camGame.scroll);
+							FlxTween.tween(camGame.scroll, {x: camFocusTarget.x - FlxG.width * .5, y: camFocusTarget.y - FlxG.height * .5}, duration, {ease: easeFunction, onComplete: (_) -> {
+								camGame.pauseFollowLerp = false;
+							}});
+						}
+				}
+			case 'ZoomCamera':
+				var targetZoom:Float = Util.parseFloat(params['zoom'], 1);
+				var direct:Bool = (params['mode'] ?? 'direct' == 'direct');
+				targetZoom *= (direct ? FlxCamera.defaultZoom : (stage?.zoom ?? 1));
+				camGame.zoomTarget = targetZoom;
+				switch (params['ease']) {
+					case 'INSTANT':
+						camGame.zoom = targetZoom;
+					default:
+						var duration:Float = Util.parseFloat(params['duration'], 4) * conductorInUse.stepCrochet * .001;
+						if (duration <= 0) {
+							camGame.zoom = targetZoom;
+						} else {
+							var easeFunction:Null<Float -> Float> = Reflect.field(FlxEase, params['ease'] ?? 'linear');
+							if (easeFunction == null) {
+								Log.warning('FocusCamera event: ease function invalid');
+								easeFunction = FlxEase.linear;
+							}
+							camGame.pauseZoomLerp = true;
+							FlxTween.cancelTweensOf(camGame);
+							FlxTween.tween(camGame, {zoom: targetZoom}, duration, {ease: easeFunction, onComplete: (_) -> {
+								camGame.pauseZoomLerp = false;
+							}});
+						}
+				}
+			case 'SetCameraBop':
+				var targetRate:Int = Util.parseInt(params['rate'], -1);
+				var targetIntensity:Float = Util.parseFloat(params['intensity'], 1);
+				hudZoomIntensity = targetIntensity * 2;
+				camZoomIntensity = targetIntensity;
+				camZoomRate = targetRate;
 			case 'PlayAnimation':
 				var focusChara:Null<Character> = null;
 				switch (params['target']) {
@@ -487,6 +540,8 @@ class PlayState extends MusicBeatState {
 				default:
 			}
 		}
+		if (camZoomRate > 0 && beat % camZoomRate == 0)
+			bopCamera();
 		if (beat == 0) {
 			if (song.instLoaded) song.inst.play(true);
 			for (track in syncVocals) track.play(true);
@@ -506,9 +561,13 @@ class PlayState extends MusicBeatState {
 		hscripts.run('countdownTick', [image]);
 	}
 	public function barHitEvent(bar:Int) {
-		camHUD.zoom += .03 * hudZoomIntensity;
-		camGame.zoom += .015 * camZoomIntensity;
+		if (camZoomRate < 0)
+			bopCamera();
 		hscripts.run('barHit', [bar]);
+	}
+	public function bopCamera() {
+		camHUD.zoom += .015 * hudZoomIntensity;
+		camGame.zoom += .015 * camZoomIntensity;
 	}
 	
 	public function keyPressEvent(event:KeyboardEvent) {
@@ -584,15 +643,12 @@ class PlayState extends MusicBeatState {
 		while (nums.length < 3) nums.unshift(0);
 		
 		var xOffset:Float = -nums.length * .5 + .5;
-		var i:Int = 0;
-		for (num in nums) {
+		for (i => num in nums) {
 			var popNum:FunkinSprite = popRating('num$num', .5, 2);
 			popNum.setPosition(popNum.x + (i + xOffset) * 43, popNum.y + 80);
 			popNum.acceleration.y = FlxG.random.int(200, 300);
 			popNum.velocity.y = -FlxG.random.int(140, 160);
 			popNum.velocity.x = FlxG.random.float(-5, 5);
-
-			i ++;
 		}
 	}
 	public function popRating(ratingString:String, scale:Float = .7, beats:Float = 1) {

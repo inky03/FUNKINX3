@@ -5,10 +5,10 @@ class Bar extends FlxSpriteGroup {
 	public var leftBar:FunkinSprite;
 	public var rightBar:FunkinSprite;
 	
-	public var valueFunc:()->Float = null;
 	public var targetPercent:Float;
 	public var percent(default, set):Float;
 	public var percentLerp:Float = .15 * 60;
+	public var valueFunc:Bar -> Float = null;
 	
 	public var bounds:Dynamic = {min: 0, max: 1};
 	public var barRect:FlxRect = new FlxRect(4, 4);
@@ -16,7 +16,7 @@ class Bar extends FlxSpriteGroup {
 	
 	public var leftToRight:Bool = true;
 	
-	public function new(x:Float = 0, y:Float = 0, overlayImage:String = 'healthBar', value:()->Float = null) {
+	public function new(x:Float = 0, y:Float = 0, overlayImage:String = 'healthBar', value:Bar -> Float = null) {
 		super(x, y);
 		overlay = new FunkinSprite().loadTexture(overlayImage);
 		leftBar = new FunkinSprite().makeGraphic(Std.int(overlay.width), Std.int(overlay.height), -1);
@@ -50,8 +50,8 @@ class Bar extends FlxSpriteGroup {
 	
 	public override function update(elapsed:Float) {
 		super.update(elapsed);
-		if (valueFunc != null) targetPercent = FlxMath.remapToRange(valueFunc(), bounds.min, bounds.max, 0, 100);
-		percent = FlxMath.lerp(percent, targetPercent, percentLerp * elapsed);
+		if (valueFunc != null) targetPercent = FlxMath.remapToRange(valueFunc(this), bounds.min, bounds.max, 0, 100);
+		percent = Util.smoothLerp(percent, targetPercent, percentLerp * elapsed);
 		barCenter.set(leftBar.x + leftBar.clipRect.x + leftBar.clipRect.width, y + height * .5);
 	}
 	
