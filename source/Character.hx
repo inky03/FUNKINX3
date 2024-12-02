@@ -56,9 +56,12 @@ class Character extends FunkinSprite {
 					// Log.minor('attempting to load vocals from $vocalsPath...');
 					vocals.loadEmbedded(Paths.ogg(vocalsPath));
 					if (vocals.length == 0 && chara.contains('-')) {
-						var charaNoSuffix:String = chara.split('-').slice(0, -1).join('-');
-						vocalsPath = path + Util.pathSuffix(Util.pathSuffix('Voices', charaNoSuffix), suffix);
-						vocals.loadEmbedded(Paths.ogg(vocalsPath));
+						var charaSplit:Array<String> = chara.split('-');
+						while (charaSplit.length > 1) {
+							charaSplit.pop();
+							vocalsPath = path + Util.pathSuffix(Util.pathSuffix('Voices', charaSplit.join('-')), suffix);
+							vocals.loadEmbedded(Paths.ogg(vocalsPath));
+						}
 					}
 					if (vocals.length > 0) {
 						vocalsLoaded = true;
@@ -264,6 +267,7 @@ class Character extends FunkinSprite {
 	}
 	public function useDefault() {
 		unloadAnimate();
+		healthIcon = 'bf';
 		characterDataType = MODERN;
 		loadAtlas('characters/bf');
 		addAnimation('idle', 'BF idle dance', 24, false);
