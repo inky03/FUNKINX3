@@ -71,11 +71,16 @@ class PlayState extends MusicBeatState {
 	public var percent:Float = 0;
 
 	public var hitsound:FlxSound;
+
+	public var downscroll:Bool;
+	public var middlescroll:Bool;
 	
 	override public function create() {
 		if (song == null) song = new Song(''); // lol!
 		super.create();
 		Main.watermark.visible = false;
+		downscroll = Options.data.downscroll;
+		middlescroll = Options.data.middlescroll;
 		
 		conductorInUse = new Conductor();
 		conductorInUse.metronome.tempoChanges = song.tempoChanges;
@@ -167,15 +172,13 @@ class PlayState extends MusicBeatState {
 		opponentStrumline.zIndex = 40;
 		opponentStrumline.cpu = true;
 		opponentStrumline.allowInput = false;
-		uiGroup.add(opponentStrumline);
 		
 		playerStrumline = new Strumline(4, scrollDir, song.scrollSpeed * 1.08);
 		playerStrumline.fitToSize(strumlineBound, playerStrumline.height * .7);
 		playerStrumline.setPosition(FlxG.width - playerStrumline.width - 50 - 75, strumlineY);
 		playerStrumline.zIndex = 50;
-		uiGroup.add(playerStrumline);
 
-		if (Options.data.middlescroll) {
+		if (middlescroll) {
 			playerStrumline.screenCenter(X);
 			opponentStrumline.fitToSize(opponentStrumline.width * .7);
 		}
@@ -199,7 +202,7 @@ class PlayState extends MusicBeatState {
 		for (noteKind in noteKinds)
 			hscripts.loadFromPaths('scripts/notekinds/$noteKind.hx');
 		
-		if (Options.data.middlescroll) {
+		if (middlescroll) {
 			playerStrumline.center(X);
 			opponentStrumline.fitToSize(playerStrumline.leftBound - 50 - opponentStrumline.leftBound, 0, Y);
 		}
@@ -234,8 +237,11 @@ class PlayState extends MusicBeatState {
 		debugTxt = new FlxText(0, 12, FlxG.width, '');
 		debugTxt.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, CENTER, OUTLINE, FlxColor.BLACK);
 		uiGroup.add(debugTxt);
+		
+		uiGroup.add(opponentStrumline);
+		uiGroup.add(playerStrumline);
 
-		if (Options.data.downscroll) {
+		if (downscroll) {
 			for (mem in uiGroup)
 				mem.y = FlxG.height - mem.y - mem.height;
 		}
@@ -312,6 +318,7 @@ class PlayState extends MusicBeatState {
 		
 		if (FlxG.keys.justPressed.Z) {
 			var strumlineY:Float = 50;
+			downscroll = !downscroll;
 			Options.data.downscroll = !Options.data.downscroll;
 			if (Options.data.downscroll) strumlineY = FlxG.height - opponentStrumline.receptorHeight - strumlineY;
 			for (strumline in [opponentStrumline, playerStrumline]) {

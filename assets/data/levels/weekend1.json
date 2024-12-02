@@ -16,6 +16,11 @@
 			"displayName": "2HOT",
 			"songPath": "2hot",
 			"icon": "darnell"
+		},
+		{
+			"displayName": "Blazin'",
+			"songPath": "blazin",
+			"icon": "darnell"
 		}
 	]
 }

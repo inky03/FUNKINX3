@@ -28,12 +28,11 @@ var paperInterruptable:Bool = true;
 function createPost() {
 	resetCar(true, true);
 
-	scrollingSky = new FlxTiledSprite(Paths.image('phillyStreets/erect/phillySkybox', 'weekend1'), 2922, 718, true, false);
+	stage.add(scrollingSky = new FlxTiledSprite(Paths.image('phillyStreets/phillySkybox', 'weekend1'), 2922, 718, true, false));
+	scrollingSky.scrollFactor.set(.1, .1);
 	scrollingSky.setPosition(-650, -375);
-	scrollingSky.scrollFactor.set(0.1, 0.1);
+	scrollingSky.scale.set(.65, .65);
 	scrollingSky.zIndex = 10;
-	scrollingSky.scale.set(0.65, 0.65);
-	stage.add(scrollingSky);
 
 	rainShader = new RuntimeShader('rain');
 	rainShader.setFloatArray('uScreenResolution', [FlxG.width, FlxG.height]);
@@ -63,44 +62,39 @@ function createPost() {
 	colorShader.setFloat('contrast', -25);
 	game.player1.shader = game.player2.shader = game.player3.shader = colorShader;
 
-	mist0 = new FlxBackdrop(Paths.image('phillyStreets/erect/mistMid', 'weekend1'), FlxAxes.X);
+	stage.add(mist0 = new FlxBackdrop(Paths.image('phillyStreets/erect/mistMid', 'weekend1'), FlxAxes.X));
 	mist0.scrollFactor.set(1.2, 1.2);
 	mist0.zIndex = 1000;
 	mist0.alpha = .6;
 	mist0.velocity.x = 172;
-	stage.add(mist0);
 
-	mist1 = new FlxBackdrop(Paths.image('phillyStreets/erect/mistMid', 'weekend1'), FlxAxes.X);
+	stage.add(mist1 = new FlxBackdrop(Paths.image('phillyStreets/erect/mistMid', 'weekend1'), FlxAxes.X));
 	mist1.scrollFactor.set(1.1, 1.1);
 	mist1.zIndex = 1000;
 	mist1.alpha = .6;
 	mist1.velocity.x = 150;
-	stage.add(mist1);
 	
-	mist2 = new FlxBackdrop(Paths.image('phillyStreets/erect/mistBack', 'weekend1'), FlxAxes.X);
+	stage.add(mist2 = new FlxBackdrop(Paths.image('phillyStreets/erect/mistBack', 'weekend1'), FlxAxes.X));
 	mist2.scrollFactor.set(1.2, 1.2);
 	mist2.zIndex = 1001;
 	mist2.alpha = .8;
 	mist2.velocity.x = -80;
-	stage.add(mist2);
 	
-	mist3 = new FlxBackdrop(Paths.image('phillyStreets/erect/mistMid', 'weekend1'), FlxAxes.X);
+	stage.add(mist3 = new FlxBackdrop(Paths.image('phillyStreets/erect/mistMid', 'weekend1'), FlxAxes.X));
 	mist3.scrollFactor.set(0.95, 0.95);
 	mist3.zIndex = 99;
 	mist3.alpha = .5;
 	mist3.velocity.x = -50;
 	mist3.scale.set(0.8, 0.8);
-	stage.add(mist3);
 	
-	mist4 = new FlxBackdrop(Paths.image('phillyStreets/erect/mistBack', 'weekend1'), FlxAxes.X);
+	stage.add(mist4 = new FlxBackdrop(Paths.image('phillyStreets/erect/mistBack', 'weekend1'), FlxAxes.X));
 	mist4.scrollFactor.set(0.8, 0.8);
 	mist4.zIndex = 88;
 	mist4.alpha = 1;
 	mist4.velocity.x = 40;
 	mist4.scale.set(0.7, 0.7);
-	stage.add(mist4);
 	
-	mist5 = new FlxBackdrop(Paths.image('phillyStreets/erect/mistMid', 'weekend1'), FlxAxes.X);
+	stage.add(mist5 = new FlxBackdrop(Paths.image('phillyStreets/erect/mistMid', 'weekend1'), FlxAxes.X));
 	mist5.scrollFactor.set(0.5, 0.5);
 	mist5.zIndex = 39;
 	mist5.alpha = 1;
@@ -111,7 +105,6 @@ function createPost() {
 		mist.x = -650;
 		mist.color = 0xff5c5c5c;
 		mist.blend = BlendMode.ADD;
-		stage.add(mist);
 	}
 	for (name => prop in stage.props) {
 		if (!StringTools.endsWith(name, '_lightmap')) continue;
@@ -127,14 +120,14 @@ function createPost() {
 function update(elapsed, paused) {
 	if (paused) return;
 
-	var stupid:Float = 50;
 	var time:Float = conductor.songPosition / 1000;
-	mist0.y = 660 + (FlxMath.fastSin(time * .35) * 70) + stupid;
-	mist1.y = 500 + (FlxMath.fastSin(time * .3) * 80) + stupid;
-	mist2.y = 540 + (FlxMath.fastSin(time * .4) * 60) + stupid;
-	mist3.y = 230 + (FlxMath.fastSin(time * .3) * 70) + stupid;
-	mist4.y = 170 + (FlxMath.fastSin(time * .35) * 50) + stupid;
-	mist5.y = -20 + (FlxMath.fastSin(time * .08) * 50) + stupid;
+	mist0.y = 660 + (Math.sin(time * .35) * 70);
+	mist1.y = 500 + (Math.sin(time * .3) * 80);
+	mist2.y = 540 + (Math.sin(time * .4) * 60);
+	mist3.y = 230 + (Math.sin(time * .3) * 70);
+	mist4.y = 170 + (Math.sin(time * .35) * 50);
+	mist5.y = -80 + (Math.sin(time * .08) * 100);
+	scrollingSky.scrollX -= 22 * elapsed;
 
 	var cam:FlxCamera = game.camGame;
 	var rainIntensity:Float = FlxMath.remapToRange(conductor.songPosition, 0, songLength, rainShaderStartIntensity, rainShaderEndIntensity);
@@ -283,8 +276,8 @@ function driveCarLights(sprite:FlxSprite) {
 	var variant:Int = FlxG.random.int(1,4);
 	sprite.playAnimation('car' + variant);
 
-	var rotations:Array<Int> = [-7, -5];
 	var offset:Array<Float> = [306.6, 168.3];
+	var rotations:Array<Int> = [-7, -5];
 
 	var path:Array<FlxBasePoint> = [
 		FlxBasePoint.get(1500 - offset[0] - 20, 1049 - offset[1] - 20),

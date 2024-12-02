@@ -95,15 +95,18 @@ class AlphabetCharacter extends FunkinSprite {
 	public var character(default, set):String = '';
 	public var letterCase(default, set):AlphabetCase = NONE;
 	public static var meta:Map<String, Letter> = [
-		'!' => {name: '-exclamation point-', boldOffset: [0, 0], blackOffset: [0, 0]},
-		'.' => {name: '-period-', boldOffset: [0, 0], blackOffset: [0, 0]},
-		'&' => {name: '-and-', boldOffset: [0, 0], blackOffset: [0, 0]},
+		"'" => {name: '-apostrophe-', alignment: TOP},
+		'.' => {name: '-period-', alignment: BOTTOM},
+		'!' => {name: '-exclamation point-'},
+		'&' => {name: '-and-'},
+		'@' => {name: '-at-'}
 	];
 	
-	inline static function isLowerCase(char:String) return (char.toLowerCase() == char && char.toUpperCase() != char);
-	public static function getLetter(char:String) {
-		if (AlphabetCharacter.meta.exists(char)) return AlphabetCharacter.meta[char];
-		return {name: char, boldOffset: [0, 0], blackOffset: [0, 0]};
+	inline static function isLowerCase(char:String):Bool {
+		return (char.toLowerCase() == char && char.toUpperCase() != char);
+	}
+	public static function getLetter(char:String):Letter {
+		return AlphabetCharacter.meta[char] ?? {name: char};
 	}
 	
 	public function new(x:Float = 0, y:Float = 0, character:String = ' ', type:String = 'bold') {
@@ -134,15 +137,33 @@ class AlphabetCharacter extends FunkinSprite {
 			}
 			
 			if (hasAnimationPrefix(letterAnim + 0)) {
-				var letterOffset:Array<Float> = (type == 'bold' ? letter.boldOffset : letter.blackOffset);
+				var letterOffset:Null<Array<Null<Float>>> = (letter.offsets == null ? null : letter.offsets[type]); // Wtf
 				visible = true;
 				blank = false;
-				offsets[newChar] = FlxPoint.get(letterOffset[0], letterOffset[1]);
-				animation.addByPrefix(newChar, letterAnim + 0, 24, true);
+
+				addAnimation(newChar, letterAnim + 0, 24, true);
+				playAnimation(newChar);
+
+				var offsetX:Float = 0;
+				var offsetY:Null<Float> = null;
+				if (letterOffset != null) {
+					offsetX = letterOffset[0] ?? 0;
+					offsetY = letterOffset[1];
+				}
+				if (offsetY == null) {
+					switch (letter.alignment) {
+						case TOP:
+							offsetY = 0;
+						case BOTTOM:
+							offsetY = frameHeight - 68;
+						default: // center
+							offsetY = (frameHeight - 68) * .5;
+					}
+				}
+				setAnimationOffset(newChar, offsetX, offsetY);
+				
 				playAnimation(newChar);
 				updateHitbox();
-				if (letterOffset[1] == 0)
-					spriteOffset.y = offsets[newChar].y = height - 68;
 			} else {
 				blank = true;
 				visible = false;
@@ -179,9 +200,15 @@ class AlphabetCharacter extends FunkinSprite {
 }
 
 typedef Letter = {
-	public var name:String;
-	public var boldOffset:Array<Float>; //well uh.
-	public var blackOffset:Array<Float>;
+	var name:String;
+	var ?alignment:LetterAlignment;
+	var ?offsets:Map<String, Array<Null<Float>>>;
+}
+
+enum LetterAlignment {
+	TOP;
+	CENTER;
+	BOTTOM;
 }
 
 enum AlphabetCase {
