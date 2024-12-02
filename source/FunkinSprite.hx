@@ -282,7 +282,7 @@ class FunkinSprite extends FlxSprite {
 		}
 	}
 	public function unloadAnimate() {
-		if (isAnimate) {
+		if (isAnimate && animate != null) {
 			animate.destroy();
 			animate = null;
 		}

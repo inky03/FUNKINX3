@@ -117,11 +117,11 @@
           "frameRate": 24,
           "flipX": false,
           "flipY": false,
-          "offsets": [0, 0]
+          "offsets": [20, -15]
         },
         {
           "name": "car3",
-          "offsets": [0, 0],
+          "offsets": [30, 50],
           "prefix": "car3",
           "frameRate": 24,
           "flipX": false,
@@ -129,7 +129,7 @@
         },
         {
           "name": "car4",
-          "offsets": [0, 0],
+          "offsets": [10, 60],
           "prefix": "car4",
           "frameRate": 24,
           "flipX": false,
@@ -163,11 +163,11 @@
           "frameRate": 24,
           "flipX": true,
           "flipY": false,
-          "offsets": [0, 0]
+          "offsets": [20, -15]
         },
         {
           "name": "car3",
-          "offsets": [0, 0],
+          "offsets": [30, 50],
           "prefix": "car3",
           "frameRate": 24,
           "flipX": true,
@@ -175,7 +175,7 @@
         },
         {
           "name": "car4",
-          "offsets": [0, 0],
+          "offsets": [10, 60],
           "prefix": "car4",
           "frameRate": 24,
           "flipX": true,

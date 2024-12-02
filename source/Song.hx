@@ -147,7 +147,7 @@ class Song {
 			}
 			tempMetronome.setMS(note.time + 1);
 			var stepCrochet:Float = tempMetronome.getCrochet(tempMetronome.bpm, tempMetronome.timeSignature.denominator) * .25;
-			this.notes.push({player: isPlayer, msTime: note.time, laneIndex: Std.int(note.lane % 4), msLength: note.length - stepCrochet});
+			this.notes.push({player: isPlayer, msTime: note.time, laneIndex: Std.int(note.lane % 4), msLength: note.length - stepCrochet, kind: note.type});
 		}
 		
 		this.sort();

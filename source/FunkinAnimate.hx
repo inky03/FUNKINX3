@@ -12,12 +12,43 @@ class FunkinAnimate extends FlxAnimate { // this is kind of useless, but pop off
 		super(x, y, path, settings);
 	}
 
+	public static function softTextureAtlas(path):FlxAnimateFrames {
+		var frames:FlxAnimateFrames = new FlxAnimateFrames();
+
+		var texts:Array<String> = [];
+		if (FileSystem.exists('$path/spritemap.json')) {
+			texts.push('$path/spritemap.json');
+		} else {
+			var i:Int = 1;
+			while (true) {
+				if (FileSystem.exists('$path/spritemap$i.json'))
+					texts.push('$path/spritemap$i.json');
+				else
+					break;
+				i ++;
+			}
+		}
+
+		for (text in texts) {
+			var spritemapFrames = FlxAnimateFrames.fromSpriteMap(text);
+
+			if (spritemapFrames != null)
+				frames.addAtlas(spritemapFrames);
+		}
+
+		if (frames.frames.length == 0) {
+			FlxG.log.error("the Frames parsing couldn't parse any of the frames, it's completely empty! \n Maybe you misspelled the Path?");
+			return null;
+		}
+
+		return frames;
+	}
 	public override function loadAtlas(path:String) {
-		if (!Assets.exists('$path/Animation.json') && haxe.io.Path.extension(path) != 'zip') {
+		if (!FileSystem.exists('$path/Animation.json') && haxe.io.Path.extension(path) != 'zip') {
 			FlxG.log.error('Animation file not found in specified path: "$path", have you written the correct path?');
 			return;
 		}
-		loadSeparateAtlasExt(path, atlasSetting(path), FlxAnimateFrames.fromTextureAtlas(path));
+		loadSeparateAtlasExt(path, atlasSetting(path), softTextureAtlas(path));
 	}
 	override function atlasSetting(path:String) {
 		var jsontxt:String = null;
@@ -58,5 +89,16 @@ class FunkinAnimate extends FlxAnimate { // this is kind of useless, but pop off
 			Log.warning('animate atlas path not found... (verify: $atlasPath)');
 		}
 		return this;
+	}
+
+	public override function destroy() {
+		try {
+			super.destroy();
+		} catch (e:Dynamic) {
+			anim.symbolDictionary = null;
+			anim.stageInstance?.destroy();
+			anim.curInstance?.destroy();
+			anim.metadata?.destroy();
+		}
 	}
 }

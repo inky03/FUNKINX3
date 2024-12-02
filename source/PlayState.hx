@@ -210,7 +210,8 @@ class PlayState extends MusicBeatState {
 		ratingGroup = new FlxTypedSpriteGroup<FunkinSprite>();
 		ratingGroup.setPosition(player3?.getMidpoint()?.x ?? FlxG.width * .5, player3?.getMidpoint()?.y ?? FlxG.height * .5);
 		ratingGroup.zIndex = (player3?.zIndex ?? 0) + 10;
-		add(ratingGroup);
+		if (stage != null) stage.insertZIndex(ratingGroup);
+		else add(ratingGroup);
 		
 		healthBar = new Bar(0, FlxG.height - 50, 'healthBar', (_) -> health);
 		healthBar.bounds.max = maxHealth;

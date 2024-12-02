@@ -69,7 +69,7 @@ class Stage extends FlxSpriteGroup {
 	public function sortZIndex() {
 		sort(Util.sortZIndex, FlxSort.ASCENDING);
 	}
-	public function insertZIndex(obj:FunkinSprite) {
+	public function insertZIndex(obj:FlxSprite) {
 		if (members.contains(obj)) remove(obj);
 		var low:Float = Math.POSITIVE_INFINITY;
 		for (pos => mem in members) {
