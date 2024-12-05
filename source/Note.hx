@@ -23,7 +23,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var tail:Note;
 	public var lane:Lane;
 	
-	public var ratingData:HitWindow;
+	public var ratingData:Scoring.Score;
 	public var goodHit:Bool = false;
 	public var lost:Bool = false;
 	public var noteOffset:FlxPoint;
@@ -32,9 +32,10 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var preventDespawn:Bool = false;
 	public var followAngle:Bool = true;
 	
-	public var healthLoss:Float = .0775 * .5;
-	public var healthGain:Float = .033 * .5;
-	public var hitWindow:Float = 10000 / 60;
+	public var healthGain:Float = 1.5 / 100;
+	public var healthLoss:Float = 6.0 / 100;
+	public var hitWindow:Float = Scoring.safeFrames * 1000 / 60;
+
 	public var scrollMultiplier:Float = 1;
 	public var directionOffset:Float = 0;
 	public var hitPriority:Float = 1;

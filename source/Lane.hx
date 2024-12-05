@@ -147,14 +147,8 @@ class Lane extends FlxSpriteGroup {
 			var note = getHighestNote(inputFilter);
 			if (note != null) {
 				hitNote(note);
-				extraWindow = Math.min(extraWindow + 6, 200);
 			} else {
 				ghostTapped();
-				extraWindow = Math.min(extraWindow + 15, 200);
-			}
-			if (strumline != null) {
-				for (lane in strumline.lanes)
-					lane.extraWindow = extraWindow;
 			}
 		} else {
 			held = false;
@@ -461,7 +455,7 @@ class NoteSpark extends FunkinSprite {
 
 	public var spark:NoteSpark = null;
 	public var splash:NoteSplash = null;
-	public var window:Scoring.HitWindow = null;
+	public var scoring:Scoring.Score = null;
 	public var targetCharacter:Character = null;
 
 	public var doSpark:Bool = true; // many vars...
@@ -490,22 +484,30 @@ class NoteSpark extends FunkinSprite {
 					if (playSound) game.hitsound.play(true);
 					
 					if (applyRating) {
-						window = window ?? Scoring.judgeLegacy(game.hitWindows, note.hitWindow, note.msTime - lane.conductorInUse.songPosition);
-						window.count ++;
+						scoring ??= game.scoring.judgeNoteHit(note, note.msTime - lane.conductorInUse.songPosition);
+						game.scoring.countRating(scoring.rating);
 						
-						note.ratingData = window;
-						game.popRating(window.rating);
-						game.score += window.score;
-						game.health += note.healthGain * window.health;
-						game.accuracyMod += window.accuracyMod;
+						var rating:FunkinSprite = game.popRating(scoring.rating);
+						rating.velocity.y = -FlxG.random.int(140, 175);
+						rating.velocity.x = FlxG.random.int(0, 10);
+						rating.acceleration.y = 550;
+						note.ratingData = scoring;
+						applyExtraWindow(6);
+
+						game.score += scoring.score;
+						game.health += note.healthGain * scoring.health;
+						game.accuracyMod += scoring.accuracyMod;
 						game.accuracyDiv ++;
 						game.totalNotes ++;
 						game.totalHits ++;
-						if (window.breaksCombo) game.combo = 0; // maybe add the ghost note here?
-						else game.popCombo(++ game.combo);
+						if (scoring.hitWindow != null && scoring.hitWindow.breaksCombo)
+							game.combo = 0; // maybe add the ghost note here?
+						else
+							game.popCombo(++ game.combo);
 						game.updateRating();
 					}
-					if (doSplash && (window?.splash ?? true)) splash = lane.splash();
+					if (doSplash && scoring.hitWindow != null && scoring.hitWindow.splash)
+						splash = lane.splash();
 				}
 				if (playAnimation && targetCharacter != null) {
 					var anim:String = 'sing${game.singAnimations[note.noteData]}';
@@ -538,6 +540,7 @@ class NoteSpark extends FunkinSprite {
 				if (playSound) FlxG.sound.play(Paths.sound('missnote${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
 				if (playAnimation && targetCharacter != null) targetCharacter.playAnimationSteps('sing${game.singAnimations[lane.noteData]}miss', true);
 
+				applyExtraWindow(15);
 				if (applyRating) {
 					game.score -= 10;
 					game.health -= .01;
@@ -551,16 +554,30 @@ class NoteSpark extends FunkinSprite {
 				}
 
 				if (applyRating) {
+					scoring ??= game.scoring.judgeNoteMiss(note);
 					game.health -= note.healthLoss;
 					game.accuracyDiv ++;
 					game.totalNotes ++;
 					game.misses ++;
 					game.combo = 0;
-					game.score -= 10;
 					game.updateRating();
 					game.popRating('sadmiss');
+					game.score += scoring.score;
+					game.accuracyMod += scoring.accuracyMod;
+					game.health += note.healthGain * scoring.health;
 				}
 			default:
+		}
+	}
+	function applyExtraWindow(window:Float) {
+		@:privateAccess {
+		var extraWin:Float = Math.min(lane.extraWindow + window, 200);
+		if (strumline != null) {
+			for (lane in strumline.lanes)
+				lane.extraWindow = extraWin;
+		} else {
+			lane.extraWindow = extraWin;
+		}
 		}
 	}
 }

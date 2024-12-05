@@ -49,13 +49,16 @@ class Stage extends FlxSpriteGroup {
         }
         
         // loads hscript file
+        var state:MusicBeatState = cast(FlxG.state, MusicBeatState);
         var scriptPath:String = 'scripts/stages/${stageId}.hx';
         if (Paths.exists(scriptPath)) {
-        	var fuck:MusicBeatState = cast(FlxG.state, MusicBeatState);
-            if (fuck != null)
-            	fuck.hscripts.loadFromPaths(scriptPath);
+            if (state != null)
+            	state.hscripts.loadFromPaths(scriptPath);
             hasContent = true;
         }
+
+        if (state != null)
+        	state.hscripts.run('setupStage', [stageId, this]);
 
         if (!hasContent) {
 			Log.warning('no stage content (json or script): loading fallback stage');

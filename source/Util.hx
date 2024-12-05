@@ -3,6 +3,8 @@ package;
 using StringTools;
 
 class Util { // maybe these utils can be on their own specific purpose classes
+	public static var keyMod(get, never):lime.ui.KeyModifier;
+
 	// string
 	public static function padDecimals(number:Float, places:Int):String {
 		var len:Int = Std.string(Std.int(number)).length + (places > 0 ? places + 1 : 0);
@@ -25,6 +27,23 @@ class Util { // maybe these utils can be on their own specific purpose classes
 		if (Std.isOfType(v, Float) || Std.isOfType(v, Int)) return cast v;
 		if (Std.isOfType(v, String)) return Std.parseInt(v);
 		return fallback;
+	}
+
+	// keyboard
+	public static function get_keyMod():lime.ui.KeyModifier {
+		return @:privateAccess FlxG.stage.application.__backend.keyEventInfo.modifier;
+	}
+	public static function capsLockEnabled():Bool { // p sure these are abstracted so, to be nice
+		return keyMod.capsLock;
+	}
+	public static function capsEnabled():Bool {
+		return keyMod.capsLock != keyMod.shiftKey;
+	}
+	public static function numLockEnabled():Bool {
+		return keyMod.numLock;
+	}
+	public static function keyboardMeta():Bool {
+		return keyMod.metaKey;
 	}
 
 	// math

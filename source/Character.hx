@@ -115,17 +115,20 @@ class Character extends FunkinSprite {
 	public function playAnimationSteps(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0) {
 		if (!specialAnim) {
 			var sameAnim:Bool = (currentAnimation != anim);
-			if (animationList.exists(anim) && (forced || !sameAnim || isAnimationFinished()))
+			if (animationExists(anim) && (forced || !sameAnim || isAnimationFinished()))
 				timeAnimSteps(steps ?? singForSteps);
 			playAnimation(anim, forced, reversed, frame);
 		}
 	}
-	public function dance(beat:Int = 0) {
-		if (animReset > 0 || bopFrequency <= 0 || !bop || specialAnim) return false;
+	public function dance(beat:Int = 0, forced:Bool = false) {
+		if (!forced && (animReset > 0 || bopFrequency <= 0 || !bop || specialAnim))
+			return false;
+
 		if (sway)
 			playAnimation((beat % 2 == 0 ? 'danceLeft' : 'danceRight') + idleSuffix);
 		else if (beat % 2 == 0)
 			playAnimation('idle$idleSuffix');
+
 		return true;
 	}
 
@@ -216,7 +219,7 @@ class Character extends FunkinSprite {
 		if (charData.offsets != null) originOffset.set(charData.offsets[0] ?? 0, charData.offsets[1] ?? 0);
 		if (charData.cameraOffsets != null) cameraOffset.set(charData.cameraOffsets[0] ?? 0, charData.cameraOffsets[1] ?? 0);
 		
-		sway = (animationList.exists('danceLeft') && animationList.exists('danceRight'));
+		sway = (animationExists('danceLeft') && animationExists('danceRight'));
 		setBaseSize();
 		if (charData.startingAnimation != null) {
 			dance();
@@ -245,7 +248,7 @@ class Character extends FunkinSprite {
 		psychOffset.set(charData.position[0], charData.position[1]);
 		cameraOffset.set(charData.camera_position[0], charData.camera_position[1]);
 		
-		sway = (animationList.exists('danceLeft') && animationList.exists('danceRight'));
+		sway = (animationExists('danceLeft') && animationExists('danceRight'));
 		setBaseSize();
 		dance();
 		finishAnimation();

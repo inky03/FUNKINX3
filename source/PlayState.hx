@@ -10,7 +10,6 @@ import Song.SongEvent;
 import Character;
 import Strumline;
 import Scoring;
-import Chloe;
 import Lane;
 import Note;
 import Song;
@@ -37,8 +36,8 @@ class PlayState extends MusicBeatState {
 	public var uiGroup:FlxSpriteGroup;
 	public var ratingGroup:FlxTypedSpriteGroup<FunkinSprite>;
 	
+	public var scoring:Scoring.ScoreHandler = new ScoreHandler(EMI);
 	public var singAnimations:Array<String> = ['LEFT', 'DOWN', 'UP', 'RIGHT'];
-	public var hitWindows:Array<HitWindow> = Scoring.emiDefault();
 	public var keybinds:Array<Array<FlxKey>> = [];
 	public var heldKeys:Array<FlxKey> = [];
 	public var inputDisabled:Bool = false;
@@ -84,7 +83,6 @@ class PlayState extends MusicBeatState {
 		
 		conductorInUse = new Conductor();
 		conductorInUse.metronome.tempoChanges = song.tempoChanges;
-		conductorInUse.metronome.setBeat(playCountdown ? -5 : -1);
 		conductorInUse.syncTracker = song.instLoaded ? song.inst : null;
 		
 		hscripts.loadFromFolder('scripts/global');
@@ -238,7 +236,7 @@ class PlayState extends MusicBeatState {
 		debugTxt = new FlxText(0, 12, FlxG.width, '');
 		debugTxt.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, CENTER, OUTLINE, FlxColor.BLACK);
 		uiGroup.add(debugTxt);
-		
+
 		uiGroup.add(opponentStrumline);
 		uiGroup.add(playerStrumline);
 
@@ -264,6 +262,8 @@ class PlayState extends MusicBeatState {
 		
 		hscripts.run('createPost');
 		sortZIndex();
+
+		conductorInUse.metronome.setBeat(playCountdown ? -5 : -1);
 	}
 
 	override public function update(elapsed:Float) {
@@ -306,27 +306,27 @@ class PlayState extends MusicBeatState {
 				updateScoreText();
 			}
 			if (FlxG.keys.justPressed.RIGHT) {
-				conductorInUse.songPosition += 2000;
-				song.inst.time = conductorInUse.songPosition + 2000;
+				conductorInUse.songPosition += 3000;
+				song.inst.time = conductorInUse.songPosition;
 				syncMusic(false, true);
 			}
 			if (FlxG.keys.justPressed.LEFT) {
-				conductorInUse.songPosition -= 2000;
-				song.inst.time = conductorInUse.songPosition - 2000;
+				conductorInUse.songPosition -= 3000;
+				song.inst.time = conductorInUse.songPosition;
 				syncMusic(false, true);
+			}
+			if (FlxG.keys.justPressed.Z) {
+				var strumlineY:Float = 50;
+				downscroll = !downscroll;
+				Options.data.downscroll = !Options.data.downscroll;
+				if (Options.data.downscroll) strumlineY = FlxG.height - opponentStrumline.receptorHeight - strumlineY;
+				for (strumline in [opponentStrumline, playerStrumline]) {
+					strumline.direction += 180;
+					strumline.y = strumlineY;
+				}
 			}
 		}
 		
-		if (FlxG.keys.justPressed.Z) {
-			var strumlineY:Float = 50;
-			downscroll = !downscroll;
-			Options.data.downscroll = !Options.data.downscroll;
-			if (Options.data.downscroll) strumlineY = FlxG.height - opponentStrumline.receptorHeight - strumlineY;
-			for (strumline in [opponentStrumline, playerStrumline]) {
-				strumline.direction += 180;
-				strumline.y = strumlineY;
-			}
-		}
 		if (FlxG.keys.justPressed.ENTER) {
 			paused = !paused;
 			var pauseVocals:Bool = (paused || conductorInUse.songPosition < 0);
@@ -394,10 +394,7 @@ class PlayState extends MusicBeatState {
 		}
 	}
 	public function getSongPos() {
-		if (song.instLoaded && song.inst.playing)
-			return song.inst.time;
-		else
-			return conductorInUse.songPosition;
+		return conductorInUse.songPosition;
 	}
 
 	public function pushedEvent(event:SongEvent) {
@@ -570,7 +567,7 @@ class PlayState extends MusicBeatState {
 			remove(pop);
 			pop.destroy();
 		}});
-		hscripts.run('countdownTick', [image]);
+		hscripts.run('countdownPop', [image, pop]);
 	}
 	public function barHitEvent(bar:Int) {
 		if (camZoomRate < 0)
@@ -584,15 +581,17 @@ class PlayState extends MusicBeatState {
 	
 	public function keyPressEvent(event:KeyboardEvent) {
 		var key:FlxKey = event.keyCode;
-		if (!heldKeys.contains(key)) heldKeys.push(key);
+		var justPressed:Bool = !heldKeys.contains(key);
+		if (justPressed)
+			heldKeys.push(key);
 		
+		hscripts.run('keyPressed', [key, justPressed]);
 		if (inputDisabled || paused) return;
-		if (FlxG.keys.checkStatus(key, JUST_PRESSED)) {
+		if (justPressed) {
 			var keybind:Int = Controls.keybindFromArray(keybinds, key);
 			var oldTime:Float = conductorInUse.songPosition;
-			conductorInUse.songPosition = getSongPos();
+			conductorInUse.songPosition = (conductorInUse.syncTracker?.time ?? oldTime);
 
-			hscripts.run('keyPressed', [key]);
 			if (keybind >= 0) {
 				hscripts.run('keybindPressed', [keybind]);
 				playerStrumline.fireInput(key, true);
@@ -605,10 +604,10 @@ class PlayState extends MusicBeatState {
 		var key:FlxKey = event.keyCode;
 		heldKeys.remove(key);
 		
+		hscripts.run('keyReleased', [key]);
 		if (inputDisabled || paused) return;
 		var keybind:Int = Controls.keybindFromArray(keybinds, key);
 
-		hscripts.run('keyReleased', [key]);
 		if (keybind >= 0) {
 			hscripts.run('keybindReleased', [keybind]);
 			playerStrumline.fireInput(key, false);
@@ -668,10 +667,6 @@ class PlayState extends MusicBeatState {
 		rating.loadTexture(ratingString);
 		rating.scale.set(scale, scale);
 		rating.setOffset(rating.frameWidth * .5, rating.frameHeight * .5);
-
-		rating.acceleration.y = 550;
-		rating.velocity.y = -FlxG.random.int(140, 175);
-		rating.velocity.x = FlxG.random.int(0, 10);
 
 		ratingGroup.add(rating);
 		FlxTween.tween(rating, {alpha: 0}, .2, {onComplete: (tween:FlxTween) -> {
