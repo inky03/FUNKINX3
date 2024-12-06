@@ -1,47 +1,76 @@
 package;
 
-import flixel.system.ui.FlxSoundTray;
-import flixel.tweens.FlxTween;
-import flixel.system.FlxAssets;
-import flixel.tweens.FlxEase;
-import openfl.display.Bitmap;
 import openfl.display.BitmapData;
-import openfl.utils.Assets;
+import openfl.display.Bitmap;
 
 // Hello funkin crew
-class FunkinSoundTray extends FlxSoundTray {
-	var graphicScale:Float = 0.30;
+class FunkinSoundTray extends flixel.system.ui.FlxSoundTray {
+	public var bg:Bitmap;
+	public var bgBar:Bitmap;
+	
+	var max:Bool;
 	var lerpYPos:Float = 0;
 	var alphaTarget:Float = 0;
-
-	var volumeMaxSound:String;
-
+	
+	public var scale(default, set):Float;
+	public var barsY(default, set):Float;
+	public var volumeMaxSound:String;
+	
 	public function new() {
 		super();
 		removeChildren();
-		_bars = [];
 		
-		var bg:Bitmap = new Bitmap(Paths.bmd('soundtray/volumebox'));
-		bg.scaleX = graphicScale;
-		bg.scaleY = graphicScale;
+		bg = new Bitmap();
+		bgBar = new Bitmap();
+		bg.smoothing = bgBar.smoothing = true;
 		addChild(bg);
+		addChild(bgBar);
 		
-		for (i in 1 ... 11) {
-			var bar:Bitmap = new Bitmap(Paths.bmd('soundtray/bars_$i'));
-			bar.scaleX = graphicScale;
-			bar.scaleY = graphicScale;
-			bar.x = 9;
-			bar.y = 5;
+		_bars.resize(0);
+		for (i in 0...10) {
+			var bar:Bitmap = new Bitmap();
+			bar.smoothing = true;
 			addChild(bar);
 			_bars.push(bar);
 		}
 		
-		screenCenter();
+		scale = .6;
+		barsY = 18;
+
+		reloadSoundtrayGraphics();
 		y = -height;
 
 		volumeUpSound = 'soundtray/volUP';
 		volumeDownSound = 'soundtray/volDOWN';
 		volumeMaxSound = 'soundtray/volMAX';
+		
+		max = (Math.round(FlxG.sound.volume * 10) == 10);
+	}
+
+	public function reloadSoundtrayGraphics() {
+		bg.bitmapData = Paths.bmd('soundtray/volumebox');
+		bgBar.bitmapData = Paths.bmd('soundtray/bars_bg');
+		_width = bg.bitmapData.width;
+		for (i => bar in _bars) {
+			var bmd:Null<BitmapData> = Paths.bmd('soundtray/bars_${i + 1}');
+			bar.x = ((bg.bitmapData?.width ?? 0) - (bmd?.width ?? 0)) * .5;
+			bar.bitmapData = bmd;
+		}
+		bgBar.x = ((bg.bitmapData?.width ?? 0) - (bgBar.bitmapData?.width ?? 0)) * .5;
+		
+		screenCenter();
+	}
+	
+	public function set_scale(newScale:Float) {
+		_defaultScale = newScale;
+		screenCenter();
+		return newScale;
+	}
+	public function set_barsY(newY:Float) {
+		for (bar in _bars)
+			bar.y = newY;
+		bgBar.y = newY;
+		return newY;
 	}
 
 	override public function update(ms:Float):Void {
@@ -74,36 +103,27 @@ class FunkinSoundTray extends FlxSoundTray {
 		}
 	}
 
-	/**
-	 * Makes the little volume tray slide out.
-	 *
-	 * @param	up Whether the volume is increasing.
-	 */
 	override public function show(up:Bool = false):Void {
 		_timer = 1;
 		lerpYPos = 10;
 		visible = true;
 		active = true;
-		var globalVolume:Int = Math.round(FlxG.sound.volume * 10);
-
-		if (FlxG.sound.muted || FlxG.sound.volume == 0) {
+		var baseVolume:Int = Math.round(FlxG.sound.volume * 10);
+		var globalVolume:Int = baseVolume;
+		
+		if (FlxG.sound.muted || FlxG.sound.volume == 0)
 			globalVolume = 0;
-		}
-
+		
 		if (!silent) {
 			var sound:String = up ? volumeUpSound : volumeDownSound;
-			if (globalVolume == 10) sound = volumeMaxSound;
+			if (max && up)
+				sound = volumeMaxSound;
 
 			if (sound != null) FlxG.sound.play(Paths.sound(sound));
 		}
-
-		for (i in 0 ... _bars.length) {
-			var showBar:Bool = (i + 1 == Std.int(globalVolume));
-			if (i == _bars.length - 1) {
-				_bars[i].alpha = showBar ? 1 : .4;
-			} else {
-				_bars[i].visible = showBar;
-			}
-		}
+		
+		for (i => bar in _bars)
+			bar.visible = (i + 1 == globalVolume);
+		max = (baseVolume == 10);
 	}
 }

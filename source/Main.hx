@@ -5,6 +5,7 @@ import openfl.display.Sprite;
 import openfl.events.UncaughtErrorEvent;
 
 class Main extends Sprite {
+	public static var soundTray(get, never):FunkinSoundTray;
 	public static var debugDisplay:DebugDisplay;
 	public static var engineVersion = '0.0.4';
 	public static var watermark:FlxText;
@@ -55,6 +56,9 @@ class Main extends Sprite {
 		DiscordRPC.presence.largeImageText = 'funkin\' mess $engineVersion';
 	}
 	
+	public static function get_soundTray() {
+		return cast(FlxG.game.soundTray, FunkinSoundTray);
+	}
 	public static function set_showWatermark(show:Bool) {
 		if (showWatermark == show) return showWatermark;
 		FlxTween.tween(watermark, {y: FlxG.height + (show ? -40 : 5)}, 1, {ease: FlxEase.quartOut});

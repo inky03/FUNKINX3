@@ -20,6 +20,7 @@ class MusicBeatState implements IMusicBeat extends FlxState {
 	public var hscripts:HScripts = new HScripts();
 	
 	override function create() {
+		Main.soundTray.reloadSoundtrayGraphics();
 		Paths.trackedAssets.resize(0);
 		super.create();
 	}
