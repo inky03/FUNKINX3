@@ -13,9 +13,11 @@ class Lane extends FlxSpriteGroup {
 	public var rgbShader:RGBSwap;
 	public var splashRGB:RGBSwap;
 
+	public var held(default, set):Bool = false;
+	public var heldNote:Note = null;
+
 	public var noteData:Int;
 	public var oneWay:Bool = true;
-	public var held(default, set):Bool = false;
 	public var scrollSpeed(default, set):Float = 1;
 	public var direction:Float = 90;
 	public var spawnRadius:Float;
@@ -23,12 +25,12 @@ class Lane extends FlxSpriteGroup {
 	public var conductorInUse:Conductor = MusicBeatState.getCurrentConductor();
 	public var inputKeys:Array<FlxKey> = [];
 	public var strumline:Strumline;
-	var extraWindow:Float = 0; // antimash mechanic
 	
 	public var cpu:Bool = false;
 	public var allowInput:Bool = true;
 	public var inputFilter:Note -> Bool;
 	public var noteEvent:FlxTypedSignal<NoteEvent -> Void> = new FlxTypedSignal();
+	var extraWindow:Float = 0; // antimash mechanic
 	
 	public var receptor:Receptor;
 	public var noteCover:NoteCover;
@@ -112,16 +114,20 @@ class Lane extends FlxSpriteGroup {
 			if (early) break;
 		}
 		
-		i = notes.length;
-		while (i > 0) {
-			i --;
-			var note:Note = notes.members[i];
-			updateNote(note);
-		}
+		updateNotes();
 
 		super.update(elapsed);
 		extraWindow = Math.max(extraWindow - elapsed * 200, 0);
 		for (member in topMembers) member.update(elapsed);
+	}
+	public function updateNotes() {
+		var i:Int = notes.length;
+		while (i > 0) {
+			i --;
+			var note:Note = notes.members[i];
+			if (note == null) continue;
+			updateNote(note);
+		}
 	}
 	public override function draw() {
 		super.draw();
@@ -153,6 +159,10 @@ class Lane extends FlxSpriteGroup {
 		} else {
 			held = false;
 			receptor.playAnimation('static', true);
+			if (heldNote != null) {
+				killSustainsOf(heldNote);
+				heldNote = null;
+			}
 		}
 		return true;
 	}
@@ -170,6 +180,14 @@ class Lane extends FlxSpriteGroup {
 				highNote = note;
 		}
 		return highNote;
+	}
+	public function resetLane() {
+		clearNotes();
+		receptor?.playAnimation('static');
+		noteCover.kill();
+		queue.resize(0);
+		heldNote = null;
+		held = false;
 	}
 	
 	public function splash():NoteSplash {
@@ -192,6 +210,11 @@ class Lane extends FlxSpriteGroup {
 		return spark;
 	}
 	
+	public function queueNote(note:Note):Note {
+		if (!queue.contains(note))
+			queue.push(note);
+		return note;
+	}
 	public function clearNotes() {
 		for (note in notes) note.kill();
 		notes.clear();
@@ -199,9 +222,15 @@ class Lane extends FlxSpriteGroup {
 	public function updateNote(note:Note) {
 		note.followLane(this, scrollSpeed);
 		if (note.ignore) return;
-		if (conductorInUse.songPosition >= note.msTime && !note.lost && note.canHit && (cpu || held)) {
-			if (!note.goodHit) hitNote(note, false);
-			if (conductorInUse.songPosition >= note.endMs) {
+		if ((cpu || (held && note.isHoldPiece)) && conductorInUse.songPosition >= note.msTime && !note.lost && note.canHit) {
+			if (!note.goodHit)
+				hitNote(note, false);
+			var canKillNote:Bool = (conductorInUse.songPosition >= note.endMs);
+			if (note.isHoldPiece) {
+				var holdEvent:NoteEvent = basicEvent(canKillNote ? RELEASED : HELD, note);
+				noteEvent.dispatch(holdEvent);
+			}
+			if (canKillNote) {
 				killNote(note);
 				return;
 			}
@@ -225,12 +254,8 @@ class Lane extends FlxSpriteGroup {
 		if (notes.members.contains(note)) return;
 		note.shader = rgbShader.shader;
 		note.hitWindow = hitWindow;
-		note.goodHit = false;
 		note.lane = this;
-		if (!note.isHoldPiece) {
-			note.canHit = true;
-			for (child in note.children) child.canHit = false;
-		}
+
 		note.scale.copyFrom(receptor.scale);
 		note.updateHitbox();
 		note.revive();
@@ -255,9 +280,21 @@ class Lane extends FlxSpriteGroup {
 		notes.remove(note, true);
 		noteEvent.dispatch(basicEvent(DESPAWNED, note));
 	}
+	public function killSustainsOf(note:Note) {
+		for (child in note.children) {
+			if (!child.alive)
+				continue;
+			child.lost = true;
+			child.canHit = false;
+			noteEvent.dispatch(basicEvent(RELEASED, child));
+			killNote(child);
+		}
+	}
 
-	public override function get_width() return receptor?.width ?? 0;
-	public override function get_height() return receptor?.height ?? 0;
+	public override function get_width()
+		return receptor?.width ?? 0;
+	public override function get_height()
+		return receptor?.height ?? 0;
 }
 
 class Receptor extends FunkinSprite {
@@ -458,6 +495,7 @@ class NoteSpark extends FunkinSprite {
 	public var scoring:Scoring.Score = null;
 	public var targetCharacter:Character = null;
 
+	public var perfect:Bool = false; // release event
 	public var doSpark:Bool = true; // many vars...
 	public var doSplash:Bool = true;
 	public var playSound:Bool = true;
@@ -477,11 +515,17 @@ class NoteSpark extends FunkinSprite {
 		}
 		switch (type) {
 			case HIT:
-				if (targetCharacter != null) targetCharacter.volume = 1;
-				if (note.isHoldPiece) {
-					if (note.isHoldTail && playSound) FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
-				} else {
-					if (playSound) game.hitsound.play(true);
+				if (targetCharacter != null)
+					targetCharacter.volume = 1;
+
+				note.hitTime = lane.conductorInUse.songPosition;
+				if (!note.isHoldPiece) {
+					// if (lane.heldNote != null)
+					// 	lane.hitSustainsOf(lane.heldNote);
+					lane.heldNote = note;
+
+					if (playSound)
+						game.hitsound.play(true);
 					
 					if (applyRating) {
 						scoring ??= game.scoring.judgeNoteHit(note, note.msTime - lane.conductorInUse.songPosition);
@@ -495,7 +539,7 @@ class NoteSpark extends FunkinSprite {
 						applyExtraWindow(6);
 
 						game.score += scoring.score;
-						game.health += note.healthGain * scoring.health;
+						game.health += note.healthGain * scoring.healthMod;
 						game.accuracyMod += scoring.accuracyMod;
 						game.accuracyDiv ++;
 						game.totalNotes ++;
@@ -506,7 +550,7 @@ class NoteSpark extends FunkinSprite {
 							game.popCombo(++ game.combo);
 						game.updateRating();
 					}
-					if (doSplash && scoring.hitWindow != null && scoring.hitWindow.splash)
+					if (doSplash && (scoring.hitWindow == null || scoring.hitWindow.splash))
 						splash = lane.splash();
 				}
 				if (playAnimation && targetCharacter != null) {
@@ -522,23 +566,81 @@ class NoteSpark extends FunkinSprite {
 				if (animateReceptor) lane.receptor.playAnimation('confirm', true);
 				if (!note.isHoldPiece) {
 					if (note.msLength > 0) {
-						for (child in note.children) child.canHit = true;
 						lane.held = true;
+						for (child in note.children) {
+							child.canHit = true;
+							lane.updateNote(child);
+						}
 					} else if (!lane.cpu && animateReceptor) {
 						lane.receptor.grayBeat = note.beatTime + 1;
 					}
 				}
-				if (note.isHoldTail) {
-					lane.held = false;
-					if (doSpark) {
-						spark = lane.spark();
-						if (!lane.cpu && animateReceptor) lane.receptor.playAnimation('press', true);
+			case HELD | RELEASED:
+				var perfectRelease:Bool = true;
+				final released:Bool = (type == RELEASED);
+				final songPos:Float = lane.conductorInUse.songPosition;
+				perfect = (released && songPos >= note.endMs - Scoring.holdLeniencyMS);
+				if (applyRating) {
+					perfectRelease = perfect;
+				}
+				/*   ... ill do this later
+				if (applyRating) {
+					if (note.isHoldPiece && note.endMs > note.msTime) {
+						var prevHitTime:Float;
+						if (!note.held && note.hitTime <= note.msTime + Scoring.holdLeniencyMS)
+							prevHitTime = note.msTime;
+						else
+							prevHitTime = Math.max(note.hitTime, note.msTime);
+
+						perfectRelease = (released && songPos >= note.endMs - Scoring.holdLeniencyMS);
+						var nextHitTime:Float;
+						if (perfectRelease)
+							nextHitTime = note.endMs;
+						else
+							nextHitTime = Math.min(songPos, note.endMs);
+						if (!note.held) trace('started hitting ${Math.round(note.msTime)} -> ${Math.round(prevHitTime)} / ${Math.round(note.endMs)}');
+						if (released) trace('released ${Math.round(nextHitTime)} / ${Math.round(note.endMs)} (last : ${Math.round(prevHitTime)})');
+
+						final secondDiff:Float = Math.max(0, (nextHitTime - prevHitTime) * .001);
+						final scoreGain:Float = game.scoring.holdScorePerSecond * secondDiff;
+						scoring ??= {score: scoreGain, healthMod: secondDiff};
+						note.hitTime = nextHitTime;
+					}
+					if (scoring != null) {
+						game.health += scoring.healthMod * note.healthGainPerSecond;
+						game.score += scoring.score;
+						game.updateRating();
+					}
+				} else {
+					note.hitTime = songPos;
+				} */
+				if (released && note.isHoldTail) {
+					if (lane.held && (lane.heldNote == null || lane.heldNote == note.parent)) {
+						lane.heldNote = null;
+						lane.held = false;
+						if (!lane.cpu && animateReceptor)
+							lane.receptor.playAnimation('press', true);
+					}
+					if (perfectRelease) {
+						if (doSpark)
+							spark = lane.spark();
+						if (playSound)
+							FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
+					} else {
+						if (playSound)
+							FlxG.sound.play(Paths.sound('hitsoundFail'), .7);
 					}
 				}
+				note.held = true;
 			case GHOST:
-				if (animateReceptor) lane.receptor.playAnimation('press', true);
-				if (playSound) FlxG.sound.play(Paths.sound('missnote${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
-				if (playAnimation && targetCharacter != null) targetCharacter.playAnimationSteps('sing${game.singAnimations[lane.noteData]}miss', true);
+				if (animateReceptor)
+					lane.receptor.playAnimation('press', true);
+				if (playSound) {
+					FlxG.sound.play(Paths.sound('missnote${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
+					FlxG.sound.play(Paths.sound('hitsoundFail'), .7);
+				}
+				if (playAnimation && targetCharacter != null)
+					targetCharacter.playAnimationSteps('sing${game.singAnimations[lane.noteData]}miss', true);
 
 				applyExtraWindow(15);
 				if (applyRating) {
@@ -547,11 +649,13 @@ class NoteSpark extends FunkinSprite {
 					game.updateRating();
 				}
 			case LOST:
-				if (playSound) FlxG.sound.play(Paths.sound('missnote${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
 				if (targetCharacter != null) {
 					targetCharacter.volume = 0;
-					if (playAnimation) targetCharacter.playAnimationSteps('sing${game.singAnimations[note.noteData]}miss', true);
+					if (playAnimation)
+						targetCharacter.playAnimationSteps('sing${game.singAnimations[note.noteData]}miss', true);
 				}
+				if (playSound)
+					FlxG.sound.play(Paths.sound('missnote${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
 
 				if (applyRating) {
 					scoring ??= game.scoring.judgeNoteMiss(note);
@@ -564,7 +668,7 @@ class NoteSpark extends FunkinSprite {
 					game.popRating('sadmiss');
 					game.score += scoring.score;
 					game.accuracyMod += scoring.accuracyMod;
-					game.health += note.healthGain * scoring.health;
+					game.health += note.healthGain * scoring.healthMod;
 				}
 			default:
 		}
@@ -585,7 +689,11 @@ class NoteSpark extends FunkinSprite {
 enum NoteEventType {
 	SPAWNED;
 	DESPAWNED;
+
 	HIT;
+	HELD;
+	RELEASED;
+
 	LOST;
 	GHOST;
 }

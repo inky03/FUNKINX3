@@ -191,11 +191,22 @@ class Strumline extends FlxSpriteGroup {
 		}
 	}
 	
+	public function queueNote(note:Note, ?laneIndex:Int) {
+		laneIndex ??= note.noteData;
+		laneIndex = FlxMath.wrap(laneIndex, 0, lanes.length - 1);
+		var lane:Lane = getLane(laneIndex);
+		if (lane != null)
+			lane.queueNote(note);
+	}
 	public function clearAllNotes() {
 		for (lane in lanes) {
 			lane.clearNotes();
 			lane.queue = [];
 		}
+	}
+	public function resetLanes() {
+		for (lane in lanes)
+			lane.resetLane();
 	}
 	
 	public function getLane(noteData:Int) return lanes.members[noteData];

@@ -4,6 +4,7 @@ using Lambda;
 
 class Scoring {
 	public static var safeFrames:Float = 10;
+	public static var holdLeniencyMS:Float = 75;
 	
 	public static function legacyDefault() {
 		var windows:Array<HitWindow> = [
@@ -25,10 +26,10 @@ class Scoring {
 		windows[0].threshold = .3;
 		windows[1].threshold = .6;
 
-		windows[1].health = .75;
-		windows[2].health = .25;
-		windows[3].health = -.5;
-		windows[4].health = -2;
+		windows[1].healthMod = .75;
+		windows[2].healthMod = .25;
+		windows[3].healthMod = -.5;
+		windows[4].healthMod = -2;
 
 		var killer:HitWindow = new HitWindow('killer', 500, .06, 1);
 		windows.unshift(killer);
@@ -64,7 +65,7 @@ class Scoring {
 			}
 		}
 
-		return {hitWindow: win, rating: win.rating, health: win.health, accuracyMod: win.accuracyMod, score: win.score};
+		return {hitWindow: win, rating: win.rating, healthMod: win.healthMod, accuracyMod: win.accuracyMod, score: win.score};
 	}
 	public static function judgePBOT1(hitWindows:Array<HitWindow>, hitWindow:Float, time:Float):Score {
 		var win:HitWindow = hitWindows[hitWindows.length - 1];
@@ -92,7 +93,7 @@ class Scoring {
 			accuracyMod = score / maxScore;
 		}
 
-		return {hitWindow: win, rating: win.rating, health: win.health, accuracyMod: accuracyMod, score: score};
+		return {hitWindow: win, rating: win.rating, healthMod: win.healthMod, accuracyMod: accuracyMod, score: score};
 	}
 }
 
@@ -101,14 +102,19 @@ class ScoreHandler {
 	public var hitWindows:Array<HitWindow> = [];
 	public var system:ScoringSystem;
 
+	public var holdScorePerSecond:Float;
+
 	public function new(system:ScoringSystem = LEGACY) {
 		this.system = system;
 		this.hitWindows = switch (system) {
 			case EMI:
+				holdScorePerSecond = 250;
 				Scoring.emiDefault();
 			case PBOT1:
+				holdScorePerSecond = 250;
 				Scoring.pbotDefault();
 			default:
+				holdScorePerSecond = 0;
 				Scoring.legacyDefault();
 		}
 	}
@@ -143,27 +149,27 @@ class ScoreHandler {
 @:structInit class Score {
 	public var hitWindow:HitWindow = null;
 	public var accuracyMod:Float = 0;
-	public var rating:String = 'shit';
-	public var health:Float = 0;
+	public var healthMod:Float = 0;
+	public var rating:String = '';
 	public var score:Float = 0;
 }
 
 class HitWindow {
 	public var count:Int;
 	public var score:Float;
-	public var health:Float;
 	public var rating:String;
 	public var threshold:Float;
+	public var healthMod:Float;
 	public var accuracyMod:Float;
 	public var splash:Bool = false;
 	public var breaksCombo:Bool = false;
 	
-	public function new(rating:String, score:Float, threshold:Float, ratingMod:Float, health:Float = 1) {
+	public function new(rating:String, score:Float, threshold:Float, ratingMod:Float, healthMod:Float = 1) {
 		this.count = 0;
 		this.score = score;
-		this.health = health;
 		this.rating = rating;
 		this.threshold = threshold;
+		this.healthMod = healthMod;
 		this.accuracyMod = ratingMod;
 	}
 }

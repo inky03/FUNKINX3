@@ -53,6 +53,7 @@ class PlayState extends MusicBeatState {
 	public var hudZoomIntensity:Float = 2;
 	
 	public static var song:Song = null;
+	public var songSpeed(default, set):Float = 1;
 	public var syncVocals:Array<FlxSound> = [];
 	public var events:Array<SongEvent> = [];
 	public var notes:Array<Note> = [];
@@ -191,10 +192,10 @@ class PlayState extends MusicBeatState {
 		
 		var noteKinds:Array<String> = [];
 		for (note in song.generateNotes()) {
-			var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
-			var lane:Lane = strumline.getLane(note.noteData);
-			if (lane != null) lane.queue.push(note);
 			if (note.noteKind.trim() != '' && !noteKinds.contains(note.noteKind)) noteKinds.push(note.noteKind);
+
+			var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
+			strumline.queueNote(note);
 			notes.push(note);
 		}
 		for (noteKind in noteKinds)
@@ -253,6 +254,8 @@ class PlayState extends MusicBeatState {
 			song.inst.onComplete = finishSong;
 		}
 		for (i in 0...4) Paths.sound('missnote$i');
+		Paths.sound('hitsoundTail');
+		Paths.sound('hitsoundFail');
 		
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
@@ -280,14 +283,12 @@ class PlayState extends MusicBeatState {
 				opponentStrumline.fadeIn();
 				playerStrumline.fadeIn();
 				
-				opponentStrumline.clearAllNotes();
-				playerStrumline.clearAllNotes();
+				opponentStrumline.resetLanes();
+				playerStrumline.resetLanes();
 				events = [];
-				for (lane in opponentStrumline.lanes) lane.held = false;
 				for (note in notes) {
 					var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
-					var lane:Lane = strumline.getLane(note.noteData);
-					lane.queue.push(note);
+					strumline.queueNote(note);
 				}
 				for (event in song.events) events.push(event);
 				song.inst.time = 0;
@@ -395,6 +396,14 @@ class PlayState extends MusicBeatState {
 	}
 	public function getSongPos() {
 		return conductorInUse.songPosition;
+	}
+	public function set_songSpeed(newRate:Float) {
+		conductorInUse.timeScale = newRate;
+		if (song != null && song.inst != null)
+			song.inst.pitch = newRate;
+		for (track in syncVocals)
+			track.pitch = newRate;
+		return newRate;
 	}
 
 	public function pushedEvent(event:SongEvent) {
@@ -590,7 +599,8 @@ class PlayState extends MusicBeatState {
 		if (justPressed) {
 			var keybind:Int = Controls.keybindFromArray(keybinds, key);
 			var oldTime:Float = conductorInUse.songPosition;
-			conductorInUse.songPosition = (conductorInUse.syncTracker?.time ?? oldTime);
+			var newTimeMaybe:Float = conductorInUse.syncTracker?.time ?? oldTime;
+			conductorInUse.songPosition = newTimeMaybe; // too rigged? (Math.abs(newTimeMaybe) < Math.abs(oldTime) ? newTimeMaybe : oldTime);
 
 			if (keybind >= 0) {
 				hscripts.run('keybindPressed', [keybind]);

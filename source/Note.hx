@@ -31,9 +31,13 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var scrollDistance:Float = 0;
 	public var preventDespawn:Bool = false;
 	public var followAngle:Bool = true;
+	public var canHit:Bool = true;
+	public var hitTime:Float = 0;
+	public var held:Bool = false;
 	
-	public var healthGain:Float = 1.5 / 100;
 	public var healthLoss:Float = 6.0 / 100;
+	public var healthGain:Float = 1.5 / 100;
+	public var healthGainPerSecond:Float = 7.5 / 100; // hold bonus
 	public var hitWindow:Float = Scoring.safeFrames * 1000 / 60;
 
 	public var scrollMultiplier:Float = 1;
@@ -43,7 +47,6 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var multAlpha:Float = 1;
 	public var player:Bool = false;
 	public var ignore:Bool = false;
-	public var canHit:Bool = true;
 	public var noteData:Int = 0;
 
 	public var endMs(get, never):Float;
@@ -62,9 +65,16 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		super.destroy();
 	}
 	public override function revive() {
+		hitTime = 0;
+		held = false;
 		lost = false;
 		goodHit = false;
 		clipDistance = 0;
+		if (!isHoldPiece) {
+			canHit = true;
+			for (child in children)
+				child.canHit = false;
+		}
 		super.revive();
 	}
 
@@ -164,7 +174,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		alpha = lane.alpha * receptor.alpha * multAlpha;
 
 		if (isHoldPiece) { //handle in DISTANCE to support scroll direction
-			if (lane.held)
+			if (canHit && lane.held)
 				clipDistance = Math.max(0, -scrollDistance);
 
 			var cropTop:Float = 0;
