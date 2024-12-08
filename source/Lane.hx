@@ -625,10 +625,10 @@ class NoteSpark extends FunkinSprite {
 						if (doSpark)
 							spark = lane.spark();
 						if (playSound)
-							FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
+							FlxG.sound.play(Paths.sound('gameplay/hitsounds/hitsoundTail'), .7);
 					} else {
 						if (playSound)
-							FlxG.sound.play(Paths.sound('hitsoundFail'), .7);
+							FlxG.sound.play(Paths.sound('gameplay/hitsounds/hitsoundFail'), .7);
 					}
 				}
 				note.held = true;
@@ -636,11 +636,13 @@ class NoteSpark extends FunkinSprite {
 				if (animateReceptor)
 					lane.receptor.playAnimation('press', true);
 				if (playSound) {
-					FlxG.sound.play(Paths.sound('missnote${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
-					FlxG.sound.play(Paths.sound('hitsoundFail'), .7);
+					FlxG.sound.play(Paths.sound('gameplay/hitsounds/miss${FlxG.random.int(1, 3)}'), FlxG.random.float(0.25, 0.3));
+					FlxG.sound.play(Paths.sound('gameplay/hitsounds/hitsoundFail'), .7);
 				}
-				if (playAnimation && targetCharacter != null)
+				if (playAnimation && targetCharacter != null) {
+					targetCharacter.specialAnim = false;
 					targetCharacter.playAnimationSteps('sing${game.singAnimations[lane.noteData]}miss', true);
+				}
 
 				applyExtraWindow(15);
 				if (applyRating) {
@@ -651,13 +653,20 @@ class NoteSpark extends FunkinSprite {
 			case LOST:
 				if (targetCharacter != null) {
 					targetCharacter.volume = 0;
-					if (playAnimation)
+					if (playAnimation) {
+						targetCharacter.specialAnim = false;
 						targetCharacter.playAnimationSteps('sing${game.singAnimations[note.noteData]}miss', true);
+					}
 				}
 				if (playSound)
-					FlxG.sound.play(Paths.sound('missnote${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
+					FlxG.sound.play(Paths.sound('gameplay/hitsounds/miss${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
 
 				if (applyRating) {
+					var rating:FunkinSprite = game.popRating('sadmiss');
+					rating.velocity.y = -FlxG.random.int(80, 95);
+					rating.velocity.x = FlxG.random.int(-6, 6);
+					rating.acceleration.y = 240;
+					
 					scoring ??= game.scoring.judgeNoteMiss(note);
 					game.health -= note.healthLoss;
 					game.accuracyDiv ++;
@@ -665,7 +674,6 @@ class NoteSpark extends FunkinSprite {
 					game.misses ++;
 					game.combo = 0;
 					game.updateRating();
-					game.popRating('sadmiss');
 					game.score += scoring.score;
 					game.accuracyMod += scoring.accuracyMod;
 					game.health += note.healthGain * scoring.healthMod;

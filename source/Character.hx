@@ -16,6 +16,7 @@ class Character extends FunkinSprite {
 	public var psychOffset(default, never):FlxPoint = FlxPoint.get();
 	public var originOffset(default, never):FlxPoint = FlxPoint.get();
 	public var cameraOffset(default, never):FlxPoint = FlxPoint.get();
+	public var deathData:Null<ModernCharacterDeathData> = null;
 
 	public var idleSuffix:String = '';
 	public var animSuffix:String = '';
@@ -35,36 +36,45 @@ class Character extends FunkinSprite {
 			this.fallback();
 		else
 			this.character = character;
-		this.animation.finishCallback = (anim:String) -> {
+		this.onAnimationComplete.add((anim:String) -> {
 			playAnimation('$anim-loop');
 			playAnimation('$anim-hold');
-		};
+		});
 	}
 
 	public function set_volume(newVolume:Float) {
 		vocals.volume = newVolume;
 		return volume = newVolume;
 	}
-	public function loadVocals(songPath:String, suffix:String = '', ?chara:String) {
+	public function findPathSuffix(basePath:String = '', baseSuffix:String = '', ?chara:String):String {
+		chara ??= character;
+		var charaSplit:Array<String> = chara.split('-');
+		while (charaSplit.length > 0) {
+			var searchSuffix:String = charaSplit.join('-');
+			var searchPath:String = Util.pathSuffix(basePath, searchSuffix);
+			if (Paths.exists('$searchPath$baseSuffix'))
+				return searchSuffix;
+			charaSplit.pop();
+		}
+		return '';
+	}
+	public function loadVocals(songPath:String, suffix:String = '', ?chara:String):Bool {
 		chara ??= character;
 		vocalsLoaded = false;
-		var paths:Array<String> = ['data/songs/$songPath/', 'songs/$songPath/'];
+		var paths:Array<String> = ['data/songs/$songPath', 'songs/$songPath'];
 		try {
 			for (path in paths) {
 				if (Paths.exists(path)) {
-					var vocalsPath:String = path + Util.pathSuffix(Util.pathSuffix('Voices', chara), suffix);
-					// Log.minor('attempting to load vocals from $vocalsPath...');
+					var grrr:String = '$path/Voices';
+					var variationSuffix:String = Util.pathSuffix('', suffix);
+					var characterSuffix:String = findPathSuffix(grrr, '$variationSuffix.ogg', chara);
+					if (chara != '' && characterSuffix == '')
+						break;
+					var vocalsPath:String = Util.pathSuffix(grrr, characterSuffix) + variationSuffix;
 					vocals.loadEmbedded(Paths.ogg(vocalsPath));
-					if (vocals.length == 0 && chara.contains('-')) {
-						var charaSplit:Array<String> = chara.split('-');
-						while (charaSplit.length > 1) {
-							charaSplit.pop();
-							vocalsPath = path + Util.pathSuffix(Util.pathSuffix('Voices', charaSplit.join('-')), suffix);
-							vocals.loadEmbedded(Paths.ogg(vocalsPath));
-						}
-					}
 					if (vocals.length > 0) {
 						vocalsLoaded = true;
+						vocals.volume = 0;
 						vocals.play();
 						vocals.stop();
 						vocals.volume = volume;
@@ -148,7 +158,7 @@ class Character extends FunkinSprite {
 		super.loadAtlas(path, library);
 		return cast this;
 	}
-	public override function addAtlas(path:String, overwrite:Bool = false, ?library:String):FunkinSprite {
+	public override function addAtlas(path:String, overwrite:Bool = true, ?library:String):FunkinSprite {
 		if (sparrowsList.contains(path)) return this;
 		sparrowsList.push(path);
 		super.addAtlas(path, overwrite);
@@ -196,7 +206,7 @@ class Character extends FunkinSprite {
 			// case 'packer': renderType = PACKER; TODO: implement...
 			case 'sparrow' | 'multisparrow':
 				this.renderType = SPARROW;
-				addAtlas(charData.assetPath, true);
+				addAtlas(charData.assetPath);
 			case 'animateatlas':
 				this.renderType = ANIMATEATLAS;
 				loadAnimate(charData.assetPath);
@@ -211,6 +221,7 @@ class Character extends FunkinSprite {
 		}
 		flipX = charData.flipX;
 		smooth = !charData.isPixel;
+		deathData = charData.death;
 		bopFrequency = charData.danceEvery ?? 1;
 		healthIcon = charData?.healthIcon?.id ?? character;
 		singForSteps = Math.max(charData.singTime ?? 8, 1);
@@ -234,7 +245,7 @@ class Character extends FunkinSprite {
 		var sparrows:Array<String> = charData.image.split(',');
 		var animations:Array<PsychCharacterAnim> = charData.animations;
 		for (sparrow in sparrows) { // no choice with psych 1 multisparrow lmao
-			addAtlas(sparrow.trim(), true);
+			addAtlas(sparrow.trim());
 		}
 		for (animation in animations) {
 			addAnimation(animation.anim, animation.name, animation.fps, animation.loop, animation.indices, animation.assetPath);
@@ -349,6 +360,12 @@ typedef ModernCharacterData = {
 	@:optional var cameraOffsets:Array<Float>;
 	@:optional var startingAnimation:String;
 	@:optional var healthIcon:ModernCharacterIcon;
+	@:optional var death:ModernCharacterDeathData;
+}
+typedef ModernCharacterDeathData = {
+	@:optional var preTransitionDelay:Float;
+	@:optional var cameraOffsets:Array<Float>;
+	@:optional var cameraZoom:Float;
 }
 typedef ModernCharacterIcon = {
 	var id:String;

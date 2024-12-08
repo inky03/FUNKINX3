@@ -128,10 +128,12 @@ class HScripts {
 			return null;
 		}
 	}
-	public function loadFromPaths(basepath:String) {
+	public function loadFromPaths(basepath:String, unique:Bool = false) {
 		var found:Bool = false;
 		for (path in Paths.getPaths(basepath)) {
-			loadFromFile(path.path);
+			var scriptFile:String = path.path;
+			if (exists(scriptFile) && !unique) continue;
+			loadFromFile(scriptFile, unique);
 			found = true;
 		}
 		return found;

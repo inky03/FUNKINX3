@@ -31,14 +31,9 @@ class FunkinSprite extends FlxSprite {
 		spriteOffset = new FlxPoint();
 		animOffset = new FlxPoint();
 		smooth = isSmooth;
-		animation.finishCallback = (anim:String) -> {
-			if (renderType != ANIMATEATLAS)
-				_onAnimationComplete();
-		};
 	}
 	public override function destroy() {
 		if (animate != null) animate.destroy();
-		offset.destroy();
 		super.destroy();
 	}
 	public override function update(elapsed:Float) {
@@ -104,6 +99,10 @@ class FunkinSprite extends FlxSprite {
 				frames = Paths.sparrowAtlas(path, library);
 				renderType = SPARROW;
 		}
+		animation.finishCallback = (anim:String) -> {
+			if (renderType != ANIMATEATLAS)
+				_onAnimationComplete();
+		};
 		return this;
 	}
 	public function loadAnimate(path:String, ?library:String) {
@@ -116,7 +115,7 @@ class FunkinSprite extends FlxSprite {
 		renderType = ANIMATEATLAS;
 		return this;
 	}
-	public function addAtlas(path:String, overwrite:Bool = false, ?library:String) {
+	public function addAtlas(path:String, overwrite:Bool = true, ?library:String) {
 		if (frames == null || isAnimate) {
 			loadAtlas(path, library);
 		} else {
@@ -260,7 +259,9 @@ class FunkinSprite extends FlxSprite {
 			addAnimation(anim, animData.prefix, animData.fps, animData.loop, animData.frameIndices);
 		}
 	}
-	public function animationExists(anim:String):Bool {
+	public function animationExists(anim:String, preload:Bool = false):Bool {
+		if (preload) // necessary for multi-atlas sprites
+			preloadAnimAsset(anim);
 		if (isAnimate) {
 			return animate.anim.exists(anim);
 		} else {

@@ -207,8 +207,17 @@ function darnellAnim(e:NoteEvent) {
 	}
 }
 
-function update(elapsed, paused) {
-	if (paused) return;
+function death() {
+	game.camFocusTarget.x += 250;
+	game.camFocusTarget.y -= 750;
+}
+function deathPost() {
+	game.camFocusTarget.y -= 450;
+	game.camGame.filters = [];
+}
+
+function update(elapsed, paused, dead) {
+	if (paused || dead) return;
 
 	rainTimeScale = Util.smoothLerp(rainTimeScale, 0.02, 3 * elapsed);
 	rainTimer += elapsed * rainTimeScale;

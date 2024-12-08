@@ -117,7 +117,10 @@ function createPost() {
 	stage.sortZIndex();
 }
 
-function update(elapsed, paused) {
+function deathPost()
+	game.camGame.filters = null;
+
+function update(elapsed, paused, dead) {
 	if (paused) return;
 
 	var time:Float = conductor.songPosition / 1000;

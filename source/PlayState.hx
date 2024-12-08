@@ -22,7 +22,7 @@ class PlayState extends MusicBeatState {
 	public var player1:Character;
 	public var player2:Character;
 	public var player3:Character;
-
+	
 	public var stage:Stage;
 	public var curStage:String;
 	
@@ -69,9 +69,11 @@ class PlayState extends MusicBeatState {
 	public var totalNotes:Int = 0;
 	public var totalHits:Int = 0;
 	public var percent:Float = 0;
+	public var dead:Bool = false;
 
 	public var hitsound:FlxSound;
-
+	
+	public var godmode:Bool;
 	public var downscroll:Bool;
 	public var middlescroll:Bool;
 	
@@ -79,6 +81,7 @@ class PlayState extends MusicBeatState {
 		if (song == null) song = new Song(''); // lol!
 		super.create();
 		Main.watermark.visible = false;
+		godmode = false; // practice mode?
 		downscroll = Options.data.downscroll;
 		middlescroll = Options.data.middlescroll;
 		
@@ -89,7 +92,7 @@ class PlayState extends MusicBeatState {
 		hscripts.loadFromFolder('scripts/global');
 		hscripts.loadFromFolder('scripts/songs/${song.path}');
 
-		hitsound = FlxG.sound.load(Paths.sound('hitsound'));
+		hitsound = FlxG.sound.load(Paths.sound('gameplay/hitsounds/hitsound'));
 		hitsound.volume = .7;
 
 		stepHit.add(stepHitEvent);
@@ -253,9 +256,9 @@ class PlayState extends MusicBeatState {
 		if (song.instLoaded) {
 			song.inst.onComplete = finishSong;
 		}
-		for (i in 0...4) Paths.sound('missnote$i');
-		Paths.sound('hitsoundTail');
-		Paths.sound('hitsoundFail');
+		for (i in 0...4) Paths.sound('gameplay/hitsounds/miss$i');
+		Paths.sound('gameplay/hitsounds/hitsoundTail');
+		Paths.sound('gameplay/hitsounds/hitsoundFail');
 		
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
@@ -271,7 +274,7 @@ class PlayState extends MusicBeatState {
 
 	override public function update(elapsed:Float) {
 		elapsed = getRealElapsed();
-		hscripts.run('updatePre', [elapsed, paused]);
+		hscripts.run('updatePre', [elapsed, paused, dead]);
 
 		if (FlxG.keys.justPressed.ESCAPE) {
 			FlxG.switchState(() -> new FreeplayState());
@@ -328,7 +331,7 @@ class PlayState extends MusicBeatState {
 			}
 		}
 		
-		if (FlxG.keys.justPressed.ENTER) {
+		if (FlxG.keys.justPressed.ENTER && !dead) {
 			paused = !paused;
 			var pauseVocals:Bool = (paused || conductorInUse.songPosition < 0);
 			if (pauseVocals) {
@@ -343,9 +346,12 @@ class PlayState extends MusicBeatState {
 			FlxTween.globalManager.forEach((tween:FlxTween) -> { if (!tween.finished) tween.active = !paused; });
 		}
 		
+		if (FlxG.keys.justPressed.R)
+			die();
+		
 		DiscordRPC.update();
 		super.update(elapsed);
-		hscripts.run('update', [elapsed, paused]);
+		hscripts.run('update', [elapsed, paused, dead]);
 
 		if (paused) {
 			hscripts.run('updatePost', [elapsed, true]);
@@ -366,7 +372,7 @@ class PlayState extends MusicBeatState {
 			limit --;
 		}
 		
-		hscripts.run('updatePost', [elapsed, false]);
+		hscripts.run('updatePost', [elapsed, false, dead]);
 		
 		if (conductorInUse.songPosition >= song.songLength && !conductorInUse.paused) {
 			finishSong();
@@ -382,8 +388,12 @@ class PlayState extends MusicBeatState {
 		FlxG.switchState(() -> new FreeplayState());
 	}
 	
+	public function stopMusic() {
+		for (track in syncVocals) track.stop();
+		song?.inst.stop();
+	}
 	public function syncMusic(forceSongpos:Bool = false, forceTrackTime:Bool = false) {
-		if (song.instLoaded && song.inst.playing) {
+		if (song.instLoaded && song.inst.playing && !conductorInUse.paused) {
 			if ((forceSongpos && conductorInUse.songPosition < song.inst.time) || Math.abs(song.inst.time - conductorInUse.songPosition) > 75)
 				conductorInUse.songPosition = song.inst.time;
 			if (forceTrackTime) {
@@ -522,10 +532,10 @@ class PlayState extends MusicBeatState {
 		}
 		hscripts.run('eventTriggered', [event]);
 	}
-	public function focusOnCharacter(chara:Character) {
+	public function focusOnCharacter(chara:Character, center:Bool = false) {
 		if (chara != null) {
-			camFocusTarget.x = chara.getMidpoint().x + chara.cameraOffset.x;
-			camFocusTarget.y = chara.getMidpoint().y + chara.cameraOffset.y;
+			camFocusTarget.x = chara.getMidpoint().x + (center ? 0 : chara.cameraOffset.x);
+			camFocusTarget.y = chara.getMidpoint().y + (center ? 0 : chara.cameraOffset.y);
 		}
 	}
 	
@@ -541,20 +551,21 @@ class PlayState extends MusicBeatState {
 		} catch (e:Dynamic) {}
 
 		if (playCountdown) {
+			var folder:String = 'funkin';
 			switch (beat) {
 				case -4:
-					FlxG.sound.play(Paths.sound('intro3'));
+					FlxG.sound.play(Paths.sound('gameplay/countdown/$folder/introTHREE'));
 					opponentStrumline.fadeIn();
 					playerStrumline.fadeIn();
 				case -3:
 					popCountdown('ready');
-					FlxG.sound.play(Paths.sound('intro2'));
+					FlxG.sound.play(Paths.sound('gameplay/countdown/$folder/introTWO'));
 				case -2:
 					popCountdown('set');
-					FlxG.sound.play(Paths.sound('intro1'));
+					FlxG.sound.play(Paths.sound('gameplay/countdown/$folder/introONE'));
 				case -1:
 					popCountdown('go');
-					FlxG.sound.play(Paths.sound('introGo'));
+					FlxG.sound.play(Paths.sound('gameplay/countdown/$folder/introGO'));
 				default:
 			}
 		}
@@ -704,7 +715,45 @@ class PlayState extends MusicBeatState {
 			if (iconP1.animation.name != 'neutral') iconP1.playAnimation('neutral');
 			if (iconP2.animation.name != 'neutral') iconP2.playAnimation('neutral');
 		}
+		if (newHealth <= 0 && !godmode && !dead)
+			die(false);
 		return health = newHealth;
+	}
+	public function die(instant:Bool = true) {
+		var result:Dynamic = hscripts.run('deathPre', [instant]);
+		if (result == HScript.STOP)
+			return;
+		
+		conductorInUse.paused = true;
+		focusOnCharacter(player1);
+		inputDisabled = true;
+		dead = true;
+		if (player1 != null) {
+			player1.bop = false;
+		}
+		
+		var gameOver:GameOverSubState = new GameOverSubState(instant);
+		if (instant) {
+			stopMusic();
+			focusOnCharacter(player1, true);
+			openSubState(gameOver);
+		} else {
+			camGame.followLerp = 10;
+			camGame.pauseZoomLerp = true;
+			
+			final deathDuration:Float = .4;
+			song?.inst.fadeOut(deathDuration);
+			for (track in syncVocals) track.fadeOut(deathDuration);
+			
+			FlxTween.tween(camGame, {zoom: camGame.zoom + .3}, deathDuration, {ease: FlxEase.elasticOut, onComplete: (_) -> {
+				stopMusic();
+				focusOnCharacter(gameOver.character, true);
+				camGame.zoomTarget = gameOver.cameraZoom * stage.zoom;
+				camGame.zoomFollowLerp = camGame.followLerp = 3;
+				camGame.pauseZoomLerp = false;
+				openSubState(gameOver);
+			}});
+		}
 	}
 	public function resetScore() {
 		score = accuracyMod = accuracyDiv = misses = totalHits = totalNotes = combo = 0;
