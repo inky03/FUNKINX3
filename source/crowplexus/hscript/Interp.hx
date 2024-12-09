@@ -160,7 +160,11 @@ class Interp {
 	}
 
 	public inline function setVar(name: String, v: Dynamic) {
-		variables.set(name, v);
+		if (variables.exists(name))
+			variables.set(name, v);
+		
+		if (HScript.intercept != null && Reflect.hasField(HScript.intercept, name))
+			Reflect.setProperty(HScript.intercept, name, v);
 	}
 
 	function assign(e1: Expr, e2: Expr): Dynamic {
@@ -393,6 +397,11 @@ class Interp {
 
 		if (imports.exists(id)) {
 			var v = imports.get(id);
+			return v;
+		}
+		
+		if (HScript.intercept != null && Reflect.hasField(HScript.intercept, id)) {
+			var v = Reflect.getProperty(HScript.intercept, id);
 			return v;
 		}
 

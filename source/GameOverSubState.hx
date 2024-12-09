@@ -89,6 +89,7 @@ class GameOverSubState extends MusicBeatSubState {
 			FlxG.sound.playMusic(music);
 	}
 	public function endGameOver() {
+		confirmed = true;
 		character?.playAnimation('deathConfirm');
 		var music = Paths.music(confirmMusicPath);
 		if (music != null)

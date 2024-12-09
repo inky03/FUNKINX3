@@ -13,6 +13,7 @@ import crowplexus.hscript.Printer;
 import crowplexus.hscript.Expr.Error as IrisError;
 
 class HScript extends Iris {
+	public static var intercept:Dynamic;
 	public static var STOP(default, never):HScriptFunctionEnum = HScriptFunctionEnum.STOP;
 	public static var STOPALL(default, never):HScriptFunctionEnum = HScriptFunctionEnum.STOPALL;
 	public static var defaultVariables:Map<String, Dynamic> = [
@@ -62,7 +63,6 @@ class HScript extends Iris {
 		'FlxColor' => HScriptFlxColor,
 		'BlendMode' => HScriptBlendMode
 	];
-
 	public var scriptString(default, set):String = '';
 	public var scriptPath:Null<String> = null;
 	public var scriptName:String = '';
@@ -79,7 +79,7 @@ class HScript extends Iris {
 	public function errorCaught(e:IrisError, ?extra:String) {
 		Log.fatal(Printer.errorToString(e));
 	}
-	public function customLog(level:ErrorSeverity, x, ?pos:haxe.PosInfos) {
+	public static function customLog(level:ErrorSeverity, x, ?pos:haxe.PosInfos) {
 		if (pos == null) pos = Iris.getDefaultPos();
 
 		var out:String = Std.string(x);
@@ -142,10 +142,13 @@ class HScript extends Iris {
 			set('conductor', state.conductorInUse);
 			set('sortZIndex', state.sortZIndex);
 			set('insertZIndex', state.insertZIndex);
-		}
-		if (Std.isOfType(FlxG.state, PlayState)) {
+			intercept = state;
+		} else if (Std.isOfType(FlxG.state, PlayState)) {
 			var playState:PlayState = cast FlxG.state;
 			set('stage', playState.stage);
+			intercept = playState;
+		} else {
+			intercept = FlxG.state;
 		}
 
 		#if hscriptPos

@@ -14,22 +14,22 @@
     {
       "name": "singLEFT",
       "prefix": "left",
-      "offsets": [12, -6]
+      "offsets": [3, -6]
     },
     {
       "name": "singDOWN",
       "prefix": "down",
-      "offsets": [-10, -50]
+      "offsets": [-20, -50]
     },
     {
       "name": "singUP",
       "prefix": "up",
-      "offsets": [-29, 27]
+      "offsets": [-45, 30]
     },
     {
       "name": "singRIGHT",
       "prefix": "right",
-      "offsets": [-38, -7]
+      "offsets": [-51, -6]
     },
     {
       "name": "singLEFTmiss",
@@ -39,17 +39,17 @@
     {
       "name": "singDOWNmiss",
       "prefix": "miss down",
-      "offsets": [-11, -19]
+      "offsets": [-20, -19]
     },
     {
       "name": "singUPmiss",
       "prefix": "miss up",
-      "offsets": [-29, 27]
+      "offsets": [-45, 27]
     },
     {
       "name": "singRIGHTmiss",
       "prefix": "miss right",
-      "offsets": [-30, 21]
+      "offsets": [-51, 21]
     },
     {
       "name": "preAttack",

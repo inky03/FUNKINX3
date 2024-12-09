@@ -329,32 +329,32 @@ class PlayState extends MusicBeatState {
 					strumline.y = strumlineY;
 				}
 			}
-		}
-		
-		if (FlxG.keys.justPressed.ENTER && !dead) {
-			paused = !paused;
-			var pauseVocals:Bool = (paused || conductorInUse.songPosition < 0);
-			if (pauseVocals) {
-				song.inst.pause();
-				for (track in syncVocals) track.pause();
-			} else {
-				if (song.instLoaded) song.inst.play(true, conductorInUse.songPosition);
-				for (track in syncVocals) track.play(true, conductorInUse.songPosition);
-				syncMusic(false, true);
+		} else if (!dead) {
+			if (FlxG.keys.justPressed.ENTER) {
+				paused = !paused;
+				var pauseVocals:Bool = (paused || conductorInUse.songPosition < 0);
+				if (pauseVocals) {
+					song.inst.pause();
+					for (track in syncVocals) track.pause();
+				} else {
+					if (song.instLoaded) song.inst.play(true, conductorInUse.songPosition);
+					for (track in syncVocals) track.play(true, conductorInUse.songPosition);
+					syncMusic(false, true);
+				}
+				FlxTimer.globalManager.forEach((timer:FlxTimer) -> { if (!timer.finished) timer.active = !paused; });
+				FlxTween.globalManager.forEach((tween:FlxTween) -> { if (!tween.finished) tween.active = !paused; });
 			}
-			FlxTimer.globalManager.forEach((timer:FlxTimer) -> { if (!timer.finished) timer.active = !paused; });
-			FlxTween.globalManager.forEach((tween:FlxTween) -> { if (!tween.finished) tween.active = !paused; });
+			
+			if (FlxG.keys.justPressed.R && !paused)
+				die();
 		}
-		
-		if (FlxG.keys.justPressed.R)
-			die();
 		
 		DiscordRPC.update();
 		super.update(elapsed);
-		hscripts.run('update', [elapsed, paused, dead]);
+		hscripts.run('update', [elapsed, paused, false]); // last argument is for Game over screen
 
 		if (paused) {
-			hscripts.run('updatePost', [elapsed, true]);
+			hscripts.run('updatePost', [elapsed, true, false]);
 			return;
 		}
 
@@ -372,7 +372,7 @@ class PlayState extends MusicBeatState {
 			limit --;
 		}
 		
-		hscripts.run('updatePost', [elapsed, false, dead]);
+		hscripts.run('updatePost', [elapsed, false, false]);
 		
 		if (conductorInUse.songPosition >= song.songLength && !conductorInUse.paused) {
 			finishSong();
