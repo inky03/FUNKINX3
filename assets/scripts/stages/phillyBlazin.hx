@@ -207,14 +207,8 @@ function darnellAnim(e:NoteEvent) {
 	}
 }
 
-function death() {
-	game.camFocusTarget.x += 250;
-	game.camFocusTarget.y -= 750;
-}
-function deathPost() {
-	game.camFocusTarget.y -= 450;
-	game.camGame.filters = [];
-}
+function deathPost()
+	game.camGame.filters = null;
 
 function update(elapsed, paused, dead) {
 	if (paused || dead) return;

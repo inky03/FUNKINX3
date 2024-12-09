@@ -7,10 +7,11 @@
   },
   "flipX": true,
   "renderType": "animateatlas",
+  "cameraOffsets": [250, -750],
   "singTime": 999.0,
   "death": {
     "preTransitionDelay": 0.125,
-    "cameraOffsets": [1700, 1550],
+    "cameraOffsets": [0, -450],
     "cameraZoom": 0.8
   },
   "animations": [

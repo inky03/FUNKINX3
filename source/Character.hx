@@ -16,6 +16,7 @@ class Character extends FunkinSprite {
 	public var psychOffset(default, never):FlxPoint = FlxPoint.get();
 	public var originOffset(default, never):FlxPoint = FlxPoint.get();
 	public var cameraOffset(default, never):FlxPoint = FlxPoint.get();
+	public var stageCameraOffset(default, never):FlxPoint = FlxPoint.get();
 	public var deathData:Null<ModernCharacterDeathData> = null;
 
 	public var idleSuffix:String = '';
@@ -300,8 +301,9 @@ class Character extends FunkinSprite {
 		setAnimationOffset('singUPmiss', -46, 27);
 		setAnimationOffset('singRIGHTmiss', -44, 19);
 		psychOffset.set(0, 350);
-		originOffset.set(0, 0);
-		cameraOffset.set(0, 0);
+		stageCameraOffset.set();
+		cameraOffset.set();
+		originOffset.set();
 		renderType = SPARROW;
 		bopFrequency = 2;
 		sway = false;

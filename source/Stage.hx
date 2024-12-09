@@ -154,7 +154,7 @@ class Stage extends FlxSpriteGroup {
 			var charaSprite:Character = new Character(0, 0, char, name);
 			add(charaSprite);
 			charaSprite.zIndex = chara.zIndex;
-			charaSprite.cameraOffset.set(chara.cameraOffsets[0], chara.cameraOffsets[1]);
+			charaSprite.stageCameraOffset.set(chara.cameraOffsets[0], chara.cameraOffsets[1]);
 			charaSprite.stagePos.set(chara.position[0] - charaSprite.width * .5, chara.position[1] - charaSprite.height);
             if (chara.scale != null) charaSprite.scale.set(chara.scale, chara.scale);
 

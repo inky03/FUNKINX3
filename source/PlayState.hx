@@ -534,8 +534,8 @@ class PlayState extends MusicBeatState {
 	}
 	public function focusOnCharacter(chara:Character, center:Bool = false) {
 		if (chara != null) {
-			camFocusTarget.x = chara.getMidpoint().x + (center ? 0 : chara.cameraOffset.x);
-			camFocusTarget.y = chara.getMidpoint().y + (center ? 0 : chara.cameraOffset.y);
+			camFocusTarget.x = chara.getMidpoint().x + chara.cameraOffset.x + (center ? 0 : chara.stageCameraOffset.x);
+			camFocusTarget.y = chara.getMidpoint().y + chara.cameraOffset.y + (center ? 0 : chara.stageCameraOffset.y);
 		}
 	}
 	
@@ -747,7 +747,6 @@ class PlayState extends MusicBeatState {
 			
 			FlxTween.tween(camGame, {zoom: camGame.zoom + .3}, deathDuration, {ease: FlxEase.elasticOut, onComplete: (_) -> {
 				stopMusic();
-				focusOnCharacter(gameOver.character, true);
 				camGame.zoomTarget = gameOver.cameraZoom * stage.zoom;
 				camGame.zoomFollowLerp = camGame.followLerp = 3;
 				camGame.pauseZoomLerp = false;

@@ -34,6 +34,7 @@ class GameOverSubState extends MusicBeatSubState {
 		FlxG.state.persistentUpdate = false;
 		if (character != null) {
 			add(character);
+			focusOnCharacter(character);
 			playState.stage.remove(character);
 			if (character.animationExists('firstDeath', true)) {
 				character.playAnimation('firstDeath');
@@ -75,6 +76,12 @@ class GameOverSubState extends MusicBeatSubState {
 		super.destroy();
 	}
 	
+	public function focusOnCharacter(chara:Character, center:Bool = false) {
+		if (chara != null) {
+			playState.camFocusTarget.x = chara.getMidpoint().x + chara.deathData?.cameraOffsets[0] ?? 0;
+			playState.camFocusTarget.y = chara.getMidpoint().y + chara.deathData?.cameraOffsets[1] ?? 0;
+		}
+	}
 	public function startGameOver() {
 		character?.playAnimation('deathLoop');
 		var music = Paths.music(musicPath);
