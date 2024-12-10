@@ -76,7 +76,9 @@ class FunkinSprite extends FlxSprite {
 			loadAnimate(path, library);
 		} else if (pngExists) {
 			if (Paths.exists('images/$path.xml', library)) {
-				loadAtlas(path, library);
+				loadAtlas(path, library, SPARROW);
+			} else if (Paths.exists('images/$path.txt', library)) {
+				loadAtlas(path, library, PACKER);
 			} else {
 				loadTexture(path, library);
 			}
@@ -91,16 +93,16 @@ class FunkinSprite extends FlxSprite {
 		renderType = SPARROW;
 		return this;
 	}
-	public function loadAtlas(path:String, ?library:String) {
+	public function loadAtlas(path:String, ?library:String, renderType:SpriteRenderType = SPARROW) {
 		resetData();
-		switch (renderType) {
-			// implement packer
-			default:
-				frames = Paths.sparrowAtlas(path, library);
-				renderType = SPARROW;
+		// trace('r-render type mmmnh~ $renderType');
+		frames = switch (renderType) {
+			case PACKER: Paths.packerAtlas(path, library);
+			default: Paths.sparrowAtlas(path, library);
 		}
+		this.renderType = renderType;
 		animation.finishCallback = (anim:String) -> {
-			if (renderType != ANIMATEATLAS)
+			if (this.renderType != ANIMATEATLAS)
 				_onAnimationComplete();
 		};
 		return this;
@@ -115,12 +117,16 @@ class FunkinSprite extends FlxSprite {
 		renderType = ANIMATEATLAS;
 		return this;
 	}
-	public function addAtlas(path:String, overwrite:Bool = true, ?library:String) {
+	public function addAtlas(path:String, overwrite:Bool = true, ?library:String, renderType:SpriteRenderType = SPARROW) {
 		if (frames == null || isAnimate) {
-			loadAtlas(path, library);
+			loadAtlas(path, library, renderType);
 		} else {
 			var aFrames:FlxAtlasFrames = cast(frames, FlxAtlasFrames);
-			aFrames.addAtlas(Paths.sparrowAtlas(path, library), overwrite);
+			var addedAtlas:FlxAtlasFrames = switch (renderType) {
+				case PACKER: Paths.packerAtlas(path, library);
+				default: Paths.sparrowAtlas(path, library);
+			}
+			aFrames.addAtlas(addedAtlas, overwrite);
 			@:bypassAccessor frames = aFrames; // kys
 		}
 		return this;
@@ -221,7 +227,10 @@ class FunkinSprite extends FlxSprite {
 				if (frameIndices == null || frameIndices.length == 0) {
 					animation.addByPrefix(name, prefix, fps, loop, flipX, flipY);
 				} else {
-					animation.addByIndices(name, prefix, frameIndices, '', fps, loop, flipX, flipY);
+					if (prefix == null)
+						animation.add(name, frameIndices, fps, loop, flipX, flipY);
+					else
+						animation.addByIndices(name, prefix, frameIndices, '', fps, loop, flipX, flipY);
 				}
 			}
 		}
@@ -255,7 +264,7 @@ class FunkinSprite extends FlxSprite {
 		if (isAnimate) return;
 		var animData:AnimationInfo = animationList[anim];
 		if (animData != null && animData.assetPath != null) {
-			addAtlas(animData.assetPath, true);
+			addAtlas(animData.assetPath, true, null, renderType);
 			addAnimation(anim, animData.prefix, animData.fps, animData.loop, animData.frameIndices);
 		}
 	}

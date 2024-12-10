@@ -153,16 +153,16 @@ class Character extends FunkinSprite {
 		return character = newChara;
 	}
 
-	public override function loadAtlas(path:String, ?library:String):FunkinSprite {
+	public override function loadAtlas(path:String, ?library:String, renderType:FunkinSprite.SpriteRenderType = SPARROW):FunkinSprite {
 		sparrowsList.resize(0);
 		sparrowsList.push(path);
-		super.loadAtlas(path, library);
+		super.loadAtlas(path, library, renderType);
 		return cast this;
 	}
-	public override function addAtlas(path:String, overwrite:Bool = true, ?library:String):FunkinSprite {
+	public override function addAtlas(path:String, overwrite:Bool = true, ?library:String, renderType:FunkinSprite.SpriteRenderType = SPARROW):FunkinSprite {
 		if (sparrowsList.contains(path)) return this;
 		sparrowsList.push(path);
-		super.addAtlas(path, overwrite);
+		super.addAtlas(path, overwrite, library, renderType);
 		return cast this; // kys
 	}
 	public function flip()
@@ -204,10 +204,12 @@ class Character extends FunkinSprite {
 		characterDataType = MODERN;
 		var renderType:String = charData.renderType ?? 'multisparrow';
 		switch (renderType) {
-			// case 'packer': renderType = PACKER; TODO: implement...
+			case 'packer':
+				this.renderType = PACKER;
+				addAtlas(charData.assetPath, PACKER);
 			case 'sparrow' | 'multisparrow':
 				this.renderType = SPARROW;
-				addAtlas(charData.assetPath);
+				addAtlas(charData.assetPath, SPARROW);
 			case 'animateatlas':
 				this.renderType = ANIMATEATLAS;
 				loadAnimate(charData.assetPath);
@@ -283,6 +285,7 @@ class Character extends FunkinSprite {
 	public function useDefault() {
 		unloadAnimate();
 		healthIcon = 'bf';
+		renderType = SPARROW;
 		characterDataType = MODERN;
 		loadAtlas('characters/bf');
 		addAnimation('idle', 'BF idle dance', 24, false);

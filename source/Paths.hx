@@ -23,7 +23,7 @@ class Paths {
 	static var excludeSprites:Array<FlxSprite> = [];
 	static var excludeKeys:Array<String> = [];
 
-	static public function clean() { // adapted from psych
+	public static function clean() { // adapted from psych
 		var exclusions:Array<String> = excludedGraphicKeys();
 		@:privateAccess
 		for (key => graphic in graphicCache) {
@@ -49,20 +49,20 @@ class Paths {
 		FlxG.bitmap.clearUnused();
 		runGC();
 	}
-	inline static public function excludedGraphicKeys():Array<String> {
+	inline public static function excludedGraphicKeys():Array<String> {
 		var exclusions:Array<String> = excludeKeys.copy();
 		while (excludeSprites.contains(null)) excludeSprites.remove(null);
 		for (spr in excludeSprites) exclusions.push(spr.graphic.key);
 		return exclusions;
 	}
-	static public function runGC() {
+	public static function runGC() {
 		openfl.system.System.gc();
 		#if hl
 		hl.Gc.major();
 		#end
 	}
 
-	static public function getPath(key:String, allowMods:Bool = true, ?library:String) {
+	public static function getPath(key:String, allowMods:Bool = true, ?library:String) {
 		if (allowMods) {
 			var currentMod:String = Mods.currentMod;
 			if (currentMod != '') {
@@ -85,7 +85,7 @@ class Paths {
 
 		return (library == null ? null : getPath(key, allowMods));
 	}
-	static public function getPaths(key:String, allowMods:Bool = true, allMods:Bool = false, ?library:String):Array<PathsFile> {
+	public static function getPaths(key:String, allowMods:Bool = true, allMods:Bool = false, ?library:String):Array<PathsFile> {
 		var files:Array<PathsFile> = [];
 
 		if (FileSystem.exists(key))
@@ -112,7 +112,7 @@ class Paths {
 
 		return files;
 	}
-	inline static public function typePath(key:String, type:PathsType, ?mod:String, ?library:String) {
+	inline public static function typePath(key:String, type:PathsType, ?mod:String, ?library:String) {
 		return switch (type) {
 			case ABSOLUTE: key;
 			case SHARED: sharedPath(key, library);
@@ -120,25 +120,25 @@ class Paths {
 			case MOD: modPath(key, mod, library);
 		}
 	}
-	inline static public function modPath(key:String, mod:String = '', library:String = '')
+	inline public static function modPath(key:String, mod:String = '', library:String = '')
 		return mod.trim() == '' ? globalModPath(key) : 'mods/$mod/${library == '' ? key : '$library/$key'}';
-	inline static public function globalModPath(key:String, library:String = '')
+	inline public static function globalModPath(key:String, library:String = '')
 		return 'mods/${library == '' ? key : '$library/$key'}';
-	inline static public function sharedPath(key:String, library:String = '')
+	inline public static function sharedPath(key:String, library:String = '')
 		return 'assets/${library == '' ? key : '$library/$key'}';
-	inline static public function exists(key:String, allowMods:Bool = true, ?library:String)
+	inline public static function exists(key:String, allowMods:Bool = true, ?library:String)
 		return (getPath(key, allowMods, library) != null);
 
-	inline static public function sound(key:String, ?library:String)
+	inline public static function sound(key:String, ?library:String)
 		return ogg('sounds/$key', false, library);
-	inline static public function music(key:String, ?library:String)
+	inline public static function music(key:String, ?library:String)
 		return ogg('music/$key', false, library);
-	inline static public function shaderFrag(key:String, ?library:String)
+	inline public static function shaderFrag(key:String, ?library:String)
 		return text('shaders/$key.frag', library);
-	inline static public function shaderVert(key:String, ?library:String)
+	inline public static function shaderVert(key:String, ?library:String)
 		return text('shaders/$key.vert', library);
 
-	static public function image(key:String, ?library:String) {
+	public static function image(key:String, ?library:String) {
 		var bmdKey:String = 'images/$key.png';
 		var assetKey:String = getPath(bmdKey, library);
 		if (graphicCache[assetKey] != null) {
@@ -157,7 +157,7 @@ class Paths {
 		return graphic;
 	}
 	
-	static public function bmd(key:String, ?library:String) {
+	public static function bmd(key:String, ?library:String) {
 		var bmdKey:String = 'images/$key.png';
 		var assetKey:String = getPath(bmdKey, library);
 
@@ -173,7 +173,7 @@ class Paths {
 		}
 	}
 
-	static public function ogg(key:String, isMusic:Bool = false, ?library:String) {
+	public static function ogg(key:String, isMusic:Bool = false, ?library:String) {
 		var sndKey:String = '$key.ogg';
 		var assetKey:String = getPath(sndKey, library);
 		if (soundCache[assetKey] != null)  {
@@ -195,7 +195,7 @@ class Paths {
 		return snd;
 	}
 
-	static public function text(key:String, ?library:String) {
+	public static function text(key:String, ?library:String) {
 		var assetKey:String = getPath(key, library);
 		#if !SOFT_ASSETS
 		if (assetKey == sharedPath(key, library) && OFLAssets.exists(assetKey, TEXT)) {
@@ -208,7 +208,7 @@ class Paths {
 		
 		return File.getContent(assetKey);
 	}
-	static public function cachedDynamic(key:String, dataFunc:Void->Dynamic) {
+	public static function cachedDynamic(key:String, dataFunc:Void->Dynamic) {
 		if (dynamicCache[key] != null) {
 			return dynamicCache[key];
 		}
@@ -216,17 +216,29 @@ class Paths {
 		return dynamicCache[key] = dataFunc();
 	}
 
-	inline static public function font(key:String, ?library:String)
+	inline public static function font(key:String, ?library:String)
 		return (getPath('fonts/$key', library) ?? 'Nokia Cellphone FC');
-	inline static public function ttf(key:String, ?library:String)
+	inline public static function ttf(key:String, ?library:String)
 		return font('$key.ttf', library);
-	inline static public function otf(key:String, ?library:String)
+	inline public static function otf(key:String, ?library:String)
 		return font('$key.otf', library);
-
-	static public function sparrowAtlas(key:String, ?library:String) {
+	
+	public static function sparrowAtlas(key:String, ?library:String) {
 		var xmlContent:String = text('images/$key.xml', library);
 		if (xmlContent == null) return null;
 		return FlxAtlasFrames.fromSparrow(image(key, library), xmlContent);
+	}
+	public static function packerAtlas(key:String, ?library:String) {
+		var sheetContent:String = text('images/$key.txt', library);
+		trace('looking for $library:images/$key.txt ...');
+		if (sheetContent == null) return null;
+		trace(FlxAtlasFrames.fromSpriteSheetPacker(image(key, library), sheetContent));
+		return FlxAtlasFrames.fromSpriteSheetPacker(image(key, library), sheetContent);
+	}
+	public static function packerJSONAtlas(key:String, ?library:String) {
+		var sheetContent:String = text('images/$key.json', library);
+		if (sheetContent == null) return null;
+		return FlxAtlasFrames.fromTexturePackerJson(image(key, library), sheetContent);
 	}
 }
 

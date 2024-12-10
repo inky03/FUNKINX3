@@ -99,7 +99,7 @@ class Lane extends FlxSpriteGroup {
 		while (i < queue.length) {
 			var note:Note = queue[i];
 			if (note == null) {
-				trace('WARNING: Note was null!! (lane ${noteData})');
+				Log.warning('note was null in lane $noteData!!');
 				queue.remove(note);
 				continue;
 			}

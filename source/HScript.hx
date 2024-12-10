@@ -141,18 +141,12 @@ class HScript extends Iris {
 		set('add', FlxG.state.add);
 		set('remove', FlxG.state.remove);
 		set('insert', FlxG.state.insert);
+		ModInterp.intercept = FlxG.state;
 		if (Std.isOfType(FlxG.state, IMusicBeat)) {
 			var state:MusicBeatState = cast FlxG.state;
 			set('conductor', state.conductorInUse);
 			set('sortZIndex', state.sortZIndex);
 			set('insertZIndex', state.insertZIndex);
-			ModInterp.intercept = state;
-		} else if (Std.isOfType(FlxG.state, PlayState)) {
-			var playState:PlayState = cast FlxG.state;
-			set('stage', playState.stage);
-			ModInterp.intercept = playState;
-		} else {
-			ModInterp.intercept = FlxG.state;
 		}
 
 		#if hscriptPos

@@ -57,8 +57,10 @@ class Stage extends FlxSpriteGroup {
             hasContent = true;
         }
 
-        if (state != null)
+        if (state != null) {
+        	state.hscripts.set('stage', this);
         	state.hscripts.run('setupStage', [stageId, this]);
+        }
 
         if (!hasContent) {
 			Log.warning('no stage content (json or script): loading fallback stage');
@@ -121,24 +123,30 @@ class Stage extends FlxSpriteGroup {
 			propSprite.bopFrequency = prop.danceEvery ?? 0;
 			if (propSprite.animated) { // this is stupid
 				switch (prop.animType) {
-					default: propSprite.loadAtlas(prop.assetPath, library);
+					case 'packer':
+						propSprite.loadAtlas(prop.assetPath, library, PACKER);
+					default:
+						propSprite.loadAtlas(prop.assetPath, library, SPARROW);
 				}
 				for (animation in prop.animations) {
 					propSprite.addAnimation(animation.name, animation.prefix, animation.frameRate ?? 24, animation.looped ?? false, animation.frameIndices, animation.flipX, animation.flipY);
 					if (animation.offsets != null) propSprite.setAnimationOffset(animation.name, animation.offsets[0], animation.offsets[1]);
 				}
-				if (prop.startingAnimation != null) propSprite.playAnimation(prop.startingAnimation);
+				if (prop.startingAnimation != null)
+					propSprite.playAnimation(prop.startingAnimation);
 			} else {
 				if (prop.assetPath.startsWith('#'))
 					propSprite.makeGraphic(1, 1, FlxColor.fromString(prop.assetPath));
 				else
 					propSprite.loadTexture(prop.assetPath, library);
 			}
+			propSprite.sway = (propSprite.animationExists('danceLeft') && propSprite.animationExists('danceRight'));
 			if (prop.scroll != null) propSprite.scrollFactor.set(prop.scroll[0], prop.scroll[1]);
 			if (prop.scale != null) propSprite.scale.set(prop.scale[0], prop.scale[1]);
+			var assetName:String = prop.name ?? prop.assetPath;
 			propSprite.updateHitbox();
-
-			this.props[prop.name] = propSprite;
+			
+			this.props[assetName] = propSprite;
 		}
 		for (name in Reflect.fields(charas)) {
 			var chara:ModernStageChar = Reflect.field(charas, name);
@@ -199,8 +207,10 @@ class Stage extends FlxSpriteGroup {
 
 class StageProp extends FunkinSprite { // maybe unify character with props?
 	public var bop:Bool = true;
+	public var sway:Bool = false;
 	public var bopFrequency:Int = 0;
 	public var animated:Bool = false;
+	public var idleSuffix:String = '';
 	public var startingAnimation:Null<String> = null;
 
 	public function new(x:Float = 0, y:Float = 0) {
@@ -208,8 +218,12 @@ class StageProp extends FunkinSprite { // maybe unify character with props?
 	}
 	public function dance(beat:Int = 0) {
 		if (bopFrequency <= 0 || !animated || !bop) return false;
-		if (beat % bopFrequency == 0)
-			playAnimation(startingAnimation ?? 'idle');
+		if (sway) {
+			playAnimation(beat % 2 == 0 ? 'danceLeft$idleSuffix' : 'danceRight$idleSuffix');
+		} else {
+			if (beat % bopFrequency == 0)
+				playAnimation(startingAnimation ?? 'idle$idleSuffix');
+		}
 		return true;
 	}
 }
