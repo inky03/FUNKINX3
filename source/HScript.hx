@@ -13,7 +13,6 @@ import crowplexus.hscript.Printer;
 import crowplexus.hscript.Expr.Error as IrisError;
 
 class HScript extends Iris {
-	public static var intercept:Dynamic;
 	public static var STOP(default, never):HScriptFunctionEnum = HScriptFunctionEnum.STOP;
 	public static var STOPALL(default, never):HScriptFunctionEnum = HScriptFunctionEnum.STOPALL;
 	public static var defaultVariables:Map<String, Dynamic> = [
@@ -63,17 +62,22 @@ class HScript extends Iris {
 		'FlxColor' => HScriptFlxColor,
 		'BlendMode' => HScriptBlendMode
 	];
+	
 	public var scriptString(default, set):String = '';
 	public var scriptPath:Null<String> = null;
 	public var scriptName:String = '';
 	public var compiled:Bool = false;
 	public var active:Bool = true;
+	var modInterp:ModInterp;
 	
 	public function new(name:String, code:String) {
-		super('', new IrisConfig(name, false, true, []));
+		super('', new IrisConfig(name, false, false, []));
 		Iris.logLevel = customLog;
 		scriptString = code;
 		scriptName = name;
+		
+		interp = modInterp = new ModInterp();
+		preset();
 	}
 	
 	public function errorCaught(e:IrisError, ?extra:String) {
@@ -142,13 +146,13 @@ class HScript extends Iris {
 			set('conductor', state.conductorInUse);
 			set('sortZIndex', state.sortZIndex);
 			set('insertZIndex', state.insertZIndex);
-			intercept = state;
+			ModInterp.intercept = state;
 		} else if (Std.isOfType(FlxG.state, PlayState)) {
 			var playState:PlayState = cast FlxG.state;
 			set('stage', playState.stage);
-			intercept = playState;
+			ModInterp.intercept = playState;
 		} else {
-			intercept = FlxG.state;
+			ModInterp.intercept = FlxG.state;
 		}
 
 		#if hscriptPos
@@ -177,6 +181,45 @@ class HScript extends Iris {
 enum HScriptFunctionEnum {
 	STOP;
 	STOPALL;
+}
+
+class ModInterp extends crowplexus.hscript.Interp {
+	public static var intercept:Dynamic;
+	
+	public override function setVar(name: String, v: Dynamic) {
+		variables.set(name, v);
+		if (variables.exists(name))
+			variables.set(name, v);
+		
+		if (intercept != null && Reflect.hasField(intercept, name))
+			Reflect.setProperty(intercept, name, v);
+	}
+	
+	override function resolve(id: String): Dynamic {
+		if (locals.exists(id)) {
+			var l = locals.get(id);
+			return l.r;
+		}
+
+		if (variables.exists(id)) {
+			var v = variables.get(id);
+			return v;
+		}
+
+		if (imports.exists(id)) {
+			var v = imports.get(id);
+			return v;
+		}
+		
+		if (intercept != null && Reflect.hasField(intercept, id)) {
+			var v = Reflect.getProperty(intercept, id);
+			return v;
+		}
+
+		error(EUnknownVariable(id));
+
+		return null;
+	}
 }
 
 class QuickRuntimeShader extends FlxRuntimeShader {

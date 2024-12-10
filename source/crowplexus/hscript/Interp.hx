@@ -159,12 +159,8 @@ class Interp {
 		assignOp("??" + "=", function(v1, v2) return v1 == null ? v2 : v1);
 	}
 
-	public inline function setVar(name: String, v: Dynamic) {
-		if (variables.exists(name))
-			variables.set(name, v);
-		
-		if (HScript.intercept != null && Reflect.hasField(HScript.intercept, name))
-			Reflect.setProperty(HScript.intercept, name, v);
+	public function setVar(name: String, v: Dynamic) {
+		variables.set(name, v);
 	}
 
 	function assign(e1: Expr, e2: Expr): Dynamic {
@@ -397,11 +393,6 @@ class Interp {
 
 		if (imports.exists(id)) {
 			var v = imports.get(id);
-			return v;
-		}
-		
-		if (HScript.intercept != null && Reflect.hasField(HScript.intercept, id)) {
-			var v = Reflect.getProperty(HScript.intercept, id);
 			return v;
 		}
 
