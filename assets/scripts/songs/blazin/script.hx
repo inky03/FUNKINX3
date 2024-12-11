@@ -1,4 +1,4 @@
-game.middlescroll = true;
+middlescroll = true;
 
 function createPost()
-	game.opponentStrumline.x = 1500; // lol
+	opponentStrumline.x = 1500; // lol

@@ -52,7 +52,7 @@ class HScripts {
 			switch (result) {
 				case null:
 				case HScript.STOPALL: return result;
-				case HScript.STOP: returnLocked = true;
+				case HScript.STOP: returnLocked = true; returnValue = result;
 				default: if (!returnLocked) returnValue = result;
 			}
 		}

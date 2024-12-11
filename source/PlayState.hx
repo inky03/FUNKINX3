@@ -119,13 +119,12 @@ class PlayState extends MusicBeatState {
 		add(camFocusTarget);
 
 		camGame.zoomFollowLerp = camHUD.zoomFollowLerp = 3;
-
-		curStage = song.stage;
-		stage = new Stage(curStage, song);
+		
+		stage = new Stage(song);
+		stage.setup(song.stage);
 		camGame.zoomTarget = stage.zoom;
 		camHUD.zoomTarget = 1;
 		add(stage);
-		hscripts.set('stage', stage);
 
 		player1 = stage.getCharacter('bf');
 		player2 = stage.getCharacter('dad');
@@ -221,13 +220,11 @@ class PlayState extends MusicBeatState {
 		healthBar.screenCenter(X);
 		healthBar.zIndex = 10;
 		uiGroup.add(healthBar);
-		iconP1 = new HealthIcon(0, 0, player1?.healthIcon ?? 'face');
-		iconP1.origin.x = 0;
+		iconP1 = new HealthIcon(0, 0, player1?.healthIcon, player1?.healthIconData?.isPixel);
 		iconP1.flipX = true; // fuck you
 		iconP1.zIndex = 15;
 		uiGroup.add(iconP1);
-		iconP2 = new HealthIcon(0, 0, player2?.healthIcon ?? 'face');
-		iconP2.origin.x = iconP2.width;
+		iconP2 = new HealthIcon(0, 0, player2?.healthIcon, player2?.healthIconData?.isPixel);
 		iconP2.zIndex = 15;
 		uiGroup.add(iconP2);
 		
@@ -357,11 +354,12 @@ class PlayState extends MusicBeatState {
 			hscripts.run('updatePost', [elapsed, true, false]);
 			return;
 		}
-
+		
 		iconP1.updateBop(elapsed);
 		iconP2.updateBop(elapsed);
-		iconP1.setPosition(healthBar.barCenter.x + 60 - iconP1.width * .5, healthBar.barCenter.y - iconP1.height * .5);
-		iconP2.setPosition(healthBar.barCenter.x - 60 - iconP2.width * .5, healthBar.barCenter.y - iconP2.height * .5);
+		iconP1.y = iconP2.y = healthBar.barCenter.y - iconP1.frameHeight * .5;
+		iconP1.x = healthBar.barCenter.x + 60 + (iconP1.frameWidth * iconP1.scale.x - iconP1.defaultSize - iconP1.frameWidth) * .5;
+		iconP2.x = healthBar.barCenter.x - 60 - (iconP2.frameWidth * iconP2.scale.x - iconP2.defaultSize + iconP2.frameWidth) * .5;
 		
 		syncMusic();
 		
@@ -595,8 +593,10 @@ class PlayState extends MusicBeatState {
 		hscripts.run('barHit', [bar]);
 	}
 	public function bopCamera() {
-		camHUD.zoom += .015 * hudZoomIntensity;
-		camGame.zoom += .015 * camZoomIntensity;
+		if (!camHUD.pauseZoomLerp)
+			camHUD.zoom += .015 * hudZoomIntensity;
+		if (!camGame.pauseZoomLerp)
+			camGame.zoom += .015 * camZoomIntensity;
 	}
 	
 	public function keyPressEvent(event:KeyboardEvent) {
@@ -731,8 +731,12 @@ class PlayState extends MusicBeatState {
 		if (player1 != null) {
 			player1.bop = false;
 		}
+		FlxTween.cancelTweensOf(camGame.scroll);
+		FlxTween.cancelTweensOf(camGame);
+		camGame.pauseFollowLerp = false;
 		
 		var gameOver:GameOverSubState = new GameOverSubState(instant);
+		
 		if (instant) {
 			stopMusic();
 			focusOnCharacter(player1, true);

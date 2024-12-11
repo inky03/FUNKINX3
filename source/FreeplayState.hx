@@ -123,14 +123,14 @@ class FreeplayState extends MusicBeatState {
 		if (selectedItem == null) return;
 		selectedItem.highlight();
 		
-		target.setPosition(selectedItem.x + 400, selectedItem.y + selectedItem.height * .5);
+		target.setPosition(selectedItem.x + FlxG.width * .5 - 80, selectedItem.getMidpoint().y);
 	}
 	public function displayVariation(variation:Variation) {
 		displayItems.clear();
 		var i = 0;
 		for (item in items) {
 			if (item.variations.contains(variation)) {
-				item.setPosition(i * 25, i * 100);
+				item.setPosition(i * 20, i * 120);
 				displayItems.add(item);
 				item.highlight(false);
 				i ++;

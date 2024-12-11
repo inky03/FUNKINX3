@@ -1,22 +1,27 @@
 using StringTools;
 
 class Character extends FunkinSprite {
-	public var bop:Bool = true;
-	public var sway:Bool = false;
 	public var animReset:Float = 0;
 	public var bopFrequency:Int = 2;
 	public var singForSteps:Float = 4;
+	
+	public var bop:Bool = true;
+	public var sway:Bool = false;
 	public var specialAnim:Bool = false;
-	public var healthIcon:String = 'bf';
-	public var sparrowsList:Array<String>;
+	
+	var sparrowsList:Array<String>;
+	var characterDataType:CharacterDataType;
 	public var fallbackCharacter:Null<String>;
-	public var characterDataType:CharacterDataType;
 	public var character(default, set):Null<String>;
 	public var stagePos(default, never):FlxPoint = FlxPoint.get();
 	public var psychOffset(default, never):FlxPoint = FlxPoint.get();
 	public var originOffset(default, never):FlxPoint = FlxPoint.get();
 	public var cameraOffset(default, never):FlxPoint = FlxPoint.get();
 	public var stageCameraOffset(default, never):FlxPoint = FlxPoint.get();
+	
+	public var healthIcon:String = 'bf';
+	public var healthIconData:Null<ModernCharacterHealthIconData> = null;
+	
 	public var deathData:Null<ModernCharacterDeathData> = null;
 
 	public var idleSuffix:String = '';
@@ -226,7 +231,8 @@ class Character extends FunkinSprite {
 		smooth = !charData.isPixel;
 		deathData = charData.death;
 		bopFrequency = charData.danceEvery ?? 1;
-		healthIcon = charData?.healthIcon?.id ?? character;
+		healthIconData = charData.healthIcon;
+		healthIcon = healthIconData?.id ?? character;
 		singForSteps = Math.max(charData.singTime ?? 8, 1);
 		var scale:Float = charData.scale ?? 1;
 		this.scale.set(scale, scale);
@@ -364,15 +370,15 @@ typedef ModernCharacterData = {
 	@:optional var offsets:Array<Float>;
 	@:optional var cameraOffsets:Array<Float>;
 	@:optional var startingAnimation:String;
-	@:optional var healthIcon:ModernCharacterIcon;
 	@:optional var death:ModernCharacterDeathData;
+	@:optional var healthIcon:ModernCharacterHealthIconData;
 }
 typedef ModernCharacterDeathData = {
 	@:optional var preTransitionDelay:Float;
 	@:optional var cameraOffsets:Array<Float>;
 	@:optional var cameraZoom:Float;
 }
-typedef ModernCharacterIcon = {
+typedef ModernCharacterHealthIconData = {
 	var id:String;
 	var flipX:Bool;
 	@:optional var scale:Float;

@@ -16,12 +16,15 @@ class Stage extends FlxSpriteGroup {
 	public var zoom:Float = 1;
 
 	var state = FlxG.state;
-
-	public function new(?stageId:String, ?songData:Song) {
-		// right now only works with vslice stage jsons
+	
+	public function new(?song:Song) {
 		super();
-
-		song = songData;
+		this.song = song;
+	}
+	
+	public function setup(?stageId:String, ?songData:Song) {
+		// right now only works with vslice stage jsons
+		songData ??= song;
         if (stageId != null) {
     		Log.minor('loading stage "$stageId"');
 

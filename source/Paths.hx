@@ -230,9 +230,7 @@ class Paths {
 	}
 	public static function packerAtlas(key:String, ?library:String) {
 		var sheetContent:String = text('images/$key.txt', library);
-		trace('looking for $library:images/$key.txt ...');
 		if (sheetContent == null) return null;
-		trace(FlxAtlasFrames.fromSpriteSheetPacker(image(key, library), sheetContent));
 		return FlxAtlasFrames.fromSpriteSheetPacker(image(key, library), sheetContent);
 	}
 	public static function packerJSONAtlas(key:String, ?library:String) {
