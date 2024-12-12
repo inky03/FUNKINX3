@@ -12,13 +12,14 @@ import openfl.text.TextFormat;
 import openfl.text.TextField;
 
 class CharterState extends MusicBeatState {
+	public static var inEditor:Bool = false;
 	public static var song:Song;
 	
 	public var quant:Int = 4;
 	public var quantText:FlxText;
 	public var quantGraphic:FunkinSprite;
 	public var measureLines:FlxTypedSpriteGroup<MeasureLine>;
-	public var strumlines:FlxTypedSpriteGroup<Strumline>;
+	public var strumlines:FlxTypedSpriteGroup<CharterStrumline>;
 	public var strumlineHighlight:FunkinSprite;
 	public var charterDisplay:CharterDisplay;
 	
@@ -42,7 +43,7 @@ class CharterState extends MusicBeatState {
 		Main.instance.addChild(charterDisplay = new CharterDisplay(conductorInUse = new Conductor())); // wow!
 		
 		song ??= Song.loadSong('test');
-		songPaused = true;
+		inEditor = true;
 		
 		FlxG.camera.zoom = .5;
 		
@@ -60,7 +61,7 @@ class CharterState extends MusicBeatState {
 		add(underlay);
 		
 		measureLines = new FlxTypedSpriteGroup<MeasureLine>();
-		strumlines = new FlxTypedSpriteGroup<Strumline>();
+		strumlines = new FlxTypedSpriteGroup<CharterStrumline>();
 		add(measureLines);
 		add(strumlines);
 		
@@ -74,15 +75,17 @@ class CharterState extends MusicBeatState {
 		var xx:Float = 0;
 		var h:Float = 0;
 		for (i in 0...2) {
-			var strumline = new Strumline(4);
+			var strumline = new CharterStrumline(4);
 			strumline.x = xx;
 			strumline.cpu = false;
 			strumline.oneWay = false;
 			strumlines.add(strumline);
 			xx += strumline.strumlineWidth + strumlineSpacing;
 			h = Math.max(h, strumline.strumlineHeight);
-			for (lane in strumline.lanes)
+			for (lane in strumline.lanes) {
+				lane.receptor.autoReset = true;
 				lane.oneWay = false;
+			}
 		}
 		strumlines.y = FlxG.height * .5 - h * .5;
 		strumlines.x = (FlxG.width - (xx - strumlineSpacing)) * .5;
@@ -112,6 +115,7 @@ class CharterState extends MusicBeatState {
 				strumline?.queueNote(note);
 			}
 		}
+		songPaused = true;
 		charterDisplay.songLength = findSongLength();
 		
 		var bgPadding:Float = 50;
@@ -200,6 +204,24 @@ class CharterState extends MusicBeatState {
 		
 		if (FlxG.keys.justPressed.SPACE) songPaused = !songPaused;
 		super.update(elapsed);
+		for (strumline in strumlines) {
+			for (lane in strumline.lanes) {
+				for (note in lane.notes) {
+					if (!conductorInUse.paused) {
+						if (conductorInUse.songPosition >= note.msTime) {
+							if (conductorInUse.songPosition <= note.endMs || !note.goodHit) {
+								lane.receptor?.playAnimation('confirm', true);
+								if (!note.goodHit && !note.isHoldPiece)
+									hitsound.play(true);
+								note.goodHit = true;
+							}
+						}
+					} else {
+						note.goodHit = (conductorInUse.songPosition > note.msTime + 1);
+					}
+				}
+			}
+		}
 		
 		if (songPaused) {
 			FlxG.camera.zoom = Util.smoothLerp(FlxG.camera.zoom, .5, elapsed * 9);
@@ -259,6 +281,14 @@ class CharterState extends MusicBeatState {
 				if (conductorInUse.songPosition >= song.inst.length)
 					return songPaused = true;
 				song.inst.play(true, conductorInUse.songPosition);
+			}
+		}
+		for (strumline in strumlines) {
+			FlxTween.cancelTweensOf(strumline, ['receptorAlpha']);
+			FlxTween.tween(strumline, {receptorAlpha: (isPaused ? .75 : 1)}, .25, {ease: FlxEase.circOut});
+			for (lane in strumline.lanes) {
+				if (isPaused)
+					lane.receptor?.playAnimation('static');
 			}
 		}
 		conductorInUse.paused = isPaused;
@@ -363,7 +393,7 @@ class CharterState extends MusicBeatState {
 		var matchingNote:Null<Note> = null;
 		for (note in lane.notes) {
 			if (note.isHoldPiece) continue;
-			if (Math.abs(note.beatTime - conductorInUse.metronome.beat) < 1 / quantMultiplier) {
+			if (Math.abs(note.beatTime - conductorInUse.metronome.beat) < 1 / quantMultiplier - .0012) {
 				matchingNote = note;
 				break;
 			}
@@ -454,6 +484,7 @@ class CharterState extends MusicBeatState {
 	}
 	
 	override public function destroy() {
+		inEditor = false;
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
 		Main.instance.removeChild(charterDisplay);
@@ -584,5 +615,39 @@ class CharterDisplay extends Sprite {
 		background.scaleX = Math.max(Math.max(songPosText.textWidth, metronomeText.textWidth) + 24, 120);
 		background.scaleY = bgHeight;
 		background.y = -bgHeight;
+	}
+}
+
+class CharterStrumline extends Strumline {
+	public var receptorAlpha:Float = 1;
+	
+	public function new(laneCount:Int = 4, direction:Float = 90, scrollSpeed:Float = 1) {
+		super(laneCount, direction, scrollSpeed);
+	}
+	
+	public override function draw() {
+		for (lane in lanes) { // draw hit notes on bottom
+			if (!lane.selfDraw) {
+				if (lane.receptor != null)
+					lane.receptor.alpha = receptorAlpha;
+				lane.topMembers.remove(lane.notes);
+				for (note in lane.notes) {
+					if (note.goodHit || (note.parent != null && note.parent.goodHit))
+						note.draw();
+				}
+			}
+		}
+		super.draw();
+		for (lane in lanes) { // draw on top
+			if (!lane.selfDraw) {
+				if (lane.receptor != null)
+					lane.receptor.alpha = 1;
+				for (note in lane.notes) {
+					if (!note.goodHit && !(note.parent != null && note.parent.goodHit))
+						note.draw();
+				}
+				lane.drawTop();
+			}
+		}
 	}
 }

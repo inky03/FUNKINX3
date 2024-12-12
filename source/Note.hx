@@ -9,6 +9,7 @@ import flixel.addons.display.FlxTiledSprite;
 import flixel.graphics.frames.FlxFramesCollection;
 
 class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affect society
+	public static var genericRGB:RGBSwap;
 	public static var directionNames:Array<String> = ['left', 'down', 'up', 'right'];
 	public static var directionColors:Array<Array<FlxColor>> = [
 		[FlxColor.fromRGB(194, 75, 153), FlxColor.fromRGB(60, 31, 86)],
@@ -39,11 +40,11 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var healthGain:Float = 1.5 / 100;
 	public var healthGainPerSecond:Float = 7.5 / 100; // hold bonus
 	public var hitWindow:Float = Scoring.safeFrames * 1000 / 60;
-
+	
+	public var noteKind(default, set):String = '';
 	public var scrollMultiplier:Float = 1;
 	public var directionOffset:Float = 0;
 	public var hitPriority:Float = 1;
-	public var noteKind:String = '';
 	public var multAlpha:Float = 1;
 	public var player:Bool = false;
 	public var ignore:Bool = false;
@@ -58,6 +59,9 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	
 	public var isHoldPiece:Bool = false;
 	public var isHoldTail:Bool = false;
+	
+	// chart editor stuffs
+	var noteKindDecal:FunkinSprite = null;
 	
 	public override function destroy() {
 		for (child in children)
@@ -77,7 +81,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		}
 		super.revive();
 	}
-
+	
 	public function new(player:Bool, msTime:Float, noteData:Int, msLength:Float = 0, type:String = '', isHoldPiece:Bool = false, ?conductor:Conductor) {
 		super();
 		
@@ -114,7 +118,24 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public function toSongNote():Song.SongNote {
 		return {laneIndex: noteData, msTime: msTime, kind: noteKind, msLength: msLength, player: player};
 	}
-
+	
+	public function set_noteKind(newKind:String) {
+		if (noteKind == newKind) return newKind;
+		if (CharterState.inEditor) {
+			if (newKind == '') {
+				if (lane != null) shader = lane.rgbShader.shader;
+				noteKindDecal.destroy();
+				noteKindDecal = null;
+			} else {
+				genericRGB ??= new RGBSwap(0xb3a9b8, FlxColor.WHITE, 0x333333);
+				shader = genericRGB.shader;
+				noteKindDecal ??= new FunkinSprite();
+				noteKindDecal.loadTexture('charter/noteKinds/$newKind');
+				if (noteKindDecal.graphic == null) noteKindDecal.loadTexture('charter/noteKinds/generic');
+			}
+		}
+		return noteKind = newKind;
+	}
 	public function set_msTime(newTime:Float) {
 		if (msTime == newTime) return newTime;
 		@:bypassAccessor beatTime = conductorInUse.metronome.convertMeasure(newTime, MS, BEAT);
@@ -198,6 +219,15 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 			clipto(Math.max(cropTop, cropY), Math.min(cropHeight, cropBottom));
 
 			clipRect = clipRect; //refresh clip rect
+		}
+	}
+	public override function draw() {
+		super.draw();
+		if (noteKindDecal != null) {
+			noteKindDecal.scale.set(scale.x, scale.y);
+			noteKindDecal.updateHitbox();
+			noteKindDecal.setPosition(x + (width - noteKindDecal.width) * .5, y + (height - noteKindDecal.height) * .5);
+			noteKindDecal.draw();
 		}
 	}
 	inline function clipto(ya:Float = 0, yb:Float = 0)

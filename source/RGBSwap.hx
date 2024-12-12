@@ -18,10 +18,10 @@ class RGBSwap { // im coming
 		shader.blue.value = [newC.redFloat, newC.greenFloat, newC.blueFloat];
 		return blue = newC;
 	}
-	public function new() {
-		red = 0xff0000;
-		blue = 0x0000ff;
-		green = 0x00ff00;
+	public function new(red:FlxColor = FlxColor.RED, green:FlxColor = FlxColor.LIME, blue:FlxColor = FlxColor.BLUE) {
+		this.red = red;
+		this.blue = blue;
+		this.green = green;
 	}
 }
 

@@ -26,7 +26,7 @@ class Lane extends FlxSpriteGroup {
 	public var inputKeys:Array<FlxKey> = [];
 	public var strumline:Strumline;
 	
-	public var cpu:Bool = false;
+	public var cpu(default, set):Bool = false;
 	public var allowInput:Bool = true;
 	public var inputFilter:Note -> Bool;
 	public var noteEvent:FlxTypedSignal<NoteEvent -> Void> = new FlxTypedSignal();
@@ -53,6 +53,12 @@ class Lane extends FlxSpriteGroup {
 		else noteCover.kill();
 		return held = newHeld;
 	}
+	public function set_cpu(isCpu:Bool) {
+		if (cpu == isCpu) return isCpu;
+		if (receptor != null)
+			receptor.autoReset = isCpu;
+		return cpu = isCpu;
+	}
 	public function new(x:Float, y:Float, data:Int) {
 		super(x, y);
 
@@ -60,17 +66,10 @@ class Lane extends FlxSpriteGroup {
 			var time:Float = note.msTime - conductorInUse.songPosition;
 			return (time <= note.hitWindow + extraWindow) && (time >= -note.hitWindow);
 		};
-
-		rgbShader = new RGBSwap();
-		rgbShader.green = 0xffffff;
-		rgbShader.red = Note.directionColors[data][0];
-		rgbShader.blue = Note.directionColors[data][1];
-
-		var splashCol:Array<FlxColor> = NoteSplash.makeSplashColors(rgbShader.red);
-		splashRGB = new RGBSwap();
-		splashRGB.green = 0xffffff;
-		splashRGB.red = splashCol[0];
-		splashRGB.blue = splashCol[1];
+		
+		var splashColors:Array<FlxColor> = NoteSplash.makeSplashColors(Note.directionColors[data][0]);
+		rgbShader = new RGBSwap(Note.directionColors[data][0], FlxColor.WHITE, Note.directionColors[data][1]);
+		splashRGB = new RGBSwap(splashColors[0], FlxColor.WHITE, splashColors[1]);
 
 		noteCover = new NoteCover(data);
 		receptor = new Receptor(0, 0, data);
@@ -268,7 +267,7 @@ class Lane extends FlxSpriteGroup {
 	}
 	public function insertNote(note:Note, pos:Int = -1) {
 		if (notes.members.contains(note)) return;
-		note.shader = rgbShader.shader;
+		note.shader ??= rgbShader.shader;
 		note.hitWindow = hitWindow;
 		note.lane = this;
 
@@ -306,7 +305,7 @@ class Lane extends FlxSpriteGroup {
 			killNote(child);
 		}
 	}
-
+	
 	public override function get_width()
 		return receptor?.width ?? 0;
 	public override function get_height()
@@ -320,6 +319,7 @@ class Receptor extends FunkinSprite {
 	public var missColor:Array<FlxColor>;
 	public var glowColor:Array<FlxColor>;
 	public var rgbEnabled(default, set):Bool;
+	public var autoReset:Bool = false;
 	public var grayBeat:Null<Float>;
 	
 	public function new(x:Float, y:Float, data:Int) {
@@ -340,7 +340,7 @@ class Receptor extends FunkinSprite {
 
 		onAnimationComplete.add((anim:String) -> {
 			if (anim != 'confirm') return;
-			if (lane == null || (lane.cpu && !lane.held)) {
+			if (lane == null || (autoReset && !lane.held)) {
 				playAnimation('static', true);
 			}
 		});
