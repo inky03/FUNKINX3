@@ -35,7 +35,7 @@ class Main extends Sprite {
 		
 		Mods.refresh();
 		DiscordRPC.prepare();
-		var game:FlxGame = new FlxGame(0, 0, CharterState);
+		var game:FlxGame = new FlxGame(0, 0, MainMenuState);
 		@:privateAccess game._customSoundTray = FunkinSoundTray;
 		addChild(game);
 		addChild(debugDisplay = new DebugDisplay(10, 3));
