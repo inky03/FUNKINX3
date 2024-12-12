@@ -98,8 +98,8 @@ class Metronome {
 		
 		var crochet:Float = getCrochet(bpm, timeSignature.denominator);
 		var relBeat = (newBar - lastBeat) * timeSignature.numerator;
-		step = bar * 4;
 		beat = relBeat + lastBeat;
+		step = beat * 4;
 		ms = relBeat * crochet + lastMS;
 		
 		return bar = newBar;
@@ -131,7 +131,7 @@ class Metronome {
 		
 		var crochet:Float = getCrochet(bpm, timeSignature.denominator);
 		var relBeat = newBeat - lastBeat;
-		step = beat * 4;
+		step = newBeat * 4;
 		ms = relBeat * crochet + lastMS;
 		bar = relBeat / timeSignature.numerator + lastBar;
 		

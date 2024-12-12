@@ -192,10 +192,17 @@ class Song {
 				for (eventBlob in eventBlobs) songEventBlobs.push(eventBlob);
 			}
 			
+			var songSpeed:Float;
+			var speed:Dynamic = song.json.speed;
+			if (Reflect.hasField(speed, difficulty)) { // fuck ass modern/legacy hybrid format...
+				songSpeed = Util.parseFloat(Reflect.field(speed, difficulty), 1);
+			} else {
+				songSpeed = Util.parseFloat(speed, 1);
+			}
 			song.name = song.json.song;
 			song.initialBpm = song.json.bpm;
 			song.tempoChanges = [new TempoChange(-4, song.initialBpm, new TimeSignature())];
-			song.scrollSpeed = song.json.speed;
+			song.scrollSpeed = songSpeed;
 			
 			var ms:Float = 0;
 			var beat:Float = 0;
@@ -207,7 +214,13 @@ class Song {
 			var stepCrochet:Float = crochet * .25;
 			var focus:Int = -1;
 			
-			var sections:Array<LegacySongSection> = song.json.notes;
+			var sections:Array<LegacySongSection>;
+			var jsonNotes:Dynamic = song.json.notes;
+			if (Reflect.hasField(jsonNotes, difficulty)) {
+				sections = Reflect.field(jsonNotes, difficulty);
+			} else {
+				sections = song.json.notes;
+			}
 			if (song.json.events != null) { // todo: implement events.json
 				var eventBlobs:Array<Array<Dynamic>> = song.json.events;
 				for (eventBlob in eventBlobs) {
@@ -229,9 +242,9 @@ class Song {
 				}
 				
 				var sectionDenominator:Int = 4;
-				var sectionNumerator:Float = section.sectionBeats;
-				if (sectionNumerator == 0) sectionNumerator = section.lengthInSteps * .25;
-				if (sectionNumerator == 0) sectionNumerator = 4;
+				var sectionNumerator:Null<Float> = section.sectionBeats;
+				if (sectionNumerator == null) sectionNumerator = section.lengthInSteps * .25;
+				if (sectionNumerator == null) sectionNumerator = 4;
 				while (sectionNumerator % 1 > 0 && sectionDenominator < 32) {
 					sectionNumerator *= 2;
 					sectionDenominator *= 2;
@@ -437,7 +450,7 @@ class Song {
 			return UNKNOWN;
 	}
 	static function loadAutoDetect(path:String, ?difficulty:String, ?suffix:String) {
-		difficulty = difficulty.toLowerCase();
+		if (difficulty != null) difficulty = difficulty.toLowerCase();
 		Log.minor('detecting format from song "$path"');
 		
 		return switch (findSongFormat(path, difficulty, suffix)) {
@@ -479,7 +492,7 @@ class Song {
 		var diffSuffix:String = '-$difficulty';
 		
 		var jsonPath:String = '$jsonPathD$diffSuffix.json';
-		if (!Paths.exists(jsonPath)) jsonPath = jsonPathD;
+		if (!Paths.exists(jsonPath)) jsonPath = '$jsonPathD.json';
 		if (Paths.exists(jsonPath)) {
 			var content:String = Paths.text(jsonPath);
 			var jsonData:Dynamic = TJSON.parse(content);
@@ -583,8 +596,8 @@ enum SongFormat {
 
 typedef LegacySongSection = {
 	var sectionNotes:Array<Array<Any>>;
-	var sectionBeats:Float;
-	var lengthInSteps:Float;
+	var ?sectionBeats:Float;
+	var ?lengthInSteps:Float;
 	var mustHitSection:Bool;
 	var gfSection:Bool;
 	var changeBPM:Bool;

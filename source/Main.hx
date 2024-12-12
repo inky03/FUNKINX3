@@ -5,6 +5,8 @@ import openfl.display.Sprite;
 import openfl.events.UncaughtErrorEvent;
 
 class Main extends Sprite {
+	public static var instance:Main;
+	
 	public static var soundTray(get, never):FunkinSoundTray;
 	public static var debugDisplay:DebugDisplay;
 	public static var engineVersion = '0.0.4';
@@ -13,6 +15,7 @@ class Main extends Sprite {
 	
 	public function new() {
 		super();
+		instance = this;
 		
 		final timeText:String = 'GAME STARTED ON ${Date.now().toString()}';
 		Sys.println('');

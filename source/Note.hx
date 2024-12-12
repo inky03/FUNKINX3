@@ -16,7 +16,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		[FlxColor.fromRGB(18, 250, 5), FlxColor.fromRGB(10, 68, 71)],
 		[FlxColor.fromRGB(249, 57, 63), FlxColor.fromRGB(101, 16, 56)],
 	];
-	public var conductorInUse:Conductor = Conductor.global; // mostly charting stuff
+	public var conductorInUse:Conductor; // mostly charting stuff
 
 	public var children:Array<Note> = [];
 	public var parent:Note;
@@ -110,6 +110,9 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 			playAnimation(this.isHoldTail ? 'tail' : 'hold', true);
 		}
 		updateHitbox();
+	}
+	public function toSongNote():Song.SongNote {
+		return {laneIndex: noteData, msTime: msTime, kind: noteKind, msLength: msLength, player: player};
 	}
 
 	public function set_msTime(newTime:Float) {
