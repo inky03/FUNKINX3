@@ -274,10 +274,15 @@ class PlayState extends MusicBeatState {
 		hscripts.run('updatePre', [elapsed, paused, dead]);
 
 		if (FlxG.keys.justPressed.ESCAPE) {
-			FlxG.switchState(() -> new FreeplayState());
+			FlxG.switchState(new FreeplayState());
 			return;
 		}
 		
+		if (FlxG.keys.justPressed.SEVEN) {
+			CharterState.song = song;
+			FlxG.switchState(new CharterState());
+			return;
+		}
 		if (FlxG.keys.pressed.SHIFT) {
 			if (FlxG.keys.justPressed.R) {
 				opponentStrumline.fadeIn();
@@ -357,7 +362,8 @@ class PlayState extends MusicBeatState {
 		
 		iconP1.updateBop(elapsed);
 		iconP2.updateBop(elapsed);
-		iconP1.y = iconP2.y = healthBar.barCenter.y - iconP1.frameHeight * .5;
+		iconP1.y = healthBar.barCenter.y - iconP1.frameHeight * .5;
+		iconP2.y = healthBar.barCenter.y - iconP2.frameHeight * .5;
 		iconP1.x = healthBar.barCenter.x + 60 + (iconP1.frameWidth * iconP1.scale.x - iconP1.defaultSize - iconP1.frameWidth) * .5;
 		iconP2.x = healthBar.barCenter.x - 60 - (iconP2.frameWidth * iconP2.scale.x - iconP2.defaultSize + iconP2.frameWidth) * .5;
 		
@@ -611,7 +617,8 @@ class PlayState extends MusicBeatState {
 			var keybind:Int = Controls.keybindFromArray(keybinds, key);
 			var oldTime:Float = conductorInUse.songPosition;
 			var newTimeMaybe:Float = conductorInUse.syncTracker?.time ?? oldTime;
-			conductorInUse.songPosition = newTimeMaybe; // too rigged? (Math.abs(newTimeMaybe) < Math.abs(oldTime) ? newTimeMaybe : oldTime);
+			if (conductorInUse.syncTracker?.playing ?? false)
+				conductorInUse.songPosition = newTimeMaybe; // too rigged? (Math.abs(newTimeMaybe) < Math.abs(oldTime) ? newTimeMaybe : oldTime);
 
 			if (keybind >= 0) {
 				hscripts.run('keybindPressed', [keybind]);

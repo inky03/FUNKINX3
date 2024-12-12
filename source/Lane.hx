@@ -43,7 +43,8 @@ class Lane extends FlxSpriteGroup {
 	public var topMembers:Array<FlxSprite> = [];
 	
 	public function set_scrollSpeed(newSpeed:Float) {
-		spawnRadius = Note.distanceToMS(FlxG.height, newSpeed);
+		var cam = camera ?? FlxG.camera;
+		spawnRadius = Note.distanceToMS(camera.height / camera.zoom, newSpeed);
 		return scrollSpeed = newSpeed;
 	}
 	public function set_held(newHeld:Bool) {
@@ -111,7 +112,7 @@ class Lane extends FlxSpriteGroup {
 				if (limit < 0) break;
 			} else
 				i ++;
-			if (early) break;
+			if (early && oneWay) break;
 		}
 		
 		updateNotes();
@@ -181,6 +182,12 @@ class Lane extends FlxSpriteGroup {
 		}
 		return highNote;
 	}
+	public function getAllNotes() {
+		var notes:Array<Note> = [];
+		for (note in this.notes) notes.push(note);
+		for (note in this.queue) notes.push(note);
+		return notes;
+	}
 	public function resetLane() {
 		clearNotes();
 		receptor?.playAnimation('static');
@@ -210,9 +217,18 @@ class Lane extends FlxSpriteGroup {
 		return spark;
 	}
 	
-	public function queueNote(note:Note):Note {
-		if (!queue.contains(note))
+	public function queueNote(note:Note, sorted:Bool = false):Note {
+		if (!queue.contains(note)) {
+			if (sorted) {
+				for (i => otherNote in queue) {
+					if (otherNote.msTime >= note.msTime) {
+						queue.insert(i, note);
+						return note;
+					}
+				}
+			}
 			queue.push(note);
+		}
 		return note;
 	}
 	public function clearNotes() {

@@ -839,7 +839,7 @@
     "needsVoices": true,
     "song": "Test",
     "bpm": 150,
-    "stageDefault": "stage",
+    "stage": "mainStage",
     "speed": { "normal": 1.6 }
   },
   "version": "FNF SongConverter 0.1.0",

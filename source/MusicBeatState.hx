@@ -72,7 +72,7 @@ class MusicBeatState implements IMusicBeat extends FlxState {
 		if (FlxG.keys.justPressed.F5) resetState();
 		
 		if (paused) return;
-
+		
 		updateConductor(elapsed);
 		super.update(elapsed);
 	}
