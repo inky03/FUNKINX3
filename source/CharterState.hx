@@ -19,6 +19,7 @@ class CharterState extends MusicBeatState {
 	public var quantGraphic:FunkinSprite;
 	public var measureLines:FlxTypedSpriteGroup<MeasureLine>;
 	public var strumlines:FlxTypedSpriteGroup<Strumline>;
+	public var strumlineHighlight:FunkinSprite;
 	public var charterDisplay:CharterDisplay;
 	
 	public var keybinds:Array<Array<FlxKey>> = [];
@@ -28,6 +29,8 @@ class CharterState extends MusicBeatState {
 	public var scrollSpeed(default, set):Float = 1;
 	public var songPaused(default, set):Bool;
 	
+	var scrolling:Bool = false;
+	var strumGrabY:Null<Float> = null;
 	var heldNotes:Array<Note> = [];
 	var heldKeys:Array<FlxKey> = [];
 	var heldKeybinds:Array<Bool> = [];
@@ -84,6 +87,12 @@ class CharterState extends MusicBeatState {
 		strumlines.y = FlxG.height * .5 - h * .5;
 		strumlines.x = (FlxG.width - (xx - strumlineSpacing)) * .5;
 		
+		strumlineHighlight = new FunkinSprite().makeGraphic(1, 1, FlxColor.WHITE);
+		strumlineHighlight.setGraphicSize(strumlines.width, strumlines.height);
+		strumlineHighlight.updateHitbox();
+		strumlineHighlight.blend = ADD;
+		strumlineHighlight.alpha = .25;
+		
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
 		
@@ -126,16 +135,21 @@ class CharterState extends MusicBeatState {
 		add(quantText);
 		changeQuant(0);
 		
+		add(strumlineHighlight);
+		
 		for (i in 0...Math.ceil(findSongLength() / conductorInUse.crochet / 4)) { // todo: actually make this fucking good :sob:
 			var test:MeasureLine = new MeasureLine(strumlines.x - bgPadding, strumlines.y, i, i * 4, 4, strumlines.width + bgPadding * 2, Note.msToDistance(conductorInUse.crochet, scrollSpeed));
 			measureLines.add(test);
 		}
 		
-		tickSound = FlxG.sound.load(Paths.sound('beatTick'));
-		hitsound = FlxG.sound.load(Paths.sound('hitsound'), .7);
+		tickSound = new FlxSound().loadEmbedded(Paths.sound('beatTick'));
+		hitsound = new FlxSound().loadEmbedded(Paths.sound('hitsound'));
+		hitsound.volume = .7;
 	}
 	
 	override public function update(elapsed:Float) {
+		elapsed = getRealElapsed();
+		
 		if (FlxG.keys.justPressed.ENTER) {
 			song ??= new Song('unnamed');
 			song.tempoChanges = conductorInUse.metronome.tempoChanges;
@@ -143,6 +157,45 @@ class CharterState extends MusicBeatState {
 			PlayState.song = song;
 			FlxG.switchState(new PlayState());
 			return;
+		}
+		
+		var strumlinesHighlighted:Bool = FlxG.mouse.overlaps(strumlineHighlight);
+		strumlineHighlight.setPosition(strumlines.x, strumlines.y);
+		if (FlxG.mouse.justPressed && strumlinesHighlighted)
+			strumGrabY = (FlxG.mouse.y - strumlines.y);
+		if (FlxG.mouse.justReleased)
+			strumGrabY = null;
+		strumlineHighlight.visible = (strumlinesHighlighted || strumGrabY != null);
+		if (FlxG.mouse.pressed && strumGrabY != null) {
+			var h:Float = strumlines.height;
+			var middle:Float = (FlxG.height - h) * .5;
+			var maxDist:Float = (FlxG.height - h - 25) * .5 / FlxG.camera.zoom;
+			strumlines.y = Util.clamp(FlxG.mouse.y - strumGrabY, -maxDist + middle, maxDist + middle);
+			strumlineHighlight.setPosition(strumlines.x, strumlines.y);
+			
+			quantGraphic.y = strumlines.y + (h - quantGraphic.height) * .5;
+			quantText.y = strumlines.y + (h - quantText.height) * .5;
+		}
+		
+		if (FlxG.keys.pressed.W || FlxG.keys.pressed.S) {
+			var up:Bool = FlxG.keys.pressed.W;
+			var msPerSec:Float = (FlxG.keys.pressed.SHIFT ? 2000 : 1000);
+			var scrollMod:Int = 1;
+			if (up) scrollMod *= -1;
+			
+			if (songPaused)
+				songPaused = false;
+			conductorInUse.paused = true;
+			conductorInUse.songPosition += scrollMod * elapsed * msPerSec;
+			restrictConductor();
+			
+			if ((msPerSec != 1000 || up || !scrolling) && song != null && song.instLoaded)
+				song.inst.time = conductorInUse.songPosition;
+			
+			scrolling = true;
+		} else if (scrolling) {
+			songPaused = true;
+			scrolling = false;
 		}
 		
 		if (FlxG.keys.justPressed.SPACE) songPaused = !songPaused;
@@ -154,11 +207,11 @@ class CharterState extends MusicBeatState {
 			var metronome:Conductor.Metronome = conductorInUse.metronome;
 			var beatZoom:Float = 1 - FlxEase.quintOut(metronome.beat % 1);
 			var barZoom:Float = 1 - FlxEase.quintOut(Math.min((metronome.bar % 1) * metronome.timeSignature.numerator, 1));
-			FlxG.camera.zoom = .5 + beatZoom * .002 + barZoom * .005;
+			FlxG.camera.zoom = .5 + beatZoom * .003 + barZoom * .005;
 		}
 		
 		for (line in measureLines) {
-			line.y = FlxG.height * .5 + Note.msToDistance(conductorInUse.metronome.convertMeasure(line.startTime, BEAT, MS) - conductorInUse.songPosition, scrollSpeed);
+			line.y = strumlines.y + strumlines.height * .5 + Note.msToDistance(conductorInUse.metronome.convertMeasure(line.startTime, BEAT, MS) - conductorInUse.songPosition, scrollSpeed);
 		}
 		
 		if (!paused)
@@ -256,12 +309,14 @@ class CharterState extends MusicBeatState {
 		if (pauseSong && !songPaused)
 			songPaused = true;
 		
+		restrictConductor();
+		updateHolds();
+	}
+	public function restrictConductor() {
 		var limitTime:Float = Math.max(conductorInUse.metronome.ms, 0);
 		if (song != null && song.instLoaded)
 			limitTime = Math.min(limitTime, song.inst.length);
 		conductorInUse.songPosition = limitTime;
-		
-		updateHolds();
 	}
 	public function placeNotes() {
 		for (key => held in heldKeybinds) {
