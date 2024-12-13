@@ -5,6 +5,7 @@ import openfl.events.KeyboardEvent;
 import flixel.util.FlxStringUtil;
 import flixel.input.keyboard.FlxKey;
 import flixel.addons.display.FlxBackdrop;
+import FreeplaySubState.FreeplaySongText;
 
 import openfl.display.Sprite;
 import openfl.display.Bitmap;
@@ -15,6 +16,7 @@ import openfl.events.MouseEvent;
 class CharterState extends MusicBeatState {
 	public static var genericRGB:RGBSwap;
 	
+	public static var instance:CharterState;
 	public static var inEditor:Bool = false;
 	public static var song:Song;
 	
@@ -25,7 +27,12 @@ class CharterState extends MusicBeatState {
 	public var strumlines:FlxTypedSpriteGroup<CharterStrumline>;
 	public var strumlineHighlight:FunkinSprite;
 	public var charterDisplay:CharterDisplay;
+	public var camHUD:FunkinCamera;
 	public var camScroll:FunkinCamera;
+	
+	public var noteKindBubble:FunkinSprite;
+	public var noteKindBubbleText:FreeplaySongText;
+	public var noteKindBubbleFocusGraphic:FlxGraphic;
 	
 	public var selectionBox:FlxSprite;
 	public var selectionLeniency:Float = 55;
@@ -57,16 +64,32 @@ class CharterState extends MusicBeatState {
 		barHit.add(barHitEvent);
 		
 		genericRGB ??= new RGBSwap(0xb3a9b8, FlxColor.WHITE, 0x333333);
-		song ??= Song.loadSong('test');
+		song ??= Song.loadSong('blazin', 'hard');
 		inEditor = true;
+		instance = this;
 		
 		FlxG.camera.zoom = .5;
 		
+		camHUD = new FunkinCamera();
 		camScroll = new FunkinCamera();
 		camScroll.bgColor.alpha = 0;
+		camHUD.bgColor.alpha = 0;
 		FlxG.cameras.add(camScroll, false);
+		FlxG.cameras.add(camHUD, false);
 		
-		selectionBox = new FlxSprite().makeGraphic(1, 1, FlxColor.WHITE);
+		noteKindBubble = new FunkinSprite().loadTexture('charter/bubble');
+		noteKindBubble.scale.set(.75, .75);
+		noteKindBubble.updateHitbox();
+		noteKindBubble.camera = camHUD;
+		noteKindBubble.color = 0xff323034;
+		noteKindBubble.alpha = .6;
+		noteKindBubbleText = new FreeplaySongText(0, 0, '', 0x808080, .2); //ffe0b0d0;
+		noteKindBubbleText.size = 16;
+		noteKindBubbleText.angle = -3;
+		noteKindBubbleText.origin.set(0, 6);
+		noteKindBubbleText.camera = camHUD;
+		
+		selectionBox = new FlxSprite().makeGraphic(1, 1, FlxColor.LIME);
 		selectionBox.camera = camScroll;
 		selectionBox.visible = false;
 		selectionBox.blend = ADD;
@@ -112,7 +135,7 @@ class CharterState extends MusicBeatState {
 		strumlines.y = FlxG.height * .5 - h * .5 - 320;
 		strumlines.x = (FlxG.width - (xx - strumlineSpacing)) * .5;
 		
-		strumlineHighlight = new FunkinSprite().makeGraphic(1, 1, FlxColor.WHITE);
+		strumlineHighlight = new FunkinSprite().makeGraphic(1, 1, 0xffb094b0);
 		strumlineHighlight.setGraphicSize(strumlines.width, strumlines.height);
 		strumlineHighlight.updateHitbox();
 		strumlineHighlight.blend = ADD;
@@ -185,6 +208,7 @@ class CharterState extends MusicBeatState {
 		}
 		
 		var highlightedNote:CharterNote = null;
+		var highlightedSelNote:CharterNote = null;
 		var anyNoteHovered:Bool = (pickedNote != null);
 		forEachNote((note:Note) -> {
 			if (!Std.isOfType(note, CharterNote)) return;
@@ -192,15 +216,15 @@ class CharterState extends MusicBeatState {
 			if (!note.isHoldPiece && FlxG.mouse.overlaps(note)) {
 				anyNoteHovered = true;
 				if (charterNote.selected) {
-					if (FlxG.mouse.justPressed) {
-						if (pickedNote == null) {
-							pickedNote = charterNote;
-						} else {
-							var mousePoint:FlxPoint = FlxG.mouse.getWorldPosition();
-							if (mousePoint.distanceTo(note.getMidpoint()) < mousePoint.distanceTo(pickedNote.getMidpoint()))
-								pickedNote = charterNote;
-						}
+					if (highlightedSelNote == null) {
+						highlightedSelNote = charterNote;
+					} else {
+						var mousePoint:FlxPoint = FlxG.mouse.getWorldPosition();
+						if (mousePoint.distanceTo(note.getMidpoint()) < mousePoint.distanceTo(highlightedSelNote.getMidpoint()))
+							highlightedSelNote = charterNote;
 					}
+					if (FlxG.mouse.justPressed)
+						pickedNote = highlightedSelNote;
 				} else {
 					if (highlightedNote == null) {
 						highlightedNote = charterNote;
@@ -258,6 +282,7 @@ class CharterState extends MusicBeatState {
 			
 			if (isSelecting) {
 				forEachNote((note:Note) -> {
+					if (note.isHoldPiece) return;
 					if (!Std.isOfType(note, CharterNote)) return;
 					var charterNote:CharterNote = cast(note, CharterNote);
 					
@@ -278,7 +303,7 @@ class CharterState extends MusicBeatState {
 			selectionBox.visible = false;
 		}
 		if (highlightedNote == null)
-			highlightedNote = pickedNote;
+			highlightedNote = highlightedSelNote;
 		forEachNote((note:Note) -> {
 			if (!Std.isOfType(note, CharterNote)) return;
 			var charterNote:CharterNote = cast(note, CharterNote);
@@ -411,11 +436,11 @@ class CharterState extends MusicBeatState {
 			restrictConductor();
 			
 			if (event.stageY <= 5) {
-				lastMouseY = FlxG.stage.window.height + event.stageY - 10;
+				lastMouseY = (FlxG.stage.window.height - 5) + event.stageY - 10;
 				FlxG.stage.window.warpMouse(Std.int(event.stageX), Std.int(lastMouseY));
 				return;
 			} else if (event.stageY >= FlxG.stage.window.height - 5) {
-				lastMouseY = 10 + event.stageY - FlxG.stage.window.height;
+				lastMouseY = 10 + event.stageY - (FlxG.stage.window.height - 5);
 				FlxG.stage.window.warpMouse(Std.int(event.stageX), Std.int(lastMouseY));
 				return;
 			}
@@ -424,6 +449,7 @@ class CharterState extends MusicBeatState {
 	}
 	public function finishSong() {
 		songPaused = true;
+		conductorInUse.songPosition = song.inst.length;
 	}
 	public function forEachNote(func:Note -> Void, includeQueued:Bool = false) {
 		for (strumline in strumlines)
@@ -498,8 +524,11 @@ class CharterState extends MusicBeatState {
 		}
 		var diff:Float = beatTime - note.beatTime;
 		note.beatTime = beatTime;
-		for (child in note.children)
+		note.goodHit = (conductorInUse.songPosition > note.msTime + 1);
+		for (child in note.children) {
 			child.beatTime += diff;
+			child.goodHit = (conductorInUse.songPosition > child.msTime + 1);
+		}
 	}
 	public function twistNote(note:Note, lane:Lane) {
 		if (note == null || lane == null) {
@@ -672,7 +701,8 @@ class CharterState extends MusicBeatState {
 						charterNote.selected = true;
 					}
 				}
-				var beatDiff:Float = (conductorInUse.metronome.beat - generatedNotes[0].beatTime);
+				var quantMult:Float = quant / 4;
+				var beatDiff:Float = (Math.round(conductorInUse.metronome.beat * quantMult) / quantMult - generatedNotes[0].beatTime);
 				for (note in generatedNotes)
 					note.beatTime += beatDiff;
 			case FlxKey.A: // SELECT ALL
@@ -838,6 +868,7 @@ class CharterState extends MusicBeatState {
 	}
 	
 	override public function destroy() {
+		instance = null;
 		inEditor = false;
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
@@ -956,8 +987,12 @@ class CharterDisplay extends Sprite {
 	}
 	public function updateMetronomeInfo() {
 		var metronome:Conductor.Metronome = conductor.metronome;
-		metronomeText.text = 'Measure: ${Math.floor(metronome.bar)}\nBeat: ${Math.floor(metronome.beat)}\nStep: ${Math.floor(metronome.step)}';
-		songPosText.text = FlxStringUtil.formatTime(metronome.ms * .001, true) + ' / ' + FlxStringUtil.formatTime(songLength * .001, true);
+		var metronomeTextT:String = 'Measure: ${Math.floor(metronome.bar)}\nBeat: ${Math.floor(metronome.beat)}\nStep: ${Math.floor(metronome.step)}';
+		var songPosTextT:String = FlxStringUtil.formatTime(metronome.ms * .001, true) + ' / ' + FlxStringUtil.formatTime(songLength * .001, true);
+		if (metronomeText.text != metronomeTextT)
+			metronomeText.text = metronomeTextT;
+		if (songPosText.text != songPosTextT)
+			songPosText.text = songPosTextT;
 	}
 	
 	override function __enterFrame(deltaTime:Float) {
@@ -975,9 +1010,12 @@ class CharterDisplay extends Sprite {
 
 class CharterStrumline extends Strumline {
 	public var receptorAlpha:Float = 1;
+	public var noteHighlight:FlxSprite;
 	
 	public function new(laneCount:Int = 4, direction:Float = 90, scrollSpeed:Float = 1) {
 		super(laneCount, direction, scrollSpeed);
+		noteHighlight = new FlxSprite().makeGraphic(1, 1, FlxColor.WHITE);
+		noteHighlight.blend = ADD;
 	}
 	
 	public override function draw() {
@@ -989,6 +1027,8 @@ class CharterStrumline extends Strumline {
 					if (!Std.isOfType(note, CharterNote)) continue;
 					var charterNote:CharterNote = cast(note, CharterNote);
 					charterNote.drawCustom(true);
+					if (charterNote.wasGoodHit())
+						drawHighlight(charterNote);
 				}
 			}
 		}
@@ -1004,9 +1044,21 @@ class CharterStrumline extends Strumline {
 					}
 					var charterNote:CharterNote = cast(note, CharterNote);
 					charterNote.drawCustom(false);
+					if (!charterNote.wasGoodHit())
+						drawHighlight(charterNote);
 				}
 				lane.drawTop();
 			}
+		}
+	}
+	public function drawHighlight(note:CharterNote) {
+		if (note.selected && !note.isHoldPiece) {
+			Util.copyColorTransform(noteHighlight.colorTransform, note.colorTransform);
+			noteHighlight.setGraphicSize(note.width, note.height);
+			noteHighlight.colorTransform.alphaMultiplier = .25;
+			noteHighlight.setPosition(note.x, note.y);
+			noteHighlight.updateHitbox();
+			noteHighlight.draw();
 		}
 	}
 }
@@ -1017,10 +1069,12 @@ class CharterNote extends Note {
 	public var justCopied:Bool = false;
 	public var useLaneRGB:Bool = true;
 	
+	var pointer:FlxObject;
 	var noteKindDecal:FunkinSprite = null;
 	
 	public function new(player:Bool, msTime:Float, noteData:Int, msLength:Float = 0, type:String = '', isHoldPiece:Bool = false, ?conductor:Conductor) {
 		super(player, msTime, noteData, msLength, type, isHoldPiece, conductor);
+		pointer = new FlxObject();
 	}
 	public function set_highlighted(isHighlighted:Bool) {
 		if (highlighted == isHighlighted) return isHighlighted;
@@ -1071,8 +1125,10 @@ class CharterNote extends Note {
 		}
 		return noteKind = newKind;
 	}
+	public function wasGoodHit()
+		return (goodHit || (parent != null && parent.goodHit));
 	public function drawCustom(good:Bool = false) {
-		var wasGood:Bool = (goodHit || (parent != null && parent.goodHit));
+		var wasGood:Bool = wasGoodHit();
 		if (wasGood != good) return;
 		
 		var prevAlpha:Float = alpha;
@@ -1082,12 +1138,55 @@ class CharterNote extends Note {
 	}
 	public function actuallyDraw() {
 		super.draw();
-		if (noteKindDecal != null) {
+		if (!isHoldPiece && noteKindDecal != null) {
+			Util.copyColorTransform(noteKindDecal.colorTransform, this.colorTransform);
 			noteKindDecal.scale.set(scale.x, scale.y);
 			noteKindDecal.updateHitbox();
 			noteKindDecal.setPosition(x + (width - noteKindDecal.width) * .5, y + (height - noteKindDecal.height) * .5);
+			noteKindDecal.camera = camera;
 			noteKindDecal.draw();
+		}
+		pointer.x = x;
+		pointer.y = y;
+		if (!isHoldPiece && noteKind != '' && highlighted && CharterState.inEditor && !FlxG.mouse.pressed) {
+			pointer.x += width * .7;
+			pointer.y += height * .3;
+			var charter:CharterState = CharterState.instance;
+			var bubblePos:FlxPoint = getPointerScreenPosition(pointer);
+			charter.noteKindBubble.setPosition(
+				bubblePos.x,
+				bubblePos.y - charter.noteKindBubble.height
+			);
+			charter.noteKindBubble.draw();
+			
+			charter.noteKindBubbleText.text = noteKind;
+			charter.noteKindBubbleText.setPosition(
+				charter.noteKindBubble.x + 46,
+				charter.noteKindBubble.y + 20
+			);
+			charter.noteKindBubbleText.draw();
+			
+			if (noteKindDecal != null) {
+				noteKindDecal.camera = charter.camHUD;
+				noteKindDecal.setColorTransform();
+				noteKindDecal.scale.set(.35, .35);
+				noteKindDecal.updateHitbox();
+				noteKindDecal.alpha = .75;
+				noteKindDecal.setPosition(
+					charter.noteKindBubble.x - noteKindDecal.width * .5 + 25,
+					charter.noteKindBubble.y - noteKindDecal.height * .5 + 32,
+				);
+				noteKindDecal.draw();
+			}
 		}
 	}
 	public override function draw() {}
+	public function getPointerScreenPosition(pointer:FlxObject, ?camera:FlxCamera):FlxPoint {
+		camera ??= pointer.camera ?? FlxG.camera;
+		
+		var point:FlxPoint = pointer.getScreenPosition(camera);
+		point.subtract(camera.viewMarginLeft, camera.viewMarginTop);
+		point.scale(camera.zoom);
+		return point;
+	}
 }

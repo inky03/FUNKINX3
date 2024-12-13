@@ -88,4 +88,15 @@ class Util { // maybe these utils can be on their own specific purpose classes
 				Math.min(scaleX, scaleY);
 		}
 	}
+	public static function copyColorTransform(transform:openfl.geom.ColorTransform, copyTransform:openfl.geom.ColorTransform) {
+		transform.redOffset = copyTransform.redOffset; // wow
+		transform.blueOffset = copyTransform.blueOffset;
+		transform.greenOffset = copyTransform.greenOffset;
+		transform.alphaOffset = copyTransform.alphaOffset;
+		transform.redMultiplier = copyTransform.redMultiplier;
+		transform.blueMultiplier = copyTransform.blueMultiplier;
+		transform.greenMultiplier = copyTransform.greenMultiplier;
+		transform.alphaMultiplier = copyTransform.alphaMultiplier;
+		return transform;
+	}
 }

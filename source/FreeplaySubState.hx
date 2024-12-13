@@ -216,34 +216,46 @@ class FreeplaySongText extends FlxSpriteGroup {
 	public var blurText:FlxText;
 	public var whiteText:FlxText;
 	public var textGlowFilter:GlowFilter;
+	
+	public var size(default, set):Int;
 	public var text(default, set):String;
 	public var font(default, set):Null<String>;
 	public var glowColor(default, set):FlxColor;
 
-	public function new(x:Float = 0, y:Float = 0, ?text:String, glowColor:FlxColor = 0xff00ccff) {
+	public function new(x:Float = 0, y:Float = 0, ?text:String, glowColor:FlxColor = 0xff00ccff, intensity:Float = 1) {
 		super(x, y);
 		blurText = new FlxText(0, 0, 'Random', 40);
 		whiteText = new FlxText(0, 0, 'Random', 40);
-		textGlowFilter = new GlowFilter(glowColor, 1, 5, 5, 210, BitmapFilterQuality.MEDIUM);
-		blurText.textField.filters = [new openfl.filters.BlurFilter(2, 2, BitmapFilterQuality.MEDIUM)];
+		textGlowFilter = new GlowFilter(glowColor, 1, intensity * 5, intensity * 5, 210, BitmapFilterQuality.LOW);
+		blurText.textField.filters = [new openfl.filters.BlurFilter(intensity * 3, intensity * 3, BitmapFilterQuality.LOW)];
 		whiteText.textField.filters = [textGlowFilter];
 		blurText.blend = BlendMode.ADD;
-
-		add(blurText);
+		
+		whiteText.antialiasing = true;
+		blurText.antialiasing = true;
 		add(whiteText);
-
-		this.text = text;
+		add(blurText);
+		
 		this.glowColor = glowColor;
+		this.text = text ?? 'Random';
 		this.font = Paths.ttf('5by7');
 	}
 	function set_glowColor(newColor:FlxColor) {
-		return textGlowFilter.color = newColor;
+		textGlowFilter.color = newColor;
+		return glowColor = newColor;
+	}
+	function set_size(newSize:Int) {
+		if (size == newSize) return newSize;
+		blurText.size = newSize;
+		return whiteText.size = newSize;
 	}
 	function set_text(newText:String) {
+		if (text == newText) return newText;
 		blurText.text = newText;
 		return whiteText.text = newText;
 	}
 	function set_font(newFont:Null<String>) {
+		if (font == newFont) return newFont;
 		blurText.font = newFont;
 		return whiteText.font = newFont;
 	}
