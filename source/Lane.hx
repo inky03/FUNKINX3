@@ -146,6 +146,14 @@ class Lane extends FlxSpriteGroup {
 			FlxCamera._defaultCameras = oldDefaultCameras;
 		}
 	}
+	public function forEachNote(func:Note -> Void, includeQueued:Bool = false) {
+		if (includeQueued) {
+			for (note in queue)
+				func(note);
+		}
+		for (note in notes)
+			func(note);
+	}
 	
 	public function fireInput(key:FlxKey, pressed:Bool):Bool {
 		if (!inputKeys.contains(key) || !allowInput) return false;
@@ -229,6 +237,9 @@ class Lane extends FlxSpriteGroup {
 			queue.push(note);
 		}
 		return note;
+	}
+	public function dequeueNote(note:Note) {
+		queue.remove(note);
 	}
 	public function clearNotes() {
 		for (note in notes) note.kill();
@@ -349,9 +360,9 @@ class Receptor extends FunkinSprite {
 	public function reloadAnimations() {
 		animation.destroyAnimations();
 		var dirName:String = Note.directionNames[noteData];
-		animation.addByPrefix('static', '$dirName receptor', 24, true);
-		animation.addByPrefix('confirm', '$dirName confirm', 24, false);
-		animation.addByPrefix('press', '$dirName press', 24, false);
+		addAnimation('static', '$dirName receptor', 24, true);
+		addAnimation('confirm', '$dirName confirm', 24, false);
+		addAnimation('press', '$dirName press', 24, false);
 		playAnimation('static', true);
 		updateHitbox();
 	}
@@ -405,12 +416,9 @@ class NoteSplash extends FunkinSprite {
 		
 		this.noteData = data;
 		var dirName:String = Note.directionNames[data];
-		animation.addByPrefix('splash1', 'notesplash $dirName 1', 24, false);
-		animation.addByPrefix('splash2', 'notesplash $dirName 2', 24, false);
-		
-		animation.finishCallback = (anim:String) -> {
-			kill();
-		}
+		addAnimation('splash1', 'notesplash $dirName 1', 24, false);
+		addAnimation('splash2', 'notesplash $dirName 2', 24, false);
+		onAnimationComplete.add((anim:String) -> { kill(); });
 	}
 	
 	public function splashOnReceptor(receptor:Receptor) { //lol
@@ -452,12 +460,10 @@ class NoteCover extends FunkinSprite {
 		
 		var dir:String = Note.directionNames[data];
 		if (!hasAnimationPrefix('hold cover start $dir')) dir = '';
-		animation.addByPrefix('start', 'hold cover start $dir'.trim(), 24, false);
-		animation.addByPrefix('loop', 'hold cover loop $dir'.trim(), 24, true);
+		addAnimation('start', 'hold cover start $dir'.trim(), 24, false);
+		addAnimation('loop', 'hold cover loop $dir'.trim(), 24, true);
+		onAnimationComplete.add((anim:String) -> { playAnimation('loop'); });
 		
-		animation.finishCallback = (anim:String) -> {
-			playAnimation('loop');
-		};
 		kill();
 	}
 	
@@ -480,10 +486,8 @@ class NoteSpark extends FunkinSprite {
 		
 		var dir:String = Note.directionNames[data];
 		if (!hasAnimationPrefix('hold cover $dir')) dir = '';
-		animation.addByPrefix('spark', 'hold cover spark ${dir}'.trim(), 24, false);
-		animation.finishCallback = (anim:String) -> {
-			kill();
-		}
+		addAnimation('spark', 'hold cover spark ${dir}'.trim(), 24, false);
+		onAnimationComplete.add((anim:String) -> { kill(); });
 	}
 	
 	public function sparkOnReceptor(receptor:Receptor) {

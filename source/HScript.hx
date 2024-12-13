@@ -5,6 +5,9 @@ import Lane.NoteEventType;
 import flixel.util.FlxAxes;
 import FunkinSprite.SpriteRenderType;
 import flixel.addons.display.FlxRuntimeShader;
+#if (flixel_addons >= "3.3.0")
+import flixel.addons.system.macros.FlxRuntimeShaderMacro;
+#end
 
 import crowplexus.iris.Iris;
 import crowplexus.iris.IrisConfig;
@@ -281,6 +284,12 @@ class QuickRuntimeShader extends FlxRuntimeShader {
 			Sys.println(getLog(shaderInfoLog, source));
 
 			Log.minor('compiling with default code...');
+			#if (flixel_addons >= "3.3.0")
+			var typeString:String = (isVertex ? 'Vertex' : 'Fragment');
+			var source:String = FlxRuntimeShaderMacro.retrieveMetadata('gl${typeString}Source', false);
+			source = source.replace('#pragma header', FlxRuntimeShaderMacro.retrieveMetadata('gl${typeString}Header', false));
+			source = source.replace('#pragma body', FlxRuntimeShaderMacro.retrieveMetadata('gl${typeString}Body', false));
+			#else
 			var source:String;
 			if (type == gl.VERTEX_SHADER) {
 				source = FlxRuntimeShader.BASE_VERTEX_SOURCE.replace('#pragma header', FlxRuntimeShader.BASE_VERTEX_HEADER);
@@ -289,6 +298,7 @@ class QuickRuntimeShader extends FlxRuntimeShader {
 				source = FlxRuntimeShader.BASE_FRAGMENT_SOURCE.replace('#pragma header', FlxRuntimeShader.BASE_FRAGMENT_HEADER);
 				source = source.replace('#pragma body', FlxRuntimeShader.BASE_FRAGMENT_BODY);
 			}
+			#end
 			gl.shaderSource(shader, source);
 			gl.compileShader(shader);
 			perfect = false;

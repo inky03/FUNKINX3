@@ -32,17 +32,35 @@ class RGBSwapShader extends FlxShader {
 		uniform vec3 red;
 		uniform vec3 green;
 		uniform vec3 blue;
+		
+		vec4 applyColorTransform(vec4 color) {
+		    if (color.a == 0.) {
+		        return vec4(0.);
+		    }
+		    if (!hasTransform) {
+		        return color;
+		    }
+		    if (!hasColorTransform) {
+		        return color * openfl_Alphav;
+		    }
+
+		    color = vec4(color.rgb / color.a, color.a);
+		    color = clamp(openfl_ColorOffsetv + color * openfl_ColorMultiplierv, 0., 1.);
+
+		    if (color.a > 0.) {
+		        return vec4(color.rgb * color.a * openfl_Alphav, color.a * openfl_Alphav);
+		    }
+		    return vec4(0.);
+		}
 
 		vec4 flixel_texture2DCustom(sampler2D bitmap, vec2 uv) {
-			vec4 color = flixel_texture2D(bitmap, uv);
-			if (!hasTransform || color.a == 0.0) {
+			vec4 color = texture2D(bitmap, uv);
+			if (color.a == 0.0) {
 				return color;
 			}
 
 			color.rgb = min(vec3(color.r * red + color.g * green + color.b * blue), color.a);
-			// float fullAlpha = (color.a / openfl_Alphav);
-			// color.a = pow(fullAlpha, 5) * openfl_Alphav;
-			return color;
+			return applyColorTransform(color);
 		}
 	')
 

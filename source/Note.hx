@@ -9,7 +9,6 @@ import flixel.addons.display.FlxTiledSprite;
 import flixel.graphics.frames.FlxFramesCollection;
 
 class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affect society
-	public static var genericRGB:RGBSwap;
 	public static var directionNames:Array<String> = ['left', 'down', 'up', 'right'];
 	public static var directionColors:Array<Array<FlxColor>> = [
 		[FlxColor.fromRGB(194, 75, 153), FlxColor.fromRGB(60, 31, 86)],
@@ -60,12 +59,14 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var isHoldPiece:Bool = false;
 	public var isHoldTail:Bool = false;
 	
-	// chart editor stuffs
-	var noteKindDecal:FunkinSprite = null;
-	
 	public override function destroy() {
-		for (child in children)
+		for (child in children) {
+			lane?.dequeueNote(child);
+			lane?.killNote(child);
 			child.destroy();
+		}
+		lane?.dequeueNote(this);
+		lane?.killNote(this);
 		super.destroy();
 	}
 	public override function revive() {
@@ -106,11 +107,11 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public function reloadAnimations() {
 		animation.destroyAnimations();
 		var dirName:String = directionNames[noteData];
-		animation.addByPrefix('hit', '$dirName note', 24, false);
+		addAnimation('hit', '$dirName note', 24, false);
 		playAnimation('hit', true);
 		if (isHoldPiece) {
-			animation.addByPrefix('hold', '$dirName hold piece', 24, false);
-			animation.addByPrefix('tail', '$dirName hold tail', 24, false);
+			addAnimation('hold', '$dirName hold piece', 24, false);
+			addAnimation('tail', '$dirName hold tail', 24, false);
 			playAnimation(this.isHoldTail ? 'tail' : 'hold', true);
 		}
 		updateHitbox();
@@ -120,20 +121,6 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	}
 	
 	public function set_noteKind(newKind:String) {
-		if (noteKind == newKind) return newKind;
-		if (CharterState.inEditor) {
-			if (newKind == '') {
-				if (lane != null) shader = lane.rgbShader.shader;
-				noteKindDecal.destroy();
-				noteKindDecal = null;
-			} else {
-				genericRGB ??= new RGBSwap(0xb3a9b8, FlxColor.WHITE, 0x333333);
-				shader = genericRGB.shader;
-				noteKindDecal ??= new FunkinSprite();
-				noteKindDecal.loadTexture('charter/noteKinds/$newKind');
-				if (noteKindDecal.graphic == null) noteKindDecal.loadTexture('charter/noteKinds/generic');
-			}
-		}
 		return noteKind = newKind;
 	}
 	public function set_msTime(newTime:Float) {
@@ -219,15 +206,6 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 			clipto(Math.max(cropTop, cropY), Math.min(cropHeight, cropBottom));
 
 			clipRect = clipRect; //refresh clip rect
-		}
-	}
-	public override function draw() {
-		super.draw();
-		if (noteKindDecal != null) {
-			noteKindDecal.scale.set(scale.x, scale.y);
-			noteKindDecal.updateHitbox();
-			noteKindDecal.setPosition(x + (width - noteKindDecal.width) * .5, y + (height - noteKindDecal.height) * .5);
-			noteKindDecal.draw();
 		}
 	}
 	inline function clipto(ya:Float = 0, yb:Float = 0)

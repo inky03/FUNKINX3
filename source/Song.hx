@@ -505,41 +505,57 @@ class Song {
 		}
 	}
 
-	public function generateNotes():Array<Note> {
+	public function generateNotes(singleSegmentHolds:Bool = false):Array<Note> {
 		var noteArray:Array<Note> = [];
 		var tempMetronome:Metronome = new Metronome();
 		tempMetronome.tempoChanges = this.tempoChanges;
 		for (note in notes) {
-			tempMetronome.setMS(note.msTime);
-			var hitNote:Note = new Note(note.player, note.msTime, note.laneIndex, note.msLength, note.kind);
-			noteArray.push(hitNote);
-			
-			if (hitNote.msLength > 0) { //hold bits
-				var endMs:Float = note.msTime + note.msLength;
-				var bitTime:Float = note.msTime;
+			for (genNote in generateNote(note, singleSegmentHolds, tempMetronome))
+				noteArray.push(genNote);
+		}
+		return noteArray;
+	}
+	public static function generateNote(songNote:SongNote, singleSegmentHolds:Bool = false, ?tempMetronome:Metronome) {
+		var noteArray:Array<Note> = [];
+		var type:Dynamic = (CharterState.inEditor ? CharterState.CharterNote : Note);
+		
+		tempMetronome?.setMS(songNote.msTime);
+		var hitNote:Note = Type.createInstance(type, [songNote.player, songNote.msTime, songNote.laneIndex, songNote.msLength, songNote.kind]);
+		noteArray.push(hitNote);
+		
+		if (hitNote.msLength > 0) { //hold bits
+			var endMs:Float = songNote.msTime + songNote.msLength;
+			if (!singleSegmentHolds && tempMetronome != null) {
+				var bitTime:Float = songNote.msTime;
 				while (bitTime < endMs) {
 					tempMetronome.setStep(Std.int(tempMetronome.step + .05) + 1);
 					var newTime:Float = tempMetronome.ms;
-					if (bitTime < note.msTime) {
-						Log.warning('??? $bitTime < ${note.msTime} (sustain bit off by ${note.msTime - bitTime}ms)');
+					if (bitTime < songNote.msTime) {
+						Log.warning('??? $bitTime < ${songNote.msTime} (sustain bit off by ${songNote.msTime - bitTime}ms)');
 						bitTime = newTime;
 						break;
 					}
 					var bitLength:Float = Math.min(newTime - bitTime, endMs - bitTime);
-					var holdBit:Note = new Note(note.player, bitTime, note.laneIndex, bitLength, note.kind, true);
+					var holdBit:Note = Type.createInstance(type, [songNote.player, bitTime, songNote.laneIndex, bitLength, songNote.kind, true]);
 					hitNote.children.push(holdBit);
 					holdBit.parent = hitNote;
 					noteArray.push(holdBit);
 					bitTime = newTime;
 				}
-				var endBit:Note = new Note(note.player, endMs, note.laneIndex, 0, note.kind, true);
-				hitNote.children.push(endBit);
-				noteArray.push(endBit);
-				
-				endBit.parent = hitNote;
-				hitNote.tail = endBit;
+			} else {
+				var holdBit:Note = Type.createInstance(type, [songNote.player, songNote.msTime, songNote.laneIndex, songNote.msLength, songNote.kind, true]);
+				hitNote.children.push(holdBit);
+				holdBit.parent = hitNote;
+				noteArray.push(holdBit);
 			}
+			var endBit:Note = Type.createInstance(type, [songNote.player, endMs, songNote.laneIndex, 0, songNote.kind, true]);
+			hitNote.children.push(endBit);
+			noteArray.push(endBit);
+			
+			endBit.parent = hitNote;
+			hitNote.tail = endBit;
 		}
+		
 		return noteArray;
 	}
 	
@@ -564,9 +580,12 @@ class Song {
 		return false;
 	}
 	
+	public static function sortByTime(a:TimedEvent, b:TimedEvent) {
+		return Std.int(a.msTime - b.msTime);
+	}
 	public function sort() {
-		notes.sort((a, b) -> Std.int(a.msTime - b.msTime));
-		events.sort((a, b) -> Std.int(a.msTime - b.msTime));
+		notes.sort(sortByTime);
+		events.sort(sortByTime);
 	}
 }
 
@@ -581,14 +600,17 @@ enum SongFormat {
 	UNKNOWN;
 }
 
-@:structInit class SongNote {
+interface TimedEvent {
+	public var msTime:Float;
+}
+@:structInit class SongNote implements TimedEvent {
 	public var laneIndex:Int;
 	public var msTime:Float = 0;
 	public var kind:String = '';
 	public var msLength:Float = 0;
 	public var player:Bool = true;
 }
-@:structInit class SongEvent {
+@:structInit class SongEvent implements TimedEvent {
 	public var name:String;
 	public var msTime:Float;
 	public var params:Map<String, Any>;

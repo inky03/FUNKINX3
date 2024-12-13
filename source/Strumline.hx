@@ -140,6 +140,10 @@ class Strumline extends FlxSpriteGroup {
 				lane.drawTop();
 		}
 	}
+	public function forEachNote(func:Note -> Void, includeQueued:Bool = false) {
+		for (lane in lanes)
+			lane.forEachNote(func, includeQueued);
+	}
 	
 	public function fitToSize(targetWidth:Float = 0, targetHeight:Float = 0, center:FlxAxes = NONE) {
 		var wRatio:Float = (targetWidth > 0 ? targetWidth / width : 1);

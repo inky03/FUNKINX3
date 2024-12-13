@@ -4,6 +4,8 @@ using StringTools;
 
 class Util { // maybe these utils can be on their own specific purpose classes
 	public static var keyMod(get, never):lime.ui.KeyModifier;
+	public static var gameScaleX(get, never):Float;
+	public static var gameScaleY(get, never):Float;
 
 	// string
 	public static function padDecimals(number:Float, places:Int):String {
@@ -59,5 +61,31 @@ class Util { // maybe these utils can be on their own specific purpose classes
 	public static function sortZIndex(order:Int, a:FlxBasic, b:FlxBasic):Int {
 		if (a == null || b == null) return 0;
 		return FlxSort.byValues(order, a.zIndex, b.zIndex);
+	}
+	public static function get_gameScaleX() {
+		var scaleX:Float = FlxG.stage.window.width / FlxG.width;
+		return switch (FlxG.stage.scaleMode) {
+			case EXACT_FIT:
+				scaleX;
+			case NO_BORDER:
+				var scaleY:Float = FlxG.stage.window.height / FlxG.height;
+				Math.max(scaleX, scaleY);
+			default:
+				var scaleY:Float = FlxG.stage.window.height / FlxG.height;
+				Math.min(scaleX, scaleY);
+		}
+	}
+	public static function get_gameScaleY() {
+		var scaleY:Float = FlxG.stage.window.height / FlxG.height;
+		return switch (FlxG.stage.scaleMode) {
+			case EXACT_FIT:
+				scaleY;
+			case NO_BORDER:
+				var scaleX:Float = FlxG.stage.window.width / FlxG.width;
+				Math.max(scaleX, scaleY);
+			default:
+				var scaleX:Float = FlxG.stage.window.width / FlxG.width;
+				Math.min(scaleX, scaleY);
+		}
 	}
 }

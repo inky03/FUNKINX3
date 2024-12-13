@@ -101,10 +101,17 @@ class FunkinSprite extends FlxSprite {
 			default: Paths.sparrowAtlas(path, library);
 		}
 		this.renderType = renderType;
+		#if (flixel >= "5.9.0")
+		animation.onFinish.add((anim:String) -> {
+			if (this.renderType != ANIMATEATLAS)
+				_onAnimationComplete(anim);
+		});
+		#else
 		animation.finishCallback = (anim:String) -> {
 			if (this.renderType != ANIMATEATLAS)
-				_onAnimationComplete();
+				_onAnimationComplete(anim);
 		};
+		#end
 		return this;
 	}
 	public function loadAnimate(path:String, ?library:String) {
@@ -297,8 +304,8 @@ class FunkinSprite extends FlxSprite {
 			animate = null;
 		}
 	}
-	function _onAnimationComplete() {
-		onAnimationComplete.dispatch(currentAnimation ?? '');
+	function _onAnimationComplete(?anim:String) {
+		onAnimationComplete.dispatch(anim ?? currentAnimation ?? '');
 	}
 
 	public function set_smooth(newSmooth:Bool) {

@@ -149,7 +149,8 @@ class PlayState extends MusicBeatState {
 		for (chara in [player1, player2, player3]) {
 			if (chara == null) continue;
 			chara.loadVocals(song.path, song.audioSuffix);
-			syncVocals.push(chara.vocals);
+			if (chara.vocalsLoaded)
+				syncVocals.push(chara.vocals);
 		}
 		if (player1 != null && !player1.vocalsLoaded && player1.character != song.player1) player1.loadVocals(song.path, song.audioSuffix, song.player1);
 		if (player2 != null && !player2.vocalsLoaded && player2.character != song.player2) player2.loadVocals(song.path, song.audioSuffix, song.player2);
@@ -265,7 +266,13 @@ class PlayState extends MusicBeatState {
 		
 		hscripts.run('createPost');
 		sortZIndex();
-
+		
+		if (playCountdown) {
+			for (snd in ['THREE', 'TWO', 'ONE', 'GO'])
+				Paths.sound('gameplay/countdown/funkin/intro$snd');
+			for (img in ['ready', 'set', 'go'])
+				Paths.image(img);
+		}
 		conductorInUse.metronome.setBeat(playCountdown ? -5 : -1);
 	}
 
@@ -570,16 +577,15 @@ class PlayState extends MusicBeatState {
 				case -1:
 					popCountdown('go');
 					FlxG.sound.play(Paths.sound('gameplay/countdown/$folder/introGO'));
+				case 0:
+					if (song.instLoaded) song.inst.play(true);
+					for (track in syncVocals) track.play(true);
+					syncMusic(true, true);
 				default:
 			}
 		}
 		if (camZoomRate > 0 && beat % camZoomRate == 0)
 			bopCamera();
-		if (beat == 0) {
-			if (song.instLoaded) song.inst.play(true);
-			for (track in syncVocals) track.play(true);
-			syncMusic(true, true);
-		}
 		hscripts.run('beatHit', [beat]);
 	}
 	public function popCountdown(image:String) {
