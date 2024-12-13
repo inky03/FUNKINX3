@@ -109,7 +109,7 @@ class CharterState extends MusicBeatState {
 				lane.oneWay = false;
 			}
 		}
-		strumlines.y = FlxG.height * .5 - h * .5;
+		strumlines.y = FlxG.height * .5 - h * .5 - 320;
 		strumlines.x = (FlxG.width - (xx - strumlineSpacing)) * .5;
 		
 		strumlineHighlight = new FunkinSprite().makeGraphic(1, 1, FlxColor.WHITE);
@@ -184,27 +184,6 @@ class CharterState extends MusicBeatState {
 			return;
 		}
 		
-		if (FlxG.keys.pressed.W || FlxG.keys.pressed.S) {
-			var up:Bool = FlxG.keys.pressed.W;
-			var msPerSec:Float = (FlxG.keys.pressed.SHIFT ? 2000 : 1000);
-			var scrollMod:Int = 1;
-			if (up) scrollMod *= -1;
-			
-			if (songPaused)
-				songPaused = false;
-			conductorInUse.paused = true;
-			conductorInUse.songPosition += scrollMod * elapsed * msPerSec;
-			restrictConductor();
-			
-			if ((msPerSec != 1000 || up || !scrolling) && song != null && song.instLoaded)
-				song.inst.time = conductorInUse.songPosition;
-			
-			scrolling = true;
-		} else if (scrolling) {
-			songPaused = true;
-			scrolling = false;
-		}
-		
 		var highlightedNote:CharterNote = null;
 		var anyNoteHovered:Bool = (pickedNote != null);
 		forEachNote((note:Note) -> {
@@ -255,50 +234,13 @@ class CharterState extends MusicBeatState {
 				var snappedBeatTime:Float = Math.round(cursorBeatTime * quantMult) / quantMult;
 				var beatDiff:Float = (snappedBeatTime - pickedNote.beatTime);
 				
-				if (beatDiff != 0) {
-					// Sys.println('${snappedBeatTime} -> ${pickedNote.beatTime} -> $beatDiff');
-					var minBeat:Float = Math.POSITIVE_INFINITY;
-					var maxBeat:Float = Math.NEGATIVE_INFINITY;
-					for (note in selectedNotes) {
-						if (note.isHoldPiece) continue;
-						if (note.beatTime < minBeat) minBeat = note.beatTime;
-						if (note.beatTime > maxBeat) maxBeat = note.beatTime;
-					}
-					if (minBeat + beatDiff < 0)
-						beatDiff = -minBeat;
-					// todo max beat
-					if (beatDiff != 0) {
-						draggingNotes = true;
-						for (note in selectedNotes) {
-							note.beatTime += beatDiff;
-						}
-					}
-				}
+				if (shiftNotes(selectedNotes, beatDiff) != 0)
+					draggingNotes = true;
 				
 				if (pickedLane != null && pickedLane != pickedNote.lane) {
 					var laneDiff:Int = laneToIndex(pickedLane) - laneToIndex(pickedNote.lane);
-					var minLane:Int = 9999; // prevent notes from going out of bounds
-					var maxLane:Int = -1;
-					for (note in selectedNotes) {
-						var laneIdx:Int = laneToIndex(note.lane);
-						if (laneIdx < minLane) minLane = laneIdx;
-						if (laneIdx > maxLane) maxLane = laneIdx;
-					}
-					if (minLane + laneDiff < 0)
-						laneDiff = -minLane;
-					if (maxLane + laneDiff >= getNumLanes())
-						laneDiff = getNumLanes() - maxLane - 1;
-					
-					if (laneDiff != 0) {
+					if (twistNotes(selectedNotes, laneDiff) != 0)
 						draggingNotes = true;
-						for (note in selectedNotes) {
-							if (note.isHoldPiece) continue;
-							var laneIdx:Int = laneToIndex(note.lane);
-							var nextLane:Lane = indexToLane(laneIdx + laneDiff);
-							if (nextLane == null) continue;
-							twistNote(note, nextLane);
-						}
-					}
 				}
 			} else {
 				var mousePos:FlxPoint = FlxG.mouse.getWorldPosition(camScroll);
@@ -357,38 +299,26 @@ class CharterState extends MusicBeatState {
 			pickedNote = null;
 		}
 		
-		// copy & paste
-		if (FlxG.keys.pressed.CONTROL) {
-			if (FlxG.keys.justPressed.C) {
-				var selectedNotes:Array<CharterNote> = getSelectedNotes();
-				if (selectedNotes.length > 0) {
-					copiedNotes.resize(0);
-					for (note in selectedNotes) {
-						if (note.isHoldPiece) continue;
-						copiedNotes.push(note.toSongNote());
-					}
-					copiedNotes.sort(Song.sortByTime);
-				}
-			}
-			if (FlxG.keys.justPressed.V && copiedNotes.length > 0) {
-				for (note in getSelectedNotes())
-					note.selected = false;
-				var generatedNotes:Array<Note> = [];
-				for (note in copiedNotes) {
-					var notes:Array<Note> = Song.generateNote(note, true);
-					for (genNote in notes) {
-						queueNote(genNote);
-						generatedNotes.push(genNote);
-						if (!Std.isOfType(genNote, CharterNote)) continue;
-						var charterNote:CharterNote = cast(genNote, CharterNote);
-						charterNote.justCopied = true;
-						charterNote.selected = true;
-					}
-				}
-				var beatDiff:Float = (conductorInUse.metronome.beat - generatedNotes[0].beatTime);
-				for (note in generatedNotes)
-					note.beatTime += beatDiff;
-			}
+		// time shift
+		if (!FlxG.keys.pressed.CONTROL && (FlxG.keys.pressed.W || FlxG.keys.pressed.S)) {
+			var up:Bool = FlxG.keys.pressed.W;
+			var msPerSec:Float = (FlxG.keys.pressed.SHIFT ? 2000 : 1000);
+			var scrollMod:Int = 1;
+			if (up) scrollMod *= -1;
+			
+			if (songPaused)
+				songPaused = false;
+			conductorInUse.paused = true;
+			conductorInUse.songPosition += scrollMod * elapsed * msPerSec;
+			restrictConductor();
+			
+			if ((msPerSec != 1000 || up || !scrolling) && song != null && song.instLoaded)
+				song.inst.time = conductorInUse.songPosition;
+			
+			scrolling = true;
+		} else if (scrolling) {
+			songPaused = true;
+			scrolling = false;
 		}
 		if (FlxG.keys.justPressed.DELETE) {
 			for (note in getSelectedNotes())
@@ -514,6 +444,63 @@ class CharterState extends MusicBeatState {
 		strumline?.queueNote(note);
 		return note;
 	}
+	public function shiftNotes(notesArray:Array<CharterNote>, beatMod:Float = 0):Float {
+		if (beatMod == 0) return 0;
+		var beatDiff:Float = beatMod;
+		var minBeat:Float = Math.POSITIVE_INFINITY;
+		var maxBeat:Float = Math.NEGATIVE_INFINITY;
+		for (note in notesArray) {
+			if (note.isHoldPiece) continue;
+			if (note.beatTime < minBeat) minBeat = note.beatTime;
+			if (note.beatTime > maxBeat) maxBeat = note.beatTime;
+		}
+		if (minBeat + beatDiff < 0)
+			beatDiff = -minBeat;
+		// todo max beat
+		if (beatDiff != 0) {
+			for (note in notesArray) {
+				if (note.isHoldPiece) continue;
+				shiftNote(note, note.beatTime + beatDiff);
+			}
+		}
+		return beatDiff;
+	}
+	public function twistNotes(notesArray:Array<CharterNote>, laneMod:Int = 0):Int {
+		if (laneMod == 0) return 0;
+		var laneDiff:Int = laneMod;
+		var minLane:Int = 9999; // prevent notes from going out of bounds
+		var maxLane:Int = -1;
+		for (note in notesArray) {
+			var laneIdx:Int = laneToIndex(note.lane);
+			if (laneIdx < minLane) minLane = laneIdx;
+			if (laneIdx > maxLane) maxLane = laneIdx;
+		}
+		if (minLane + laneDiff < 0)
+			laneDiff = -minLane;
+		if (maxLane + laneDiff >= getNumLanes())
+			laneDiff = getNumLanes() - maxLane - 1;
+		
+		if (laneDiff != 0) {
+			for (note in notesArray) {
+				if (note.isHoldPiece) continue;
+				var laneIdx:Int = laneToIndex(note.lane);
+				var nextLane:Lane = indexToLane(laneIdx + laneDiff);
+				if (nextLane == null) continue;
+				twistNote(note, nextLane);
+			}
+		}
+		return laneDiff;
+	}
+	public function shiftNote(note:Note, beatTime:Float) {
+		if (note == null) {
+			Log.warning('shiftNote: ???');
+			return;
+		}
+		var diff:Float = beatTime - note.beatTime;
+		note.beatTime = beatTime;
+		for (child in note.children)
+			child.beatTime += diff;
+	}
 	public function twistNote(note:Note, lane:Lane) {
 		if (note == null || lane == null) {
 			Log.warning('twistNote: ???');
@@ -606,23 +593,36 @@ class CharterState extends MusicBeatState {
 		if (keybind >= 0 && FlxG.keys.checkStatus(key, JUST_PRESSED))
 			inputOn(keybind);
 		
+		var noteControlMode:Bool = FlxG.keys.pressed.CONTROL;
 		var scrollMod:Int = 1;
 		var leniency:Float = 1 / 256;
 		var prevBeat:Float = conductorInUse.metronome.beat;
 		var quantMultiplier:Float = (quant * .25);
 		var pauseSong:Bool = false;
+		if (noteControlMode) {
+			keyPressNoteControl(key);
+		}
 		switch (key) {
 			case FlxKey.LEFT | FlxKey.RIGHT:
-				changeQuant(key == FlxKey.LEFT ? -1 : 1);
+				if (key == FlxKey.LEFT) scrollMod *= -1;
+				if (noteControlMode) {
+					twistNotes(getSelectedNotes(), scrollMod);
+				} else {
+					changeQuant(scrollMod);
+				}
 			case FlxKey.UP | FlxKey.DOWN:
-				placeNotes();
-				pauseSong = true;
 				if (key == FlxKey.UP) scrollMod *= -1;
-				var targetBeat:Float = prevBeat + scrollMod / quantMultiplier;
-				if (Math.abs(prevBeat - Math.round(prevBeat * quantMultiplier) / quantMultiplier) < leniency * 2)
-					conductorInUse.metronome.setBeat(Math.round(targetBeat * quantMultiplier) / quantMultiplier);
-				else
-					conductorInUse.metronome.setBeat((scrollMod > 0 ? Math.floor : Math.ceil)(targetBeat * quantMultiplier) / quantMultiplier);
+				if (noteControlMode) {
+					shiftNotes(getSelectedNotes(), scrollMod / quantMultiplier);
+				} else {
+					placeNotes();
+					pauseSong = true;
+					var targetBeat:Float = prevBeat + scrollMod / quantMultiplier;
+					if (Math.abs(prevBeat - Math.round(prevBeat * quantMultiplier) / quantMultiplier) < leniency * 2)
+						conductorInUse.metronome.setBeat(Math.round(targetBeat * quantMultiplier) / quantMultiplier);
+					else
+						conductorInUse.metronome.setBeat((scrollMod > 0 ? Math.floor : Math.ceil)(targetBeat * quantMultiplier) / quantMultiplier);
+				}
 			case FlxKey.PAGEUP | FlxKey.PAGEDOWN:
 				placeNotes();
 				pauseSong = true;
@@ -644,6 +644,57 @@ class CharterState extends MusicBeatState {
 		
 		restrictConductor();
 		updateHolds();
+	}
+	public function keyPressNoteControl(key:FlxKey) {
+		switch (key) {
+			case FlxKey.C: // COPY
+				var selectedNotes:Array<CharterNote> = getSelectedNotes();
+				if (selectedNotes.length > 0) {
+					copiedNotes.resize(0);
+					for (note in selectedNotes) {
+						if (note.isHoldPiece) continue;
+						copiedNotes.push(note.toSongNote());
+					}
+					copiedNotes.sort(Song.sortByTime);
+				}
+			case FlxKey.V: // PASTE
+				for (note in getSelectedNotes())
+					note.selected = false;
+				var generatedNotes:Array<Note> = [];
+				for (note in copiedNotes) {
+					var notes:Array<Note> = Song.generateNote(note, true);
+					for (genNote in notes) {
+						queueNote(genNote);
+						generatedNotes.push(genNote);
+						if (!Std.isOfType(genNote, CharterNote)) continue;
+						var charterNote:CharterNote = cast(genNote, CharterNote);
+						charterNote.justCopied = true;
+						charterNote.selected = true;
+					}
+				}
+				var beatDiff:Float = (conductorInUse.metronome.beat - generatedNotes[0].beatTime);
+				for (note in generatedNotes)
+					note.beatTime += beatDiff;
+			case FlxKey.A: // SELECT ALL
+				var selectedAny:Bool = false;
+				forEachNote((note:Note) -> {
+					var charterNote:CharterNote = cast note;
+					if (charterNote == null) return;
+					if (!charterNote.selected) {
+						charterNote.selected = true;
+						selectedAny = true;
+					}
+				}, true);
+				
+				if (!selectedAny) {
+					forEachNote((note:Note) -> {
+						var charterNote:CharterNote = cast note;
+						if (charterNote == null) return;
+						charterNote.selected = false;
+					}, true);
+				}
+			default:
+		}
 	}
 	public function restrictConductor() {
 		var limitTime:Float = Math.max(conductorInUse.metronome.ms, 0);
