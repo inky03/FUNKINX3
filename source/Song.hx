@@ -31,8 +31,8 @@ for simfile (stepmania) ... Song.loadStepMania('songName', 'difficulty')
 
 class Song {
 	public var path:String = '';
-	public var name:String = '';
-	public var artist:String = '';
+	public var name:String = 'Unnamed';
+	public var artist:String = 'Unknown';
 	public var difficulty:String = '';
 	public var format:SongFormat = UNKNOWN;
 

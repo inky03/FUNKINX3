@@ -39,6 +39,8 @@ class CharterState extends MusicBeatState {
 	public var selectionLeniency:Float = 55;
 	public var pickedNote:CharterNote = null;
 	public var draggingNotes:Bool = false;
+	var pickedLaneIndex:Int = 0;
+	var pickedBeat:Float = 0;
 	
 	public var keybinds:Array<Array<FlxKey>> = [];
 	public var tickSound:FlxSound;
@@ -50,14 +52,15 @@ class CharterState extends MusicBeatState {
 	var lastMouseY:Float = 0;
 	var scrolling:Bool = false;
 	var strumGrabY:Null<Float> = null;
-	var heldNotes:Array<Note> = [];
 	var heldKeys:Array<FlxKey> = [];
 	var heldKeybinds:Array<Bool> = [];
+	var heldNotes:Array<CharterNote> = [];
 	var copiedNotes:Array<Song.SongNote> = [];
 	var quants:Array<Int> = [4, 8, 12, 16, 24, 32, 48, 64, 96, 192];
 	
 	var undoMemory:Int = 15;
 	var undoActions:Array<UndoAction> = [];
+	var redoActions:Array<UndoAction> = [];
 	
 	override public function create() {
 		super.create();
@@ -150,6 +153,7 @@ class CharterState extends MusicBeatState {
 		FlxG.stage.addEventListener(MouseEvent.MOUSE_MOVE, mouseMoveEvent);
 		
 		if (song != null) {
+			setWindowTitle();
 			song.instLoaded = false;
 			var songPaths:Array<String> = ['data/songs/${song.path}/', 'songs/${song.path}/'];
 			for (path in songPaths) song.loadMusic(path, false);
@@ -229,8 +233,11 @@ class CharterState extends MusicBeatState {
 						if (mousePoint.distanceTo(note.getMidpoint()) < mousePoint.distanceTo(highlightedSelNote.getMidpoint()))
 							highlightedSelNote = charterNote;
 					}
-					if (FlxG.mouse.justPressed)
+					if (FlxG.mouse.justPressed) {
 						pickedNote = highlightedSelNote;
+						pickedBeat = pickedNote.beatTime;
+						pickedLaneIndex = laneToIndex(pickedNote.lane);
+					}
 				} else {
 					if (highlightedNote == null) {
 						highlightedNote = charterNote;
@@ -319,6 +326,12 @@ class CharterState extends MusicBeatState {
 			charterNote.highlighted = (highlightedNote == note);
 		});
 		if (FlxG.mouse.justReleased) {
+			if (pickedNote != null) {
+				final beatDiff:Float = pickedNote.beatTime - pickedBeat;
+				final laneDiff:Int = laneToIndex(pickedNote.lane) - pickedLaneIndex;
+				if (beatDiff != 0 || laneDiff != 0)
+					addUndo({type: SHIFTED_NOTES, notes: getSelectedNotes(), laneMod: laneDiff, beatMod: beatDiff});
+			}
 			if (!FlxG.keys.pressed.SHIFT && !draggingNotes && !selectedAny && strumGrabY == null) {
 				for (note in getSelectedNotes())
 					note.selected = false;
@@ -356,10 +369,6 @@ class CharterState extends MusicBeatState {
 		} else if (scrolling) {
 			songPaused = true;
 			scrolling = false;
-		}
-		if (FlxG.keys.justPressed.DELETE) {
-			for (note in getSelectedNotes())
-				note.destroy();
 		}
 		
 		// receptor dragging
@@ -647,6 +656,15 @@ class CharterState extends MusicBeatState {
 			keyPressNoteControl(key);
 		}
 		switch (key) {
+			case FlxKey.DELETE:
+				var deletedNotes:Array<CharterNote> = [];
+				for (note in getSelectedNotes()) {
+					note.lane.dequeueNote(note);
+					note.lane.killNote(note);
+					deletedNotes.push(note);
+				}
+				if (deletedNotes.length > 0)
+					addUndo({type: REMOVED_NOTES, notes: deletedNotes});
 			case FlxKey.LEFT | FlxKey.RIGHT:
 				if (key == FlxKey.LEFT) scrollMod *= -1;
 				if (noteControlMode) {
@@ -689,6 +707,76 @@ class CharterState extends MusicBeatState {
 		restrictConductor();
 		updateHolds();
 	}
+	public function undo() {
+		var undoAction:UndoAction = undoActions.pop();
+		if (undoAction != null) {
+			// Sys.println('undoing ${undoAction.type}');
+			redoActions.unshift(undoAction);
+			switch (undoAction.type) {
+				case PLACED_NOTES:
+					for (note in undoAction.notes) {
+						note.lane.dequeueNote(note);
+						note.lane.killNote(note);
+					}
+				case REMOVED_NOTES:
+					for (note in undoAction.notes) {
+						note.lane.queueNote(note);
+						note.selected = true;
+					}
+				case SHIFTED_NOTES:
+					twistNotes(undoAction.notes, -undoAction.laneMod);
+					shiftNotes(undoAction.notes, -undoAction.beatMod);
+				default:
+			}
+		}
+	}
+	public function redo() {
+		var undoAction:UndoAction = redoActions.shift();
+		if (undoAction != null) {
+			// Sys.println('redoing ${undoAction.type}');
+			undoActions.push(undoAction);
+			switch (undoAction.type) {
+				case PLACED_NOTES:
+					for (note in undoAction.notes) {
+						note.lane.queueNote(note);
+						note.selected = true;
+					}
+				case REMOVED_NOTES:
+					for (note in undoAction.notes) {
+						note.lane.dequeueNote(note);
+						note.lane.killNote(note);
+					}
+				case SHIFTED_NOTES:
+					twistNotes(undoAction.notes, undoAction.laneMod);
+					shiftNotes(undoAction.notes, undoAction.beatMod);
+				default:
+			}
+			// todo
+		}
+	}
+	public function addUndo(action:UndoAction) {
+		// Sys.println('added undo action ${action.type}');
+		setWindowTitle(true);
+		undoActions.push(action);
+		
+		while (undoActions.length > undoMemory) {
+			var undoAction:UndoAction = undoActions.shift();
+			destroyUndoAction(undoAction, false);
+		}
+		for (undoAction in redoActions)
+			destroyUndoAction(undoAction, true);
+		redoActions.resize(0);
+	}
+	public function destroyUndoAction(action:UndoAction, parallel:Bool = false) {
+		switch (action.type) { // parallel: for redo
+			case PLACED_NOTES | REMOVED_NOTES:
+				if (parallel == (action.type == REMOVED_NOTES))
+					return;
+				for (note in action.notes)
+					note.destroy();
+			default:
+		}
+	}
 	public function copySelectedNotes() {
 		var selectedNotes:Array<CharterNote> = getSelectedNotes();
 		if (selectedNotes.length > 0) {
@@ -703,18 +791,20 @@ class CharterState extends MusicBeatState {
 	public function keyPressNoteControl(key:FlxKey) {
 		switch (key) {
 			case FlxKey.Z:
+				undo();
 			case FlxKey.Y:
+				redo();
 			case FlxKey.C: // COPY
 				copySelectedNotes();
 			case FlxKey.V: // PASTE
 				for (note in getSelectedNotes())
 					note.selected = false;
-				var generatedNotes:Array<Note> = [];
+				var generatedNotes:Array<CharterNote> = [];
 				for (note in Song.generateNotesFromArray(copiedNotes, true)) {
 					var charterNote:CharterNote = cast note;
 					if (charterNote == null) continue;
 					
-					generatedNotes.push(note);
+					generatedNotes.push(charterNote);
 					charterNote.justCopied = true;
 					charterNote.selected = true;
 				}
@@ -724,10 +814,17 @@ class CharterState extends MusicBeatState {
 					note.beatTime += beatDiff;
 					queueNote(note);
 				}
+				addUndo({type: PLACED_NOTES, notes: generatedNotes, pasted: true});
 			case FlxKey.X: // CUT
 				copySelectedNotes();
-				for (note in getSelectedNotes())
-					note.destroy();
+				var deletedNotes:Array<CharterNote> = [];
+				for (note in getSelectedNotes()) {
+					note.lane.dequeueNote(note);
+					note.lane.killNote(note);
+					deletedNotes.push(note);
+				}
+				if (deletedNotes.length > 0)
+					addUndo({type: REMOVED_NOTES, notes: deletedNotes});
 			case FlxKey.A: // SELECT ALL
 				var selectedAny:Bool = false;
 				forEachNote((note:Note) -> {
@@ -799,11 +896,11 @@ class CharterState extends MusicBeatState {
 		var quantMultiplier:Float = (quant / 4);
 		var strumline:Strumline = strumlines.members[strumlineId];
 		var lane = strumline.getLane(data);
-		var matchingNote:Null<Note> = null;
+		var matchingNote:Null<CharterNote> = null;
 		for (note in lane.notes) {
 			if (note.isHoldPiece) continue;
 			if (Math.abs(note.beatTime - conductorInUse.metronome.beat) < 1 / quantMultiplier - .0012) {
-				matchingNote = note;
+				matchingNote = cast note;
 				break;
 			}
 		}
@@ -812,27 +909,46 @@ class CharterState extends MusicBeatState {
 			var isPlayer:Bool = (strumlineId == 0);
 			var snappedBeat:Float = Math.round(conductorInUse.metronome.beat * quantMultiplier) / quantMultiplier;
 			var note:CharterNote = new CharterNote(isPlayer, 0, data);
-			note.extraData['keybind'] = keybind;
+			heldNotes[keybind] = note;
 			note.beatTime = snappedBeat;
 			note.preventDespawn = true;
-			heldNotes[keybind] = note;
+			note.justPlacing = true;
 			lane.insertNote(note);
 		} else {
-			for (child in matchingNote.children) {
-				lane.killNote(child);
-				child.destroy();
+			var deletedNotes:Array<CharterNote> = [matchingNote];
+			for (child in matchingNote.children)
+				deletedNotes.push(cast child);
+			
+			for (note in deletedNotes) {
+				note.lane.dequeueNote(note);
+				note.lane.killNote(note);
 			}
-			lane.killNote(matchingNote);
-			matchingNote.destroy();
+			addUndo({type: REMOVED_NOTES, notes: deletedNotes});
 		}
 	}
 	public function inputOff(keybind:Int) {
 		heldKeybinds[keybind] = false;
-		var note:Note = heldNotes[keybind];
+		var note:CharterNote = heldNotes[keybind];
 		if (note != null) {
+			for (note in getSelectedNotes())
+				note.selected = false;
+			
+			var addedNotes:Array<CharterNote> = [note];
+			for (child in note.children)
+				addedNotes.push(cast child);
+			
+			addUndo({type: PLACED_NOTES, notes: addedNotes});
+			
 			FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
-			for (child in note.children) child.preventDespawn = false;
+			note.justPlacing = false;
 			note.preventDespawn = false;
+			for (child in note.children) {
+				var charterNote:CharterNote = cast child;
+				if (charterNote == null) continue;
+				
+				charterNote.preventDespawn = false;
+				charterNote.justPlacing = false;
+			}
 			heldNotes[keybind] = null;
 		}
 	}
@@ -841,15 +957,18 @@ class CharterState extends MusicBeatState {
 		var snappedBeat:Float = Math.round(conductorInUse.metronome.beat * quantMultiplier) / quantMultiplier;
 		for (note in heldNotes) {
 			if (note == null) continue;
+			
 			var lane:Lane = note.lane;
 			note.beatLength = snappedBeat - note.beatTime;
 			if (note.beatLength > 0) {
 				if (note.children.length == 0) {
 					var piece:CharterNote = new CharterNote(note.player, note.msTime, note.noteData, note.msLength, note.noteKind, true);
+					piece.justPlacing = note.justPlacing;
 					piece.preventDespawn = true;
 					note.children.push(piece);
 					piece.parent = note;
 					var tail:CharterNote = new CharterNote(note.player, note.msTime, note.noteData, 0, note.noteKind, true);
+					tail.justPlacing = note.justPlacing;
 					tail.preventDespawn = true;
 					note.children.push(tail);
 					tail.parent = note;
@@ -891,10 +1010,21 @@ class CharterState extends MusicBeatState {
 		song.sort();
 		song.findSongLength();
 	}
+	public function setWindowTitle(mod:Bool = false) {
+		var win:lime.ui.Window = FlxG.stage.window;
+		win.title = song.name;
+		if (mod)
+			win.title += '*';
+		if (song.difficulty != '')
+			win.title += ' (' + song.difficulty.toLowerCase() + ')';
+		
+		win.title += ' | ' + Main.windowTitle;
+	}
 	
 	override public function destroy() {
 		instance = null;
 		inEditor = false;
+		FlxG.stage.window.title = Main.windowTitle;
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
 		FlxG.stage.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveEvent);
@@ -905,8 +1035,11 @@ class CharterState extends MusicBeatState {
 }
 
 @:structInit class UndoAction {
-	public var type:UndoActionType;
 	public var notes:Array<CharterNote>;
+	public var type:UndoActionType;
+	public var pasted:Bool = false;
+	public var beatMod:Float = 0;
+	public var laneMod:Int = 0;
 }
 enum UndoActionType {
 	PLACED_NOTES;
@@ -1103,6 +1236,7 @@ class CharterNote extends Note {
 	public var highlighted(default, set):Bool = false;
 	public var hitAlphaMult:Float = .7;
 	public var selected(default, set):Bool = false;
+	public var justPlacing:Bool = false;
 	public var justCopied:Bool = false;
 	public var useLaneRGB:Bool = true;
 	
@@ -1170,6 +1304,7 @@ class CharterNote extends Note {
 		
 		var prevAlpha:Float = alpha;
 		if (wasGood) alpha *= hitAlphaMult;
+		if (justPlacing) alpha *= .75;
 		actuallyDraw();
 		alpha = prevAlpha;
 	}
