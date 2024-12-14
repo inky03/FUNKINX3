@@ -506,54 +506,54 @@ class Song {
 	}
 
 	public function generateNotes(singleSegmentHolds:Bool = false):Array<Note> {
-		var noteArray:Array<Note> = [];
-		var tempMetronome:Metronome = new Metronome();
-		tempMetronome.tempoChanges = this.tempoChanges;
-		for (note in notes) {
-			for (genNote in generateNote(note, singleSegmentHolds, tempMetronome))
-				noteArray.push(genNote);
-		}
-		return noteArray;
+		return generateNotesFromArray(notes, singleSegmentHolds, this);
 	}
-	public static function generateNote(songNote:SongNote, singleSegmentHolds:Bool = false, ?tempMetronome:Metronome) {
+	public static function generateNotesFromArray(songNotes:Array<SongNote>, singleSegmentHolds:Bool = false, ?song:Song) {
 		var noteArray:Array<Note> = [];
+		var tempMetronome:Metronome = null;
 		var type:Dynamic = (CharterState.inEditor ? CharterState.CharterNote : Note);
+		if (song != null) {
+			tempMetronome = new Metronome();
+			tempMetronome.tempoChanges = song.tempoChanges;
+		}
 		
-		tempMetronome?.setMS(songNote.msTime);
-		var hitNote:Note = Type.createInstance(type, [songNote.player, songNote.msTime, songNote.laneIndex, songNote.msLength, songNote.kind]);
-		noteArray.push(hitNote);
-		
-		if (hitNote.msLength > 0) { //hold bits
-			var endMs:Float = songNote.msTime + songNote.msLength;
-			if (!singleSegmentHolds && tempMetronome != null) {
-				var bitTime:Float = songNote.msTime;
-				while (bitTime < endMs) {
-					tempMetronome.setStep(Std.int(tempMetronome.step + .05) + 1);
-					var newTime:Float = tempMetronome.ms;
-					if (bitTime < songNote.msTime) {
-						Log.warning('??? $bitTime < ${songNote.msTime} (sustain bit off by ${songNote.msTime - bitTime}ms)');
+		for (songNote in songNotes) {
+			tempMetronome?.setMS(songNote.msTime);
+			var hitNote:Note = Type.createInstance(type, [songNote.player, songNote.msTime, songNote.laneIndex, songNote.msLength, songNote.kind]);
+			noteArray.push(hitNote);
+			
+			if (hitNote.msLength > 0) { //hold bits
+				var endMs:Float = songNote.msTime + songNote.msLength;
+				if (!singleSegmentHolds && tempMetronome != null) {
+					var bitTime:Float = songNote.msTime;
+					while (bitTime < endMs) {
+						tempMetronome.setStep(Std.int(tempMetronome.step + .05) + 1);
+						var newTime:Float = tempMetronome.ms;
+						if (bitTime < songNote.msTime) {
+							Log.warning('??? $bitTime < ${songNote.msTime} (sustain bit off by ${songNote.msTime - bitTime}ms)');
+							bitTime = newTime;
+							break;
+						}
+						var bitLength:Float = Math.min(newTime - bitTime, endMs - bitTime);
+						var holdBit:Note = Type.createInstance(type, [songNote.player, bitTime, songNote.laneIndex, bitLength, songNote.kind, true]);
+						hitNote.children.push(holdBit);
+						holdBit.parent = hitNote;
+						noteArray.push(holdBit);
 						bitTime = newTime;
-						break;
 					}
-					var bitLength:Float = Math.min(newTime - bitTime, endMs - bitTime);
-					var holdBit:Note = Type.createInstance(type, [songNote.player, bitTime, songNote.laneIndex, bitLength, songNote.kind, true]);
+				} else {
+					var holdBit:Note = Type.createInstance(type, [songNote.player, songNote.msTime, songNote.laneIndex, songNote.msLength, songNote.kind, true]);
 					hitNote.children.push(holdBit);
 					holdBit.parent = hitNote;
 					noteArray.push(holdBit);
-					bitTime = newTime;
 				}
-			} else {
-				var holdBit:Note = Type.createInstance(type, [songNote.player, songNote.msTime, songNote.laneIndex, songNote.msLength, songNote.kind, true]);
-				hitNote.children.push(holdBit);
-				holdBit.parent = hitNote;
-				noteArray.push(holdBit);
+				var endBit:Note = Type.createInstance(type, [songNote.player, endMs, songNote.laneIndex, 0, songNote.kind, true]);
+				hitNote.children.push(endBit);
+				noteArray.push(endBit);
+				
+				endBit.parent = hitNote;
+				hitNote.tail = endBit;
 			}
-			var endBit:Note = Type.createInstance(type, [songNote.player, endMs, songNote.laneIndex, 0, songNote.kind, true]);
-			hitNote.children.push(endBit);
-			noteArray.push(endBit);
-			
-			endBit.parent = hitNote;
-			hitNote.tail = endBit;
 		}
 		
 		return noteArray;

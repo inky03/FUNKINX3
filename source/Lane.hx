@@ -218,6 +218,7 @@ class Lane extends FlxSpriteGroup {
 	}
 	public function spark():NoteSpark {
 		var spark:NoteSpark = noteSparks.recycle(NoteSpark, () -> new NoteSpark(noteData));
+		spark.alpha = alpha;
 		spark.camera = camera;
 		spark.shader = splashRGB.shader;
 		spark.sparkOnReceptor(receptor);
@@ -234,6 +235,7 @@ class Lane extends FlxSpriteGroup {
 					}
 				}
 			}
+			note.lane = this;
 			queue.push(note);
 		}
 		return note;
@@ -548,7 +550,7 @@ class NoteSpark extends FunkinSprite {
 						game.hitsound.play(true);
 					
 					if (applyRating) {
-						scoring ??= game.scoring.judgeNoteHit(note, note.msTime - lane.conductorInUse.songPosition);
+						scoring ??= game.scoring.judgeNoteHit(note, (lane.cpu ? 0 : note.msTime - lane.conductorInUse.songPosition));
 						game.scoring.countRating(scoring.rating);
 						
 						var rating:FunkinSprite = game.popRating(scoring.rating);
