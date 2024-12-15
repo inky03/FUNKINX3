@@ -1068,9 +1068,10 @@ class CharterState extends MusicBeatState {
 				kindMatch = false;
 		}
 		
-		var notesStr:String = (notesCount == 1 ? 'note' : '$notesCount notes');
-		if (longMatch && length > 0) notesStr = 'long $notesStr';
+		var notesStr:String = (longMatch && length > 0 ? 'long note' : 'note');
+		if (notesCount != 1) notesStr += 's';
 		if (kindMatch && kind != '') notesStr += ' ($kind)';
+		if (notesCount != 1) notesStr = '$notesCount $notesStr';
 		
 		return switch (type) {
 			case PLACED_NOTES:
