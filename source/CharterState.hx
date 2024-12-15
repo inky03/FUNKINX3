@@ -106,10 +106,11 @@ class CharterState extends MusicBeatState {
 		var background:FlxBackdrop = new FlxBackdrop(Paths.image('charter/bg'));
 		background.antialiasing = true;
 		background.scale.set(.85, .85);
+		background.velocity.set(5, 5);
 		add(background);
-		var underlay:FunkinSprite = new FunkinSprite(0, 0, false).makeGraphic(1, FlxG.height, 0xff808080);
+		var underlay:FunkinSprite = new FunkinSprite(0, 0, false).makeGraphic(1, FlxG.height, 0xff101010);
 		underlay.screenCenter();
-		underlay.alpha = .5;
+		underlay.alpha = .7;
 		add(underlay);
 		
 		measureLines = new FlxTypedSpriteGroup<MeasureLine>();
@@ -728,6 +729,7 @@ class CharterState extends MusicBeatState {
 					shiftNotes(undoAction.notes, -undoAction.beatMod);
 				default:
 			}
+			charterDisplay.addMessage(undoAction.message(), true, false);
 		}
 	}
 	public function redo() {
@@ -751,7 +753,7 @@ class CharterState extends MusicBeatState {
 					shiftNotes(undoAction.notes, undoAction.beatMod);
 				default:
 			}
-			// todo
+			charterDisplay.addMessage(undoAction.message(), true, true);
 		}
 	}
 	public function addUndo(action:UndoAction) {
@@ -766,6 +768,8 @@ class CharterState extends MusicBeatState {
 		for (undoAction in redoActions)
 			destroyUndoAction(undoAction, true);
 		redoActions.resize(0);
+		
+		charterDisplay.addMessage(action.message(), false, true);
 	}
 	public function destroyUndoAction(action:UndoAction, parallel:Bool = false) {
 		switch (action.type) { // parallel: for redo
@@ -799,22 +803,24 @@ class CharterState extends MusicBeatState {
 			case FlxKey.V: // PASTE
 				for (note in getSelectedNotes())
 					note.selected = false;
-				var generatedNotes:Array<CharterNote> = [];
-				for (note in Song.generateNotesFromArray(copiedNotes, true)) {
-					var charterNote:CharterNote = cast note;
-					if (charterNote == null) continue;
-					
-					generatedNotes.push(charterNote);
-					charterNote.justCopied = true;
-					charterNote.selected = true;
+				if (copiedNotes.length > 0) {
+					var generatedNotes:Array<CharterNote> = [];
+					for (note in Song.generateNotesFromArray(copiedNotes, true)) {
+						var charterNote:CharterNote = cast note;
+						if (charterNote == null) continue;
+						
+						generatedNotes.push(charterNote);
+						charterNote.justCopied = true;
+						charterNote.selected = true;
+					}
+					var quantMult:Float = quant / 4;
+					var beatDiff:Float = (Math.round(conductorInUse.metronome.beat * quantMult) / quantMult - generatedNotes[0].beatTime);
+					for (note in generatedNotes) {
+						note.beatTime += beatDiff;
+						queueNote(note);
+					}
+					addUndo({type: PLACED_NOTES, notes: generatedNotes, pasted: true});
 				}
-				var quantMult:Float = quant / 4;
-				var beatDiff:Float = (Math.round(conductorInUse.metronome.beat * quantMult) / quantMult - generatedNotes[0].beatTime);
-				for (note in generatedNotes) {
-					note.beatTime += beatDiff;
-					queueNote(note);
-				}
-				addUndo({type: PLACED_NOTES, notes: generatedNotes, pasted: true});
 			case FlxKey.X: // CUT
 				copySelectedNotes();
 				var deletedNotes:Array<CharterNote> = [];
@@ -1037,9 +1043,44 @@ class CharterState extends MusicBeatState {
 @:structInit class UndoAction {
 	public var notes:Array<CharterNote>;
 	public var type:UndoActionType;
+	
 	public var pasted:Bool = false;
 	public var beatMod:Float = 0;
 	public var laneMod:Int = 0;
+	
+	public function message() {
+		var notesCount:Int = 0;
+		var longMatch:Bool = true;
+		var kindMatch:Bool = true;
+		var length:Null<Float> = null;
+		var kind:Null<String> = null;
+		
+		for (note in notes) {
+			if (note.isHoldPiece)
+				continue;
+			
+			notesCount ++;
+			length ??= note.beatLength;
+			if ((length > 0) != (note.beatLength > 0))
+				longMatch = false;
+			kind ??= note.noteKind;
+			if (kind != note.noteKind)
+				kindMatch = false;
+		}
+		
+		var notesStr:String = (notesCount == 1 ? 'note' : '$notesCount notes');
+		if (longMatch && length > 0) notesStr = 'long $notesStr';
+		if (kindMatch && kind != '') notesStr += ' ($kind)';
+		
+		return switch (type) {
+			case PLACED_NOTES:
+				'${pasted ? 'copied' : 'added'} $notesStr';
+			case REMOVED_NOTES:
+				'removed $notesStr';
+			case SHIFTED_NOTES:
+				'shifted $notesStr';
+		}
+	}
 }
 enum UndoActionType {
 	PLACED_NOTES;
@@ -1119,6 +1160,48 @@ class MeasureLine extends FlxSpriteGroup {
 	}
 }
 
+class CharterPopUp extends Sprite {
+	public var message(default, set):String;
+	public var isUndo(default, set):Bool;
+	public var isRedo(default, set):Bool;
+	public var text:TextField;
+	public var icon:Bitmap;
+	
+	public function new() {
+		super();
+		
+		icon = new Bitmap();
+		icon.smoothing = true;
+		icon.scaleX = icon.scaleY = .65;
+		icon.y = 3;
+		
+		var smallTf:TextFormat = new TextFormat('_sans', 12, -1);
+		smallTf.letterSpacing = -1;
+		text = new TextField();
+		text.autoSize = LEFT;
+		text.selectable = false;
+		text.mouseEnabled = false;
+		text.defaultTextFormat = smallTf;
+		addChild(text);
+	}
+	public function set_isRedo(isIt:Bool) {
+		icon.bitmapData = Paths.bmd('charter/' + (isIt ? 'redo' : 'undo'));
+		return isRedo = isIt;
+	}
+	public function set_isUndo(isIt:Bool) {
+		if (isIt && !contains(icon)) {
+			addChild(icon);
+		} else if (!isIt && contains(icon)) {
+			removeChild(icon);
+		}
+		text.x = (isIt ? 13 : 0);
+		return isUndo = isIt;
+	}
+	public function set_message(mes:String) {
+		text.text = mes;
+		return message = mes;
+	}
+}
 class CharterDisplay extends Sprite {
 	public var metronomeText:TextField;
 	public var songPosText:TextField;
@@ -1126,6 +1209,9 @@ class CharterDisplay extends Sprite {
 	
 	public var conductor:Conductor;
 	public var songLength:Float = 0;
+	
+	public var popUps:Array<CharterPopUp> = [];
+	// maybe put the pop ups in a container
 	
 	public function new(conductor:Conductor) {
 		super();
@@ -1153,10 +1239,55 @@ class CharterDisplay extends Sprite {
 			addChild(text);
 		}
 	}
+	public function addMessage(message:String, isUndo:Bool = false, isRedo:Bool = false) {
+		var i:Int = 0;
+		var toUse:CharterPopUp = null;
+		for (pop in popUps) {
+			if (!contains(pop)) {
+				toUse = pop;
+				break;
+			}
+			i ++;
+		}
+		var maxHeight:Float = FlxG.stage.window.height - 96;
+		if (getTextPos(0) >= maxHeight)
+			toUse = popUps[0];
+		else if (getTextPos(i) >= maxHeight)
+			toUse = popUps[i - 1];
+		
+		if (toUse == null) {
+			toUse = new CharterPopUp();
+			popUps.push(toUse);
+		}
+		toUse.message = message;
+		toUse.isUndo = isUndo;
+		toUse.isRedo = isRedo;
+		toUse.alpha = .75;
+		toUse.x = 10;
+		
+		if (!contains(toUse))
+			addChild(toUse);
+		repositionTexts();
+		FlxTween.cancelTweensOf(toUse);
+		FlxTween.tween(toUse, {alpha: 0}, .5, {startDelay: .75, onComplete: (_) -> {
+			if (contains(toUse))
+				removeChild(toUse);
+			popUps.push(popUps.shift());
+			repositionTexts();
+		}});
+	}
+	function getTextPos(i:Int)
+		return 35 + i * 15;
+	function repositionTexts() {
+		for (i => pop in popUps) {
+			if (!contains(pop)) continue;
+			pop.y = getTextPos(i);
+		}
+	}
 	public function updateMetronomeInfo() {
 		var metronome:Conductor.Metronome = conductor.metronome;
-		var metronomeTextT:String = 'Measure: ${Math.floor(metronome.bar)}\nBeat: ${Math.floor(metronome.beat)}\nStep: ${Math.floor(metronome.step)}';
 		var songPosTextT:String = FlxStringUtil.formatTime(metronome.ms * .001, true) + ' / ' + FlxStringUtil.formatTime(songLength * .001, true);
+		var metronomeTextT:String = 'Measure: ${Math.floor(metronome.bar)}\nBeat: ${Math.floor(metronome.beat)}\nStep: ${Math.floor(metronome.step)}';
 		if (metronomeText.text != metronomeTextT)
 			metronomeText.text = metronomeTextT;
 		if (songPosText.text != songPosTextT)
@@ -1165,14 +1296,15 @@ class CharterDisplay extends Sprite {
 	
 	override function __enterFrame(deltaTime:Float) {
 		updateMetronomeInfo();
-		y = FlxG.stage.window.height;
-		metronomeText.y = -metronomeText.textHeight - 32;
-		songPosText.y = -songPosText.textHeight - 12;
+		
+		var h:Float = FlxG.stage.window.height;
+		songPosText.y = h - songPosText.textHeight - 12;
+		metronomeText.y = h - metronomeText.textHeight - 32;
 		var bgHeight:Float = songPosText.textHeight + metronomeText.textHeight + 28;
 		
 		background.scaleX = Math.max(Math.max(songPosText.textWidth, metronomeText.textWidth) + 24, 120);
 		background.scaleY = bgHeight;
-		background.y = -bgHeight;
+		background.y = h - bgHeight;
 	}
 }
 

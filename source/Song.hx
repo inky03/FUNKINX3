@@ -221,7 +221,7 @@ class Song {
 			} else {
 				sections = song.json.notes;
 			}
-			if (song.json.events != null) { // todo: implement events.json
+			if (song.json.events != null) {
 				var eventBlobs:Array<Array<Dynamic>> = song.json.events;
 				for (eventBlob in eventBlobs) {
 					var eventTime:Float = eventBlob[0];
@@ -506,7 +506,11 @@ class Song {
 	}
 
 	public function generateNotes(singleSegmentHolds:Bool = false):Array<Note> {
-		return generateNotesFromArray(notes, singleSegmentHolds, this);
+		var time:Float = Sys.time();
+		Log.minor('generating notes from song');
+		var notes:Array<Note> = generateNotesFromArray(notes, singleSegmentHolds, this);
+		Log.info('generated ${notes.length} notes! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
+		return notes;
 	}
 	public static function generateNotesFromArray(songNotes:Array<SongNote>, singleSegmentHolds:Bool = false, ?song:Song) {
 		var noteArray:Array<Note> = [];
