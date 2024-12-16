@@ -266,9 +266,8 @@ class Lane extends FlxSpriteGroup {
 		var canDespawn:Bool = !note.preventDespawn;
 		if (note.lost || note.goodHit || note.isHoldPiece) {
 			if (canDespawn && (note.endMs - conductorInUse.songPosition) < -spawnRadius) {
-				if (!oneWay) { // bye bye note
+				if (!oneWay) // bye bye note
 					queue.push(note);
-				}
 				killNote(note);
 			}
 		} else {
@@ -276,6 +275,10 @@ class Lane extends FlxSpriteGroup {
 				note.lost = true;
 				noteEvent.dispatch(basicEvent(LOST, note));
 			}
+		}
+		if (!oneWay && (note.msTime - conductorInUse.songPosition) > spawnRadius) {
+			queue.push(note);
+			killNote(note);
 		}
 	}
 	public function insertNote(note:Note, pos:Int = -1) {

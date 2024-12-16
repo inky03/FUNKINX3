@@ -509,7 +509,7 @@ class Song {
 		var time:Float = Sys.time();
 		Log.minor('generating notes from song');
 		var notes:Array<Note> = generateNotesFromArray(notes, singleSegmentHolds, this);
-		Log.info('generated ${notes.length} notes! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
+		Log.info('generated ${notes.length} note objects! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		return notes;
 	}
 	public static function generateNotesFromArray(songNotes:Array<SongNote>, singleSegmentHolds:Bool = false, ?song:Song) {

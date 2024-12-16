@@ -49,6 +49,9 @@ class CharterState extends MusicBeatState {
 	public var scrollSpeed(default, set):Float = 1;
 	public var songPaused(default, set):Bool;
 	
+	public var fullNoteCount:Int = 0;
+	public var hitNoteCount:Int = 0;
+	
 	var lastMouseY:Float = 0;
 	var scrolling:Bool = false;
 	var strumGrabY:Null<Float> = null;
@@ -169,6 +172,7 @@ class CharterState extends MusicBeatState {
 				queueNote(note);
 		}
 		songPaused = true;
+		recalculateNoteCount();
 		charterDisplay.songLength = findSongLength();
 		
 		var bgPadding:Float = 50;
@@ -730,6 +734,7 @@ class CharterState extends MusicBeatState {
 				default:
 			}
 			charterDisplay.addMessage(undoAction.message(), true, false);
+			recalculateNoteCount();
 		}
 	}
 	public function redo() {
@@ -754,6 +759,7 @@ class CharterState extends MusicBeatState {
 				default:
 			}
 			charterDisplay.addMessage(undoAction.message(), true, true);
+			recalculateNoteCount();
 		}
 	}
 	public function addUndo(action:UndoAction) {
@@ -770,6 +776,7 @@ class CharterState extends MusicBeatState {
 		redoActions.resize(0);
 		
 		charterDisplay.addMessage(action.message(), false, true);
+		recalculateNoteCount();
 	}
 	public function destroyUndoAction(action:UndoAction, parallel:Bool = false) {
 		switch (action.type) { // parallel: for redo
@@ -779,6 +786,17 @@ class CharterState extends MusicBeatState {
 				for (note in action.notes)
 					note.destroy();
 			default:
+		}
+	}
+	public function recalculateNoteCount() {
+		fullNoteCount = 0;
+		hitNoteCount = 0;
+		for (strumline in strumlines) {
+			strumline.forEachNote((note:Note) -> {
+				if (!note.isHoldPiece)
+					hitNoteCount ++;
+				fullNoteCount ++;
+			}, true);
 		}
 	}
 	public function copySelectedNotes() {
@@ -1205,7 +1223,9 @@ class CharterPopUp extends Sprite {
 }
 class CharterDisplay extends Sprite {
 	public var metronomeText:TextField;
+	public var noteInfoText:TextField;
 	public var songPosText:TextField;
+	public var bpmInfoText:TextField;
 	public var background:Bitmap;
 	
 	public var conductor:Conductor;
@@ -1228,10 +1248,16 @@ class CharterDisplay extends Sprite {
 		
 		metronomeText = new TextField();
 		metronomeText.defaultTextFormat = metronomeTf;
+		noteInfoText = new TextField();
+		noteInfoText.defaultTextFormat = new TextFormat(Paths.ttf('vcr'), 11, -1);
+		noteInfoText.defaultTextFormat.letterSpacing = -1;
+		noteInfoText.alpha = .75;
 		songPosText = new TextField();
 		songPosText.defaultTextFormat = new TextFormat(Paths.ttf('vcr'), 12, -1);
+		bpmInfoText = new TextField();
+		bpmInfoText.defaultTextFormat = new TextFormat(Paths.ttf('vcr'), 18, -1);
 		
-		for (text in [metronomeText, songPosText]) {
+		for (text in [metronomeText, songPosText, noteInfoText, bpmInfoText]) {
 			text.x = 10;
 			text.autoSize = LEFT;
 			text.multiline = true;
@@ -1286,26 +1312,34 @@ class CharterDisplay extends Sprite {
 		}
 	}
 	public function updateMetronomeInfo() {
+		var charter:CharterState = CharterState.instance;
 		var metronome:Conductor.Metronome = conductor.metronome;
+		var bpmInfoTextT:String = '${metronome.bpm} bpm\n${metronome.timeSignature.toString()}';
 		var songPosTextT:String = FlxStringUtil.formatTime(metronome.ms * .001, true) + ' / ' + FlxStringUtil.formatTime(songLength * .001, true);
 		var metronomeTextT:String = 'Measure: ${Math.floor(metronome.bar)}\nBeat: ${Math.floor(metronome.beat)}\nStep: ${Math.floor(metronome.step)}';
-		if (metronomeText.text != metronomeTextT)
-			metronomeText.text = metronomeTextT;
-		if (songPosText.text != songPosTextT)
-			songPosText.text = songPosTextT;
+		var noteInfoTextT:String = '${charter.hitNoteCount} notes (${charter.fullNoteCount} obj)';
+		
+		if (metronomeText.text != metronomeTextT) metronomeText.text = metronomeTextT;
+		if (noteInfoText.text != noteInfoTextT) noteInfoText.text = noteInfoTextT;
+		if (songPosText.text != songPosTextT) songPosText.text = songPosTextT;
+		if (bpmInfoText.text != bpmInfoTextT) bpmInfoText.text = bpmInfoTextT;
 	}
 	
 	override function __enterFrame(deltaTime:Float) {
 		updateMetronomeInfo();
 		
+		noteInfoText.x = FlxG.stage.window.width - 12 - noteInfoText.textWidth;
+		
 		var h:Float = FlxG.stage.window.height;
 		songPosText.y = h - songPosText.textHeight - 12;
+		noteInfoText.y = h - noteInfoText.textHeight - 12;
 		metronomeText.y = h - metronomeText.textHeight - 32;
-		var bgHeight:Float = songPosText.textHeight + metronomeText.textHeight + 28;
+		var infoHeight:Float = songPosText.textHeight + metronomeText.textHeight + 32;
 		
+		bpmInfoText.y = h - infoHeight - bpmInfoText.textHeight;
 		background.scaleX = Math.max(Math.max(songPosText.textWidth, metronomeText.textWidth) + 24, 120);
-		background.scaleY = bgHeight;
-		background.y = h - bgHeight;
+		background.scaleY = infoHeight + bpmInfoText.textHeight + 10;
+		background.y = h - background.scaleY;
 	}
 }
 
