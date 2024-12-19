@@ -18,7 +18,6 @@ import Bar;
 using StringTools;
 
 class PlayState extends MusicBeatState {
-	public var basicBG:FunkinSprite;
 	public var player1:Character;
 	public var player2:Character;
 	public var player3:Character;
@@ -70,6 +69,7 @@ class PlayState extends MusicBeatState {
 	public var totalHits:Int = 0;
 	public var percent:Float = 0;
 	public var dead:Bool = false;
+	public var gameOver:GameOverSubState;
 
 	public var hitsound:FlxSound;
 	
@@ -91,10 +91,10 @@ class PlayState extends MusicBeatState {
 		
 		hscripts.loadFromFolder('scripts/global');
 		hscripts.loadFromFolder('scripts/songs/${song.path}');
-
-		hitsound = FlxG.sound.load(Paths.sound('gameplay/hitsounds/hitsound'));
+		
+		hitsound = FunkinSound.load(Paths.sound('gameplay/hitsounds/hitsound'));
 		hitsound.volume = .7;
-
+		
 		stepHit.add(stepHitEvent);
 		beatHit.add(beatHitEvent);
 		barHit.add(barHitEvent);
@@ -117,7 +117,7 @@ class PlayState extends MusicBeatState {
 		camFocusTarget = new FlxObject(0, FlxG.height * .5);
 		camGame.follow(camFocusTarget, LOCKON, 3);
 		add(camFocusTarget);
-
+		
 		camGame.zoomFollowLerp = camHUD.zoomFollowLerp = 3;
 		
 		stage = new Stage(song);
@@ -125,14 +125,14 @@ class PlayState extends MusicBeatState {
 		camGame.zoomTarget = stage.zoom;
 		camHUD.zoomTarget = 1;
 		add(stage);
-
+		
 		player1 = stage.getCharacter('bf');
 		player2 = stage.getCharacter('dad');
 		player3 = stage.getCharacter('gf');
-
+		
 		// add stage character positions one day Smiles
 		// update: i did ( it sucks i think )
-
+		
 		focusOnCharacter(player3 ?? player1);
 		camGame.snapToTarget();
 		
@@ -179,30 +179,32 @@ class PlayState extends MusicBeatState {
 		playerStrumline.fitToSize(strumlineBound, playerStrumline.height * .7);
 		playerStrumline.setPosition(FlxG.width - playerStrumline.width - 50 - 75, strumlineY);
 		playerStrumline.zIndex = 50;
-
+		
 		if (middlescroll) {
 			playerStrumline.screenCenter(X);
 			opponentStrumline.fitToSize(opponentStrumline.width * .7);
 		}
 		
-		opponentStrumline.addEvent(opponentNoteEvent);
-		playerStrumline.addEvent(playerNoteEvent);
+		opponentStrumline.noteEvent.add(opponentNoteEvent);
+		playerStrumline.noteEvent.add(playerNoteEvent);
 		opponentStrumline.visible = false;
 		playerStrumline.visible = false;
-
+		
 		keybinds = Options.data.keybinds['4k'];
 		playerStrumline.assignKeybinds(keybinds);
 		
 		var noteKinds:Array<String> = [];
 		for (note in song.generateNotes()) {
-			if (note.noteKind.trim() != '' && !noteKinds.contains(note.noteKind)) noteKinds.push(note.noteKind);
+			var noteKind:String = note.noteKind;
+			if (noteKind.trim() != '' && !noteKinds.contains(noteKind)) {
+				noteKinds.push(noteKind);
+				hscripts.loadFromPaths('scripts/notekinds/$noteKind.hx');
+			}
 
 			var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
 			strumline.queueNote(note);
 			notes.push(note);
 		}
-		for (noteKind in noteKinds)
-			hscripts.loadFromPaths('scripts/notekinds/$noteKind.hx');
 		
 		if (middlescroll) {
 			playerStrumline.center(X);
@@ -238,16 +240,22 @@ class PlayState extends MusicBeatState {
 		debugTxt = new FlxText(0, 12, FlxG.width, '');
 		debugTxt.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, CENTER, OUTLINE, FlxColor.BLACK);
 		uiGroup.add(debugTxt);
-
+		
 		uiGroup.add(opponentStrumline);
 		uiGroup.add(playerStrumline);
-
+		
 		if (downscroll) {
 			for (mem in uiGroup)
 				mem.y = FlxG.height - mem.y - mem.height;
 		}
-
+		
+		var loadedEvents:Array<String> = [];
 		for (event in song.events) {
+			var eventName:String = event.name;
+			if (!loadedEvents.contains(eventName)) {
+				loadedEvents.push(eventName);
+				hscripts.loadFromPaths('scripts/events/$eventName.hx');
+			}
 			events.push(event);
 			pushedEvent(event);
 		}
@@ -385,7 +393,7 @@ class PlayState extends MusicBeatState {
 		
 		hscripts.run('updatePost', [elapsed, false, false]);
 		
-		if (conductorInUse.songPosition >= song.songLength && !conductorInUse.paused) {
+		if (!song.instLoaded && conductorInUse.songPosition >= song.songLength && !conductorInUse.paused) {
 			finishSong();
 		}
 	}
@@ -428,8 +436,6 @@ class PlayState extends MusicBeatState {
 	}
 
 	public function pushedEvent(event:SongEvent) {
-		hscripts.loadFromPaths('scripts/events/${event.name}.hx');
-		
 		var params:Map<String, Dynamic> = event.params;
 		switch (event.name) {
 			case 'PlayAnimation':
@@ -526,18 +532,25 @@ class PlayState extends MusicBeatState {
 				camZoomIntensity = targetIntensity;
 				camZoomRate = targetRate;
 			case 'PlayAnimation':
-				var focusChara:Null<Character> = null;
-				switch (params['target']) {
-					case 'girlfriend', 'gf': focusChara = player3;
-					case 'boyfriend', 'bf': focusChara = player1;
-					case 'dad': focusChara = player2;
+				var anim:String = params['anim'];
+				var target:String = params['target'];
+				var focus:Null<FunkinSprite> = null;
+				
+				switch (target) {
+					case 'dad' | 'opponent': focus = player2;
+					case 'girlfriend' | 'gf': focus = player3;
+					case 'boyfriend' | 'bf' | 'player': focus = player1;
+					default: focus = stage.getProp(target);
 				}
-				if (focusChara != null) {
-					var anim:String = params['anim'];
-					focusChara.playAnimation(anim, true);
-					if (focusChara.animation.exists(anim)) {
-						focusChara.specialAnim = params['force'] ?? false;
-						focusChara.animReset = focusChara.specialAnim ? 0 : 8;
+				
+				if (focus != null && focus.animationExists(anim)) {
+					var forced:Bool = params['force'];
+					focus.playAnimation(anim, forced);
+					
+					if (Std.isOfType(focus, Character)) {
+						var chara:Character = cast focus;
+						chara.specialAnim = forced;
+						chara.animReset = 8;
 					}
 				}
 		}
@@ -565,18 +578,18 @@ class PlayState extends MusicBeatState {
 			var folder:String = 'funkin';
 			switch (beat) {
 				case -4:
-					FlxG.sound.play(Paths.sound('gameplay/countdown/$folder/introTHREE'));
+					FunkinSound.playOnce(Paths.sound('gameplay/countdown/$folder/introTHREE'));
 					opponentStrumline.fadeIn();
 					playerStrumline.fadeIn();
 				case -3:
 					popCountdown('ready');
-					FlxG.sound.play(Paths.sound('gameplay/countdown/$folder/introTWO'));
+					FunkinSound.playOnce(Paths.sound('gameplay/countdown/$folder/introTWO'));
 				case -2:
 					popCountdown('set');
-					FlxG.sound.play(Paths.sound('gameplay/countdown/$folder/introONE'));
+					FunkinSound.playOnce(Paths.sound('gameplay/countdown/$folder/introONE'));
 				case -1:
 					popCountdown('go');
-					FlxG.sound.play(Paths.sound('gameplay/countdown/$folder/introGO'));
+					FunkinSound.playOnce(Paths.sound('gameplay/countdown/$folder/introGO'));
 				case 0:
 					if (song.instLoaded) song.inst.play(true);
 					for (track in syncVocals) track.play(true);
@@ -649,11 +662,15 @@ class PlayState extends MusicBeatState {
 	}
 
 	public function playerNoteEvent(e:Lane.NoteEvent) {
+		e.doSpark = true;
+		e.doSplash = true;
 		e.targetCharacter = player1;
+		
 		if (e.type == Lane.NoteEventType.GHOST && Options.data.ghostTapping) {
 			e.playAnimation = false;
-			e.applyRating = false;
-			e.playSound = false;
+		} else {
+			e.playSound = true;
+			e.applyRating = true;
 		}
 
 		hscripts.run('playerNoteEventPre', [e]);
@@ -748,7 +765,7 @@ class PlayState extends MusicBeatState {
 		FlxTween.cancelTweensOf(camGame);
 		camGame.pauseFollowLerp = false;
 		
-		var gameOver:GameOverSubState = new GameOverSubState(instant);
+		gameOver = new GameOverSubState(instant);
 		
 		if (instant) {
 			stopMusic();

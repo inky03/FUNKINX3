@@ -61,71 +61,101 @@ function playerNoteEvent(e:NoteEvent) {
 	picoAnim(e);
 }
 
+function deathPre(instant:Bool) {
+	if (instant) return;
+	
+	var alt:String = (darnellAlt ? 1 : 2);
+	var pico:Character = player1;
+	var darn:Character = player2;
+	pico.playAnimation('hitSpin');
+	darn.playAnimation('uppercutPrep');
+	pico.specialAnim = darn.specialAnim = true;
+	new FlxTimer().start(.2, (_) -> {
+		game.camGame.shake(0.03, 0.1);
+		pico.zIndex = 2000;
+		pico.playAnimation('hitLow');
+		darn.playAnimation('punchLow$alt');
+		darn.animation.timeScale = pico.animation.timeScale = 0;
+		stage.sortZIndex();
+	});
+}
 function hitShake()
 	game.camGame.shake(0.0025, 0.15);
 function blockShake()
 	game.camGame.shake(0.002, 0.1);
 function picoAnim(e:NoteEvent) {
-	if (e.type != NoteEventType.HIT && e.type != NoteEventType.LOST) return;
+	if (e.type != NoteEventType.HIT && e.type != NoteEventType.LOST && e.type != NoteEventType.GHOST)
+		return;
 
 	var missed:Bool = e.type == NoteEventType.LOST;
-	var alt:String = (picoAlt ? '2' : '1');
+	var alt:String = (picoAlt ? 2 : 1);
 	var pico:Character = game.player1;
-	var kind:String = e.note.noteKind;
 	var front:Bool = false;
-
-	if (cantUppercut) {
-		cantUppercut = false;
-		pico.playAnimationSteps(missed ? 'hitHigh' : 'block', true);
-		pico.zIndex = 2000;
-		stage.sortZIndex();
-		return;
-	}
-	switch (kind) {
-		case 'weekend-1-punchlow', 'weekend-1-punchlowblocked', 'weekend-1-punchlowdodged', 'weekend-1-punchlowspin':
-			if (missed) {
-				pico.playAnimationSteps('hitLow', true);
-			} else {
-				pico.playAnimationSteps('punchLow$alt', true);
-				picoAlt = !picoAlt;
-				front = true;
-			}
-		case 'weekend-1-punchhigh', 'weekend-1-punchhighblocked', 'weekend-1-punchhighdodged', 'weekend-1-punchhighspin':
-			if (missed) {
-				pico.playAnimationSteps('hitHigh', true);
-			} else {
-				pico.playAnimationSteps('punchHigh$alt', true);
-				picoAlt = !picoAlt;
-				front = true;
-			}
-
-		case 'weekend-1-blocklow': pico.playAnimationSteps(missed ? 'hitLow' : 'block', true);
-		case 'weekend-1-blockhigh': pico.playAnimationSteps(missed ? 'hitHigh' : 'block', true);
-		case 'weekend-1-blockspin': pico.playAnimationSteps(missed ? 'hitSpin' : 'block', true);
+	
+	if (e.type == NoteEventType.GHOST) {
+		pico.playAnimationSteps('punchHigh$alt', true);
+		picoAlt = !picoAlt;
+		front = true;
 		
-		case 'weekend-1-dodgelow': pico.playAnimationSteps(missed ? 'hitLow' : 'dodge', true);
-		case 'weekend-1-dodgehigh': pico.playAnimationSteps(missed ? 'hitHigh' : 'dodge', true);
-		case 'weekend-1-dodgespin': pico.playAnimationSteps(missed ? 'hitSpin' : 'dodge', true);
+		var darn:Character = player2;
+		var darnellDodge:Bool = FlxG.random.bool(50);
+		darn.playAnimationSteps(darnellDodge ? 'dodge' : 'block', true);
+	} else {
+		var kind:String = e.note.noteKind;
+		
+		if (cantUppercut) {
+			cantUppercut = false;
+			pico.playAnimationSteps(missed ? 'hitHigh' : 'block', true);
+			pico.zIndex = 2000;
+			stage.sortZIndex();
+			return;
+		}
+		switch (kind) {
+			case 'weekend-1-punchlow', 'weekend-1-punchlowblocked', 'weekend-1-punchlowdodged', 'weekend-1-punchlowspin':
+				if (missed) {
+					pico.playAnimationSteps('hitLow', true);
+				} else {
+					pico.playAnimationSteps('punchLow$alt', true);
+					picoAlt = !picoAlt;
+					front = true;
+				}
+			case 'weekend-1-punchhigh', 'weekend-1-punchhighblocked', 'weekend-1-punchhighdodged', 'weekend-1-punchhighspin':
+				if (missed) {
+					pico.playAnimationSteps('hitHigh', true);
+				} else {
+					pico.playAnimationSteps('punchHigh$alt', true);
+					picoAlt = !picoAlt;
+					front = true;
+				}
 
-		case 'weekend-1-hithigh': pico.playAnimationSteps('hitHigh', true);
-		case 'weekend-1-hitlow': pico.playAnimationSteps('hitLow', true);
-		case 'weekend-1-hitspin': pico.playAnimationSteps('hitSpin', true);
+			case 'weekend-1-blocklow': pico.playAnimationSteps(missed ? 'hitLow' : 'block', true);
+			case 'weekend-1-blockhigh': pico.playAnimationSteps(missed ? 'hitHigh' : 'block', true);
+			case 'weekend-1-blockspin': pico.playAnimationSteps(missed ? 'hitSpin' : 'block', true);
+			
+			case 'weekend-1-dodgelow': pico.playAnimationSteps(missed ? 'hitLow' : 'dodge', true);
+			case 'weekend-1-dodgehigh': pico.playAnimationSteps(missed ? 'hitHigh' : 'dodge', true);
+			case 'weekend-1-dodgespin': pico.playAnimationSteps(missed ? 'hitSpin' : 'dodge', true);
 
-		case 'weekend-1-picouppercutprep': pico.playAnimationSteps('uppercutPrep', true); cantUppercut = missed;
-		case 'weekend-1-picouppercut': picoUppercut(!missed); front = true;
+			case 'weekend-1-hithigh': pico.playAnimationSteps('hitHigh', true);
+			case 'weekend-1-hitlow': pico.playAnimationSteps('hitLow', true);
+			case 'weekend-1-hitspin': pico.playAnimationSteps('hitSpin', true);
 
-		case 'weekend-1-darnelluppercutprep', 'weekend-1-reversefakeout': pico.playAnimation('idle', true);
-		case 'weekend-1-darnelluppercut': pico.playAnimationSteps('uppercutHit', true);
+			case 'weekend-1-picouppercutprep': pico.playAnimationSteps('uppercutPrep', true); cantUppercut = missed;
+			case 'weekend-1-picouppercut': picoUppercut(!missed); front = true;
 
-		case 'weekend-1-fakeout': pico.playAnimationSteps(missed ? 'hitHigh' : 'fakeout', true);
-		case 'weekend-1-taunt':
-			if (pico.currentAnimation == 'fakeout')
-				pico.playAnimationSteps('taunt', true);
-			else
-				pico.playAnimation('idle', true);
-		case 'weekend-1-tauntforce': pico.playAnimationSteps('taunt', true);
+			case 'weekend-1-darnelluppercutprep', 'weekend-1-reversefakeout': pico.playAnimation('idle', true);
+			case 'weekend-1-darnelluppercut': pico.playAnimationSteps('uppercutHit', true);
 
-		case 'weekend-1-idle': pico.playAnimation('idle', true);
+			case 'weekend-1-fakeout': pico.playAnimationSteps(missed ? 'hitHigh' : 'fakeout', true);
+			case 'weekend-1-taunt':
+				if (pico.currentAnimation == 'fakeout')
+					pico.playAnimationSteps('taunt', true);
+				else
+					pico.playAnimation('idle', true);
+			case 'weekend-1-tauntforce': pico.playAnimationSteps('taunt', true);
+
+			case 'weekend-1-idle': pico.playAnimation('idle', true);
+		}
 	}
 	game.player1.zIndex = (front ? 3001 : 2000);
 	stage.sortZIndex();
@@ -139,7 +169,7 @@ function darnellAnim(e:NoteEvent) {
 	if (e.type != NoteEventType.HIT && e.type != NoteEventType.LOST) return;
 
 	var missed:Bool = e.type == NoteEventType.LOST;
-	var alt:String = (darnellAlt ? '2' : '1');
+	var alt:String = (darnellAlt ? 2 : 1);
 	var darn:Character = game.player2;
 	var kind:String = e.note.noteKind;
 

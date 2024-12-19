@@ -44,7 +44,7 @@ class Lane extends FlxSpriteGroup {
 	
 	public function set_scrollSpeed(newSpeed:Float) {
 		var cam = camera ?? FlxG.camera;
-		spawnRadius = Note.distanceToMS(camera.height / camera.zoom, newSpeed);
+		spawnRadius = Note.distanceToMS(camera.height / camera.zoom, newSpeed) + 50;
 		return scrollSpeed = newSpeed;
 	}
 	public function set_held(newHeld:Bool) {
@@ -175,9 +175,13 @@ class Lane extends FlxSpriteGroup {
 		return true;
 	}
 	public function ghostTapped()
-		noteEvent.dispatch(basicEvent(GHOST));
+		_noteEvent(basicEvent(GHOST));
 	public function basicEvent(type:NoteEventType, ?note:Note):NoteEvent
 		return {lane: this, strumline: strumline, receptor: receptor, note: note, type: type};
+	function _noteEvent(event:NoteEvent) {
+		strumline?.noteEvent.dispatch(event);
+		noteEvent.dispatch(event);
+	}
 	public function getHighestNote(?filter:Note -> Bool) {
 		var highNote:Null<Note> = null;
 		for (note in notes) {
@@ -199,7 +203,6 @@ class Lane extends FlxSpriteGroup {
 		clearNotes();
 		receptor?.playAnimation('static');
 		noteCover.kill();
-		queue.resize(0);
 		heldNote = null;
 		held = false;
 	}
@@ -244,8 +247,10 @@ class Lane extends FlxSpriteGroup {
 		queue.remove(note);
 	}
 	public function clearNotes() {
-		for (note in notes) note.kill();
+		for (note in notes)
+			note.kill();
 		notes.clear();
+		queue.resize(0);
 	}
 	public function updateNote(note:Note) {
 		note.followLane(this, scrollSpeed);
@@ -256,7 +261,7 @@ class Lane extends FlxSpriteGroup {
 			var canKillNote:Bool = (conductorInUse.songPosition >= note.endMs);
 			if (note.isHoldPiece) {
 				var holdEvent:NoteEvent = basicEvent(canKillNote ? RELEASED : HELD, note);
-				noteEvent.dispatch(holdEvent);
+				_noteEvent(holdEvent);
 			}
 			if (canKillNote) {
 				killNote(note);
@@ -273,7 +278,7 @@ class Lane extends FlxSpriteGroup {
 		} else {
 			if (conductorInUse.songPosition - hitWindow > note.msTime) {
 				note.lost = true;
-				noteEvent.dispatch(basicEvent(LOST, note));
+				_noteEvent(basicEvent(LOST, note));
 			}
 		}
 		if (!oneWay && (note.msTime - conductorInUse.songPosition) > spawnRadius) {
@@ -299,17 +304,21 @@ class Lane extends FlxSpriteGroup {
 			}
 		}
 		notes.insert(pos, note);
-		noteEvent.dispatch(basicEvent(SPAWNED, note));
+		_noteEvent(basicEvent(SPAWNED, note));
 	}
 	public dynamic function hitNote(note:Note, kill:Bool = true) {
 		note.goodHit = true;
-		noteEvent.dispatch(basicEvent(HIT, note));
-		if (kill && !note.ignore) killNote(note);
+		
+		var event:NoteEvent = basicEvent(HIT, note);
+		_noteEvent(event);
+		
+		if (kill && !note.ignore && !event.cancelled)
+			killNote(note);
 	}
 	public function killNote(note:Note) {
 		note.kill();
 		notes.remove(note, true);
-		noteEvent.dispatch(basicEvent(DESPAWNED, note));
+		_noteEvent(basicEvent(DESPAWNED, note));
 	}
 	public function killSustainsOf(note:Note) {
 		for (child in note.children) {
@@ -317,7 +326,7 @@ class Lane extends FlxSpriteGroup {
 				continue;
 			child.lost = true;
 			child.canHit = false;
-			noteEvent.dispatch(basicEvent(RELEASED, child));
+			_noteEvent(basicEvent(RELEASED, child));
 			killNote(child);
 		}
 	}
@@ -521,10 +530,10 @@ class NoteSpark extends FunkinSprite {
 	public var targetCharacter:Character = null;
 
 	public var perfect:Bool = false; // release event
-	public var doSpark:Bool = true; // many vars...
-	public var doSplash:Bool = true;
-	public var playSound:Bool = true;
-	public var applyRating:Bool = true;
+	public var doSpark:Bool = false; // many vars...
+	public var doSplash:Bool = false;
+	public var playSound:Bool = false;
+	public var applyRating:Bool = false;
 	public var playAnimation:Bool = true;
 	public var animateReceptor:Bool = true;
 
@@ -650,10 +659,10 @@ class NoteSpark extends FunkinSprite {
 						if (doSpark)
 							spark = lane.spark();
 						if (playSound)
-							FlxG.sound.play(Paths.sound('gameplay/hitsounds/hitsoundTail'), .7);
+							FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/hitsoundTail'), .7);
 					} else {
 						if (playSound)
-							FlxG.sound.play(Paths.sound('gameplay/hitsounds/hitsoundFail'), .7);
+							FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/hitsoundFail'), .7);
 					}
 				}
 				note.held = true;
@@ -661,8 +670,8 @@ class NoteSpark extends FunkinSprite {
 				if (animateReceptor)
 					lane.receptor.playAnimation('press', true);
 				if (playSound) {
-					FlxG.sound.play(Paths.sound('gameplay/hitsounds/miss${FlxG.random.int(1, 3)}'), FlxG.random.float(0.25, 0.3));
-					FlxG.sound.play(Paths.sound('gameplay/hitsounds/hitsoundFail'), .7);
+					FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/miss${FlxG.random.int(1, 3)}'), FlxG.random.float(0.25, 0.3));
+					FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/hitsoundFail'), .7);
 				}
 				if (playAnimation && targetCharacter != null) {
 					targetCharacter.specialAnim = false;
@@ -684,7 +693,7 @@ class NoteSpark extends FunkinSprite {
 					}
 				}
 				if (playSound)
-					FlxG.sound.play(Paths.sound('gameplay/hitsounds/miss${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
+					FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/miss${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
 
 				if (applyRating) {
 					var rating:FunkinSprite = game.popRating('sadmiss');
@@ -693,7 +702,6 @@ class NoteSpark extends FunkinSprite {
 					rating.acceleration.y = 240;
 					
 					scoring ??= game.scoring.judgeNoteMiss(note);
-					game.health -= note.healthLoss;
 					game.accuracyDiv ++;
 					game.totalNotes ++;
 					game.misses ++;
@@ -701,7 +709,7 @@ class NoteSpark extends FunkinSprite {
 					game.updateRating();
 					game.score += scoring.score;
 					game.accuracyMod += scoring.accuracyMod;
-					game.health += note.healthGain * scoring.healthMod;
+					game.health -= note.healthLoss * scoring.healthMod;
 				}
 			default:
 		}

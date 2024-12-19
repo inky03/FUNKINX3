@@ -4,12 +4,12 @@ class Character extends FunkinSprite {
 	public var animReset:Float = 0;
 	public var bopFrequency:Int = 2;
 	public var singForSteps:Float = 4;
+	public var conductorInUse:Conductor = MusicBeatState.getCurrentConductor();
 	
 	public var bop:Bool = true;
 	public var sway:Bool = false;
 	public var specialAnim:Bool = false;
 	
-	var sparrowsList:Array<String>;
 	var characterDataType:CharacterDataType;
 	public var fallbackCharacter:Null<String>;
 	public var character(default, set):Null<String>;
@@ -23,7 +23,7 @@ class Character extends FunkinSprite {
 	public var healthIconData:Null<ModernCharacterHealthIconData> = null;
 	
 	public var deathData:Null<ModernCharacterDeathData> = null;
-
+	
 	public var idleSuffix:String = '';
 	public var animSuffix:String = '';
 	
@@ -33,7 +33,6 @@ class Character extends FunkinSprite {
 	
 	public function new(x:Float, y:Float, ?character:String, ?fallback:String) {
 		super(x, y);
-		sparrowsList = [];
 		rotateOffsets = true;
 		vocals = new FlxSound();
 		FlxG.sound.list.add(vocals);
@@ -47,7 +46,7 @@ class Character extends FunkinSprite {
 			playAnimation('$anim-hold');
 		});
 	}
-
+	
 	public function set_volume(newVolume:Float) {
 		vocals.volume = newVolume;
 		return volume = newVolume;
@@ -115,7 +114,7 @@ class Character extends FunkinSprite {
 	}
 	
 	public function timeAnimSteps(?steps:Float) {
-		animReset = (steps ?? singForSteps) * Conductor.global.stepCrochet * .001;
+		animReset = (steps ?? singForSteps) * conductorInUse.stepCrochet * .001;
 	}
 	public function animationIsLooping(anim:String) {
 		return (currentAnimation == '$anim-loop' || currentAnimation == '$anim-hold');
@@ -125,15 +124,16 @@ class Character extends FunkinSprite {
 			playAnimation(anim, forced, reversed, frame);
 	}
 	public override function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
+		animReset = 0;
 		specialAnim = false;
 		super.playAnimation(anim + animSuffix, forced, reversed, frame);
 	}
 	public function playAnimationSteps(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0) {
 		if (!specialAnim) {
 			var sameAnim:Bool = (currentAnimation != anim);
+			playAnimation(anim, forced, reversed, frame);
 			if (animationExists(anim) && (forced || !sameAnim || isAnimationFinished()))
 				timeAnimSteps(steps ?? singForSteps);
-			playAnimation(anim, forced, reversed, frame);
 		}
 	}
 	public function dance(beat:Int = 0, forced:Bool = false) {
@@ -147,7 +147,7 @@ class Character extends FunkinSprite {
 
 		return true;
 	}
-
+	
 	public function set_character(newChara:Null<String>) {
 		if (character == newChara) return character;
 		if (newChara == null) {
@@ -157,22 +157,10 @@ class Character extends FunkinSprite {
 		}
 		return character = newChara;
 	}
-
-	public override function loadAtlas(path:String, ?library:String, renderType:FunkinSprite.SpriteRenderType = SPARROW):FunkinSprite {
-		sparrowsList.resize(0);
-		sparrowsList.push(path);
-		super.loadAtlas(path, library, renderType);
-		return cast this;
-	}
-	public override function addAtlas(path:String, overwrite:Bool = true, ?library:String, renderType:FunkinSprite.SpriteRenderType = SPARROW):FunkinSprite {
-		if (sparrowsList.contains(path)) return this;
-		sparrowsList.push(path);
-		super.addAtlas(path, overwrite, library, renderType);
-		return cast this; // kys
-	}
+	
 	public function flip()
 		return flipX = !flipX;
-
+	
 	public function loadCharacter(?character:String) { // no character provided attempts to load fallback
 		unloadAnimate();
 		var charLoad:String = character ?? fallbackCharacter;
@@ -273,7 +261,7 @@ class Character extends FunkinSprite {
 		dance();
 		finishAnimation();
 	}
-
+	
 	function setBaseSize() { // lazy, maybe do this without changing cur anim eventually?
 		playAnimation(sway ? 'danceLeft' : 'idle');
 		finishAnimation();

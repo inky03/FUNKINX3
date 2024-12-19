@@ -1,9 +1,11 @@
 package;
 
-import flixel.input.keyboard.FlxKey;
 import flixel.util.FlxAxes;
+import flixel.input.keyboard.FlxKey;
+import flixel.util.FlxSignal.FlxTypedSignal;
 
 class Strumline extends FlxSpriteGroup {
+	public var noteEvent:FlxTypedSignal<Lane.NoteEvent -> Void> = new FlxTypedSignal();
 	public var laneSpacing(default, set):Float = 160;
 	public var lanes:FlxTypedSpriteGroup<Lane>;
 	
@@ -140,6 +142,10 @@ class Strumline extends FlxSpriteGroup {
 				lane.drawTop();
 		}
 	}
+	public function forEachLane(func:Lane -> Void) {
+		for (lane in lanes)
+			func(lane);
+	}
 	public function forEachNote(func:Note -> Void, includeQueued:Bool = false) {
 		for (lane in lanes)
 			lane.forEachNote(func, includeQueued);
@@ -211,10 +217,8 @@ class Strumline extends FlxSpriteGroup {
 			lane.queueNote(note);
 	}
 	public function clearAllNotes() {
-		for (lane in lanes) {
+		for (lane in lanes)
 			lane.clearNotes();
-			lane.queue = [];
-		}
 	}
 	public function resetLanes() {
 		for (lane in lanes)
@@ -222,17 +226,7 @@ class Strumline extends FlxSpriteGroup {
 	}
 	
 	public function getLane(noteData:Int) return lanes.members[noteData];
-
-	public function addEvent(event:Lane.NoteEvent -> Void) { // im incredibly intelligent
-		for (lane in lanes)
-			lane.noteEvent.add(event);
-		return event;
-	}
-	public function removeEvent(event:Lane.NoteEvent -> Void) {
-		for (lane in lanes)
-			lane.noteEvent.remove(event);
-		return event;
-	}
+	
 	public function fireInput(key:flixel.input.keyboard.FlxKey, pressed:Bool) {
 		var fired:Bool = false;
 		for (lane in lanes) {

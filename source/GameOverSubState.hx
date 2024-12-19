@@ -1,13 +1,26 @@
+package;
+
+import openfl.media.Sound;
+
 class GameOverSubState extends MusicBeatSubState {
 	public var cam:FunkinCamera;
 	public var playState:PlayState;
 	public var cameraZoom:Float = 1;
+	public var started:Bool = false;
 	public var confirmed:Bool = false;
 	public var wasInstant:Bool = false;
 	public var character:Character = null;
+	public var deathAnimationPostfix:String = '';
+	
 	public var soundPath:String = 'gameplay/gameOver/gameOverStart';
 	public var musicPath:String = 'gameplay/gameOver/gameOver';
+	public var startMusicPath:String = 'gameplay/gameOver/gameOverStart';
 	public var confirmMusicPath:String = 'gameplay/gameOver/gameOverEnd';
+	
+	public var sound:Sound;
+	public var music:Sound;
+	public var startMusic:Sound;
+	public var confirmMusic:Sound;
 	
 	public function new(instant:Bool = true) {
 		super();
@@ -16,18 +29,23 @@ class GameOverSubState extends MusicBeatSubState {
 		playState = cast(FlxG.state, PlayState);
 		character = playState.player1;
 		FlxG.camera = cam = playState.camGame;
-		playState.hscripts.run('death', [instant]);
+		
+		playState.hscripts.run('death', [instant, this]);
 		
 		if (character != null) {
 			cameraZoom = character.deathData?.cameraZoom ?? 1;
 			soundPath = Util.pathSuffix(soundPath, character.findPathSuffix('sounds/$soundPath', '.ogg'));
 			musicPath = Util.pathSuffix(musicPath, character.findPathSuffix('music/$musicPath', '.ogg'));
+			startMusicPath = Util.pathSuffix(startMusicPath, character.findPathSuffix('music/$startMusicPath', '.ogg'));
 			confirmMusicPath = Util.pathSuffix(confirmMusicPath, character.findPathSuffix('music/$confirmMusicPath', '.ogg'));
 		}
 		
-		Paths.music(confirmMusicPath);
-		Paths.music(musicPath);
-		Paths.sound(soundPath);
+		sound = Paths.sound(soundPath);
+		music = Paths.music(musicPath);
+		startMusic = Paths.music(startMusicPath);
+		confirmMusic = Paths.music(confirmMusicPath);
+		
+		playState.hscripts.run('deathPost', [instant, this]);
 	}
 	public override function create() {
 		FlxG.state.persistentDraw = false;
@@ -36,18 +54,20 @@ class GameOverSubState extends MusicBeatSubState {
 			add(character);
 			focusOnCharacter(character);
 			playState.stage.remove(character);
-			if (character.animationExists('firstDeath', true)) {
-				character.playAnimation('firstDeath');
+			var aniName:String = 'firstDeath$deathAnimationPostfix';
+			if (character.animationExists(aniName, true)) {
+				character.playAnimation(aniName);
 				character.onAnimationComplete.add((anim:String) -> {
-					if (anim == 'firstDeath')
+					if (anim == aniName)
 						startGameOver();
 				});
 			} else {
 				new FlxTimer().start(2.5, (_) -> { startGameOver(); });
 			}
 		}
-		FlxG.sound.play(Paths.sound(soundPath));
-		playState.hscripts.run('deathPost', [wasInstant]);
+		if (sound != null)
+			FlxG.sound.play(sound);
+		playState.hscripts.run('deathCreate', [wasInstant, this]);
 	}
 	public override function update(elapsed:Float) {
 		elapsed = getRealElapsed();
@@ -67,11 +87,13 @@ class GameOverSubState extends MusicBeatSubState {
 			}
 		}
 		super.update(elapsed);
+		
 		playState.hscripts.run('update', [elapsed, false, true]);
 		playState.hscripts.run('updatePost', [elapsed, false, true]);
 	}
 	public override function destroy() {
-		FlxG.sound.music.stop();
+		if (FlxG.sound.music != null)
+			FlxG.sound.music.stop();
 		remove(character);
 		super.destroy();
 	}
@@ -83,21 +105,38 @@ class GameOverSubState extends MusicBeatSubState {
 		}
 	}
 	public function startGameOver() {
-		character?.playAnimation('deathLoop');
-		var music = Paths.music(musicPath);
-		if (music != null)
+		character?.playAnimation('deathLoop$deathAnimationPostfix');
+		
+		if (confirmed) return;
+		
+		if (startMusic != null) {
+			FlxG.sound.playMusic(startMusic, 1, false);
+			FlxG.sound.music.onComplete = () -> {
+				if (music != null)
+					FlxG.sound.playMusic(music);
+			};
+		} else if (music != null) {
 			FlxG.sound.playMusic(music);
+		}
+		
+		started = true;
+		playState.hscripts.run('deathStart', [this]);
 	}
 	public function endGameOver() {
+		if (!started) {
+			started = true;
+			playState.hscripts.run('deathStart', [this]);
+		}
+		
 		confirmed = true;
-		character?.playAnimation('deathConfirm');
-		var music = Paths.music(confirmMusicPath);
-		if (music != null)
-			FlxG.sound.playMusic(music, 1, false);
-		else
-			FlxG.sound.music.stop();
+		character?.playAnimation('deathConfirm$deathAnimationPostfix');
+		if (FlxG.sound.music != null) FlxG.sound.music.stop();
+		if (confirmMusic != null)
+			FlxG.sound.playMusic(confirmMusic, 1, false);
 		new FlxTimer().start(.7, (_) -> {
 			FlxG.camera.fade(FlxColor.BLACK, 2, false, () -> { FlxG.resetState(); });
 		});
+		
+		playState.hscripts.run('deathConfirm', [this]);
 	}
 }

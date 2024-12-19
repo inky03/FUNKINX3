@@ -149,7 +149,7 @@ class ScoreHandler {
 @:structInit class Score {
 	public var hitWindow:HitWindow = null;
 	public var accuracyMod:Float = 0;
-	public var healthMod:Float = 0;
+	public var healthMod:Float = 1;
 	public var rating:String = '';
 	public var score:Float = 0;
 }

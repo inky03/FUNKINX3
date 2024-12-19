@@ -90,7 +90,8 @@ function beatHit(beat:Int) {
 
 function update(elapsed:Float, paused:Bool, dead:Bool) {
 	if (paused || dead) return;
-	_timer = conductor.songPosition * .001;
+	
+	var _timer:Float = conductor.songPosition * .001;
 	mist1.y = 100 + (Math.sin(_timer) * 200);
 	mist2.y = 0 + (Math.sin(_timer * 0.8) * 100);
 	mist3.y = -20 + (Math.sin(_timer * 0.5) * 200);

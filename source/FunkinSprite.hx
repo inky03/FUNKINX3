@@ -10,6 +10,7 @@ import haxe.io.Path;
 
 class FunkinSprite extends FlxSprite {
 	public var onAnimationComplete:FlxTypedSignal<String -> Void> = new FlxTypedSignal();
+	public var onAnimationFrame:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
 	public var currentAnimation(get, never):Null<String>;
 
 	public var extraData:Map<String, Dynamic> = new Map<String, Dynamic>();
@@ -25,6 +26,8 @@ class FunkinSprite extends FlxSprite {
 	public var isAnimate(get, never):Bool;
 	public var anim(get, never):Dynamic; // for scripting purposes
 	public var animate:FunkinAnimate;
+	
+	var _loadedAtlases:Array<String> = [];
 	
 	public function new(x:Float = 0, y:Float = 0, isSmooth:Bool = true) {
 		super(x, y);
@@ -69,6 +72,7 @@ class FunkinSprite extends FlxSprite {
 		unloadAnimate();
 		offsets.clear();
 		animationList.clear();
+		_loadedAtlases.resize(0);
 	}
 	public function loadAuto(path:String, ?library:String) {
 		final pngExists:Bool = Paths.exists('images/$path.png', library);
@@ -95,7 +99,6 @@ class FunkinSprite extends FlxSprite {
 	}
 	public function loadAtlas(path:String, ?library:String, renderType:SpriteRenderType = SPARROW) {
 		resetData();
-		// trace('r-render type mmmnh~ $renderType');
 		frames = switch (renderType) {
 			case PACKER: Paths.packerAtlas(path, library);
 			default: Paths.sparrowAtlas(path, library);
@@ -106,11 +109,19 @@ class FunkinSprite extends FlxSprite {
 			if (this.renderType != ANIMATEATLAS)
 				_onAnimationComplete(anim);
 		});
+		animation.onFrameChange.add((anim:String, frameNumber:Int, frameIndex:Int) -> {
+			if (this.renderType != ANIMATEATLAS)
+				_onAnimationFrame(frameNumber);
+		});
 		#else
 		animation.finishCallback = (anim:String) -> {
 			if (this.renderType != ANIMATEATLAS)
 				_onAnimationComplete(anim);
 		};
+		animation.callback = (anim:String, frameNumber:Int, frameIndex:Int) -> {
+			if (this.renderType != ANIMATEATLAS)
+				_onAnimationFrame(frameNumber);
+		}
 		#end
 		return this;
 	}
@@ -121,20 +132,30 @@ class FunkinSprite extends FlxSprite {
 			if (renderType == ANIMATEATLAS)
 				_onAnimationComplete();
 		});
+		animate.anim.onFrame.add((frameNumber:Int) -> {
+			if (renderType == ANIMATEATLAS)
+				_onAnimationFrame(frameNumber);
+		});
 		renderType = ANIMATEATLAS;
 		return this;
 	}
-	public function addAtlas(path:String, overwrite:Bool = true, ?library:String, renderType:SpriteRenderType = SPARROW) {
+	public function addAtlas(path:String, overwrite:Bool = false, ?library:String, renderType:SpriteRenderType = SPARROW) {
 		if (frames == null || isAnimate) {
 			loadAtlas(path, library, renderType);
 		} else {
+			if (_loadedAtlases.contains(path))
+				return this;
+			
 			var aFrames:FlxAtlasFrames = cast(frames, FlxAtlasFrames);
 			var addedAtlas:FlxAtlasFrames = switch (renderType) {
 				case PACKER: Paths.packerAtlas(path, library);
 				default: Paths.sparrowAtlas(path, library);
 			}
-			aFrames.addAtlas(addedAtlas, overwrite);
-			@:bypassAccessor frames = aFrames; // kys
+			if (addedAtlas != null) {
+				_loadedAtlases.push(path);
+				aFrames.addAtlas(addedAtlas, overwrite);
+				@:bypassAccessor frames = aFrames; // kys
+			}
 		}
 		return this;
 	}
@@ -250,6 +271,7 @@ class FunkinSprite extends FlxSprite {
 			if (animate == null) return;
 			if (animationExists(anim)) {
 				animate.anim.play(anim, forced, reversed, frame);
+				animate.anim.update(0);
 				animExists = true;
 			}
 		} else {
@@ -269,10 +291,12 @@ class FunkinSprite extends FlxSprite {
 	}
 	public function preloadAnimAsset(anim:String) { // preloads animation with a different spritesheet path
 		if (isAnimate) return;
+		
 		var animData:AnimationInfo = animationList[anim];
 		if (animData != null && animData.assetPath != null) {
-			addAtlas(animData.assetPath, true, null, renderType);
-			addAnimation(anim, animData.prefix, animData.fps, animData.loop, animData.frameIndices);
+			addAtlas(animData.assetPath, false, null, renderType);
+			if (!animation.exists(anim))
+				addAnimation(anim, animData.prefix, animData.fps, animData.loop, animData.frameIndices);
 		}
 	}
 	public function animationExists(anim:String, preload:Bool = false):Bool {
@@ -306,6 +330,9 @@ class FunkinSprite extends FlxSprite {
 	}
 	function _onAnimationComplete(?anim:String) {
 		onAnimationComplete.dispatch(anim ?? currentAnimation ?? '');
+	}
+	function _onAnimationFrame(frameNumber:Int) {
+		onAnimationFrame.dispatch(frameNumber);
 	}
 
 	public function set_smooth(newSmooth:Bool) {

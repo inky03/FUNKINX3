@@ -48,6 +48,7 @@ class CharterState extends MusicBeatState {
 	
 	public var scrollSpeed(default, set):Float = 1;
 	public var songPaused(default, set):Bool;
+	var visualScrollSpeed(get, never):Float;
 	
 	public var fullNoteCount:Int = 0;
 	public var hitNoteCount:Int = 0;
@@ -199,12 +200,12 @@ class CharterState extends MusicBeatState {
 		add(strumlineHighlight);
 		
 		for (i in 0...Math.ceil(findSongLength() / conductorInUse.crochet / 4)) { // todo: actually make this fucking good :sob:
-			var test:MeasureLine = new MeasureLine(strumlines.x - bgPadding, strumlines.y, i, i * 4, 4, strumlines.width + bgPadding * 2, Note.msToDistance(conductorInUse.crochet, scrollSpeed));
+			var test:MeasureLine = new MeasureLine(strumlines.x - bgPadding, strumlines.y, i, i * 4, 4, strumlines.width + bgPadding * 2, Note.msToDistance(conductorInUse.crochet, visualScrollSpeed));
 			measureLines.add(test);
 		}
 		
-		tickSound = new FlxSound().loadEmbedded(Paths.sound('beatTick'));
-		hitsound = new FlxSound().loadEmbedded(Paths.sound('hitsound'));
+		tickSound = FunkinSound.load(Paths.sound('beatTick'));
+		hitsound = FunkinSound.load(Paths.sound('hitsound'));
 		hitsound.volume = .7;
 	}
 	
@@ -272,7 +273,7 @@ class CharterState extends MusicBeatState {
 				
 				readjustScrollCam();
 				var quantMult:Float = (quant / 4);
-				var cursorBeatTime:Float = Note.distanceToMS(FlxG.mouse.getWorldPosition(camScroll).y, scrollSpeed) / conductorInUse.crochet;
+				var cursorBeatTime:Float = Note.distanceToMS(FlxG.mouse.getWorldPosition(camScroll).y, visualScrollSpeed) / conductorInUse.crochet;
 				var snappedBeatTime:Float = Math.round(cursorBeatTime * quantMult) / quantMult;
 				var beatDiff:Float = (snappedBeatTime - pickedNote.beatTime);
 				
@@ -422,14 +423,14 @@ class CharterState extends MusicBeatState {
 		
 		readjustScrollCam();
 		for (line in measureLines) {
-			line.y = strumlines.y + strumlines.height * .5 + Note.msToDistance(conductorInUse.metronome.convertMeasure(line.startTime, BEAT, MS) - conductorInUse.songPosition, scrollSpeed);
+			line.y = strumlines.y + strumlines.height * .5 + Note.msToDistance(conductorInUse.metronome.convertMeasure(line.startTime, BEAT, MS) - conductorInUse.songPosition, visualScrollSpeed);
 		}
 		
 		if (!paused)
 			updateHolds();
 	}
 	public function readjustScrollCam() {
-		camScroll.scroll.y = Note.msToDistance(conductorInUse.songPosition, scrollSpeed) - strumlines.y - strumlines.height * .5;
+		camScroll.scroll.y = Note.msToDistance(conductorInUse.songPosition, visualScrollSpeed) - strumlines.y - strumlines.height * .5;
 		camScroll.zoom = FlxG.camera.zoom;
 	}
 	override public function updateConductor(elapsed:Float = 0) {
@@ -458,7 +459,7 @@ class CharterState extends MusicBeatState {
 		if (FlxG.mouse.pressedRight) {
 			if (!songPaused)
 				songPaused = true;
-			conductorInUse.songPosition -= Note.distanceToMS((event.stageY - lastMouseY) / Util.gameScaleY / FlxG.camera.zoom, scrollSpeed);
+			conductorInUse.songPosition -= Note.distanceToMS((event.stageY - lastMouseY) / Util.gameScaleY / FlxG.camera.zoom, visualScrollSpeed);
 			restrictConductor();
 			
 			if (event.stageY <= 5) {
@@ -614,12 +615,16 @@ class CharterState extends MusicBeatState {
 	}
 	
 	public function set_scrollSpeed(newSpeed:Float) {
+		scrollSpeed = newSpeed;
 		for (strumline in strumlines) {
-			strumline.scrollSpeed = newSpeed;
+			strumline.scrollSpeed = visualScrollSpeed;
 			/*for (lane in strumline.lanes)
 				lane.spawnRadius *= 1.5;*/
 		}
-		return scrollSpeed = newSpeed;
+		return newSpeed;
+	}
+	public function get_visualScrollSpeed() {
+		return scrollSpeed / .7;
 	}
 	public function set_songPaused(isPaused:Bool) {
 		if (song != null && song.instLoaded) {
@@ -963,7 +968,7 @@ class CharterState extends MusicBeatState {
 			
 			addUndo({type: PLACED_NOTES, notes: addedNotes});
 			
-			FlxG.sound.play(Paths.sound('hitsoundTail'), .7);
+			FunkinSound.playOnce(Paths.sound('hitsoundTail'), .7);
 			note.justPlacing = false;
 			note.preventDespawn = false;
 			for (child in note.children) {

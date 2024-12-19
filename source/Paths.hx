@@ -137,10 +137,12 @@ class Paths {
 		return text('shaders/$key.frag', library);
 	inline public static function shaderVert(key:String, ?library:String)
 		return text('shaders/$key.vert', library);
-
+		
 	public static function image(key:String, ?library:String) {
 		var bmdKey:String = 'images/$key.png';
-		var assetKey:String = getPath(bmdKey, library);
+		var assetKey:Null<String> = getPath(bmdKey, library);
+		if (assetKey == null) assetKey = getPath(key);
+		
 		if (graphicCache[assetKey] != null) {
 			if (!trackedAssets.contains(assetKey)) trackedAssets.push(assetKey);
 			return graphicCache[assetKey];
@@ -159,7 +161,8 @@ class Paths {
 	
 	public static function bmd(key:String, ?library:String) {
 		var bmdKey:String = 'images/$key.png';
-		var assetKey:String = getPath(bmdKey, library);
+		var assetKey:Null<String> = getPath(bmdKey, library);
+		if (assetKey == null) assetKey = getPath(key);
 
 		var bmd:BitmapData = null;
 		#if !SOFT_ASSETS
@@ -175,7 +178,9 @@ class Paths {
 
 	public static function ogg(key:String, isMusic:Bool = false, ?library:String) {
 		var sndKey:String = '$key.ogg';
-		var assetKey:String = getPath(sndKey, library);
+		var assetKey:Null<String> = getPath(sndKey, library);
+		if (assetKey == null) assetKey = getPath(key);
+		
 		if (soundCache[assetKey] != null)  {
 			if (!trackedAssets.contains(assetKey)) trackedAssets.push(assetKey);
 			return soundCache[assetKey];
@@ -197,6 +202,8 @@ class Paths {
 
 	public static function text(key:String, ?library:String) {
 		var assetKey:String = getPath(key, library);
+		if (assetKey == null) assetKey = getPath(key);
+		
 		#if !SOFT_ASSETS
 		if (assetKey == sharedPath(key, library) && OFLAssets.exists(assetKey, TEXT)) {
 			return OFLAssets.getText(sharedPath(key, library));

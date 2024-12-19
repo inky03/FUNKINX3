@@ -34,8 +34,13 @@ class HScript extends Iris {
 		'FlxTimer' => flixel.util.FlxTimer,
 		'FlxSound' => flixel.sound.FlxSound,
 		'FlxTween' => flixel.tweens.FlxTween,
+		'FlxSpriteGroup' => FlxSpriteGroup,
 		'FlxRuntimeShader' => FlxRuntimeShader,
-
+		
+		'FunkinSound' => FunkinSound,
+		'FunkinSprite' => FunkinSprite,
+		'FunkinAnimate' => FunkinAnimate,
+		
 		'Util' => Util,
 		'Lane' => Lane,
 		'Note' => Note,
@@ -50,15 +55,14 @@ class HScript extends Iris {
 		'SongEvent' => Song.SongEvent,
 		'NoteEvent' => Lane.NoteEvent,
 		'StageProp' => Stage.StageProp,
-		'FunkinSprite' => FunkinSprite,
 		'SongFormat' => Song.SongFormat,
 		'Metronome' => Conductor.Metronome,
 		'RuntimeShader' => QuickRuntimeShader,
 		'ShaderFilter' => openfl.filters.ShaderFilter,
-
+		
 		'NoteEventType' => NoteEventType,
 		'SpriteRenderType' => SpriteRenderType,
-
+		
 		'STOP' => STOP,
 		'STOPALL' => STOPALL,
 		'FlxAxes' => HScriptFlxAxes,
@@ -144,7 +148,7 @@ class HScript extends Iris {
 		set('add', FlxG.state.add);
 		set('remove', FlxG.state.remove);
 		set('insert', FlxG.state.insert);
-		ModInterp.intercept = FlxG.state;
+		ModInterp.intercept = [FlxG.state/*, getClass(FlxG.state)*/];
 		if (Std.isOfType(FlxG.state, IMusicBeat)) {
 			var state:MusicBeatState = cast FlxG.state;
 			set('conductor', state.conductorInUse);
@@ -181,18 +185,28 @@ enum HScriptFunctionEnum {
 }
 
 class ModInterp extends crowplexus.hscript.Interp {
-	public static var intercept:Dynamic;
+	public static var intercept:Array<Dynamic>;
 	
-	public override function setVar(name: String, v: Dynamic) {
-		variables.set(name, v);
-		if (variables.exists(name))
+	public override function setVar(name:String, v:Dynamic) {
+		if (variables.exists(name)) {
 			variables.set(name, v);
+			return;
+		}
 		
-		if (intercept != null && Reflect.hasField(intercept, name))
-			Reflect.setProperty(intercept, name, v);
+		if (intercept != null) {
+			for (obj in intercept) {
+				var prop:Dynamic = Reflect.getProperty(obj, name);
+				if (Reflect.hasField(obj, name) || prop != null) {
+					Reflect.setProperty(obj, name, v);
+					return;
+				}
+			}
+		}
+		
+		error(EUnknownVariable(name));
 	}
 	
-	override function resolve(id: String): Dynamic {
+	override function resolve(id:String):Dynamic {
 		if (locals.exists(id)) {
 			var l = locals.get(id);
 			return l.r;
@@ -208,9 +222,12 @@ class ModInterp extends crowplexus.hscript.Interp {
 			return v;
 		}
 		
-		if (intercept != null && Reflect.hasField(intercept, id)) {
-			var v = Reflect.getProperty(intercept, id);
-			return v;
+		if (intercept != null) {
+			for (obj in intercept) {
+				var prop:Dynamic = Reflect.getProperty(obj, id);
+				if (Reflect.hasField(obj, id) || prop != null)
+					return prop;
+			}
 		}
 
 		error(EUnknownVariable(id));

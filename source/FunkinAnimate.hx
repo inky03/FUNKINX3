@@ -4,8 +4,12 @@ import openfl.Assets;
 import flxanimate.zip.Zip;
 import flxanimate.animate.*;
 import flxanimate.data.AnimationData;
+import flxanimate.data.SpriteMapData;
 import flxanimate.frames.FlxAnimateFrames;
+import flixel.graphics.frames.FlxAtlasFrames;
 import flixel.graphics.frames.FlxFramesCollection;
+
+import StringTools;
 
 class FunkinAnimate extends FlxAnimate { // this is kind of useless, but pop off
 	public function new(x:Float = 0, y:Float = 0, ?path:String, ?settings:flxanimate.Settings) {
@@ -29,8 +33,8 @@ class FunkinAnimate extends FlxAnimate { // this is kind of useless, but pop off
 			}
 		}
 
-		for (text in texts) {
-			var spritemapFrames = FlxAnimateFrames.fromSpriteMap(text);
+		for (path in texts) {
+			var spritemapFrames = softSpriteMap(path);
 
 			if (spritemapFrames != null)
 				frames.addAtlas(spritemapFrames);
@@ -41,6 +45,27 @@ class FunkinAnimate extends FlxAnimate { // this is kind of useless, but pop off
 			return null;
 		}
 
+		return frames;
+	}
+	static function softSpriteMap(dir:String):FlxAtlasFrames {
+		var json:AnimateAtlas = null;
+		var textContent:String = File.getContent(dir);
+		json = haxe.Json.parse(textContent.split(String.fromCharCode(0xfeff)).join(''));
+		
+		if (json == null)
+			return null;
+		
+		var graphic:FlxGraphic = Paths.image(haxe.io.Path.addTrailingSlash(haxe.io.Path.directory(dir)) + json.meta.image);
+		var frames = new FlxAtlasFrames(graphic);
+		for (sprite in json.ATLAS.SPRITES) {
+			var limb = sprite.SPRITE;
+			var rect = FlxRect.get(limb.x, limb.y, limb.w, limb.h);
+			if (limb.rotated)
+				rect.setSize(rect.height, rect.width);
+
+			FlxAnimateFrames.sliceFrame(limb.name, limb.rotated, rect, frames);
+		}
+		
 		return frames;
 	}
 	public override function loadAtlas(path:String) {
@@ -81,6 +106,13 @@ class FunkinAnimate extends FlxAnimate { // this is kind of useless, but pop off
 			origin = anim.curInstance.symbol.transformationPoint;
 	}
 
+	public static function cacheAnimate(path:String, ?library:String) {
+		try {
+			var temp:FunkinAnimate = new FunkinAnimate();
+			temp.loadAnimate(path, library);
+			temp.destroy();
+		} catch (e:haxe.Exception) {}
+	}
 	public function loadAnimate(path:String, ?library:String) {
 		var atlasPath:String = 'images/$path';
 		if (Paths.exists(atlasPath, library)) {
