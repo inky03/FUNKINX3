@@ -52,11 +52,11 @@ function beatHit(beat:Int){
 		trainStart();
 	}
 
-	if (beat % 4 == 0){
+	if (beat % 4 == 0) {
 		getNamedProp('lights').visible = true;
 		lightShader.setFloat('alphaShit', 0);
 
-		curLight = FlxG.random.int(0, 4);
+		var curLight:Int = FlxG.random.int(0, 4);
 		getNamedProp('lights').color = lightColors[curLight];
 	}
 }

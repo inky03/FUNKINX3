@@ -18,7 +18,7 @@ function createPost() {
 		var picoSong:Song = Song.loadSong(PlayState.song.path, 'picospeaker', '', SongFormat.MODERN);
 		picoStrumline = new Strumline(4);
 		picoStrumline.cpu = true;
-		picoStrumline.addEvent(game.opponentNoteEvent);
+		picoStrumline.noteEvent.add(picoNoteEvent);
 		for (lane in picoStrumline.lanes.members) lane.spawnRadius = 3000;
 		
 		for (note in picoSong.generateNotes()) {
@@ -112,27 +112,26 @@ function createTankman(y:Float, nextTime:Float, goingRight:Bool) {
 }
 
 function opponentNoteEventPre(e:NoteEvent) {
-	if (e.type == NoteEventType.SPAWNED) {
-		if (picoStrumline != null && e.strumline == picoStrumline && e.note.extraData['isTank']) {
-			var nextTime:Float = e.note.msTime;
-			var goingRight:Bool = (e.note.noteData == 3 ? false : true);
-			var yPos:Float = 250 + FlxG.random.int(50, 100);
-			tankmanSpriteGroup.add(createTankman(yPos, nextTime, goingRight)); // todo: recycling
-		}
+	if (e.type == NoteEventType.HIT && e.note.noteKind == 'hehPrettyGood') {
+		e.targetCharacter.playAnimationSteps('hehPrettyGood', true);
+		e.targetCharacter.specialAnim = true;
 	}
-	if (e.type == NoteEventType.HIT) {
-		if (picoStrumline != null && e.strumline == picoStrumline) {
-			e.targetCharacter = null;
-			
+}
+function picoNoteEvent(e:NoteEvent) {
+	switch (e.type) {
+		case NoteEventType.SPAWNED:
+			if (e.note.extraData['isTank']) {
+				var nextTime:Float = e.note.msTime;
+				var goingRight:Bool = (e.note.noteData == 3 ? false : true);
+				var yPos:Float = 250 + FlxG.random.int(50, 100);
+				tankmanSpriteGroup.add(createTankman(yPos, nextTime, goingRight)); // todo: recycling
+			}
+		case NoteEventType.HIT:
 			var dir:Int = e.note.noteData + 1;
 			if (dir == 4) dir -= FlxG.random.int(0, 1);
 			else dir += FlxG.random.int(0, 1);
 			
 			player3.playAnimationSteps('shoot$dir', true);
-		}
-		if (e.note.noteKind == 'hehPrettyGood') {
-			e.targetCharacter.playAnimationSteps('hehPrettyGood', true);
-			e.targetCharacter.specialAnim = true;
-		}
 	}
+	e.dispatch();
 }

@@ -58,15 +58,15 @@ function update(elapsed:Float, paused:Bool){
 function beatHit(beat:Int){
 	if (!trainMoving) trainCooldown += 1;
 
-	if (beat % 8 == 4 && FlxG.random.bool(30) && !trainMoving && trainCooldown > 8){
+	if (beat % 8 == 4 && FlxG.random.bool(30) && !trainMoving && trainCooldown > 8) {
 		trainCooldown = FlxG.random.int(-4, 0);
 		trainStart();
 	}
 
-	if (beat % 4 == 0){
+	if (beat % 4 == 0) {
 		lightShader.setFloat('alphaShit', 0);
 
-		curLight = FlxG.random.int(0, 4);
+		var curLight:Int = FlxG.random.int(0, 4);
 		getNamedProp('lights').visible = true;
 		getNamedProp('lights').color = lightColors[curLight];
 	}
