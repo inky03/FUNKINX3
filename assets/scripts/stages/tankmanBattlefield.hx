@@ -1,7 +1,7 @@
 import flixel.group.FlxTypedSpriteGroup;
 import flixel.effects.FlxFlicker;
 import flixel.math.FlxAngle;
-import Song;
+import funkin.backend.play.Song;
 
 var picoStrumline:Strumline;
 
