@@ -33,13 +33,18 @@ import flixel.group.FlxGroup.FlxTypedGroup;
 import flixel.group.FlxSpriteGroup.FlxTypedSpriteGroup;
 
 //funkin
-import Util;
-import Paths;
-import Options;
-import Controls;
-import FunkinSprite;
-import MusicBeatState;
-import MusicBeatSubState;
+import funkin.util.*;
+import funkin.debug.Log;
+import funkin.backend.Options;
+import funkin.backend.Controls;
+import funkin.backend.FunkinSound;
+import funkin.backend.FunkinSprite;
+import funkin.backend.FunkinCamera;
+import funkin.backend.rhythm.*;
+import funkin.backend.states.*;
 
-import lib.DiscordRPC;
+import funkin.backend.Mods;
+import funkin.backend.Paths;
+
+import funkin.backend.DiscordRpc;
 #end
