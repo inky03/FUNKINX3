@@ -54,12 +54,10 @@ class HScript extends Iris {
 		'Strumline' => funkin.objects.play.Strumline,
 		'StageProp' => funkin.objects.Stage.StageProp,
 		'Conductor' => funkin.backend.rhythm.Conductor,
-		'SongEvent' => funkin.backend.play.Song.SongEvent,
-		'SongFormat' => funkin.backend.play.Song.SongFormat,
-		'Measure' => funkin.backend.rhythm.Metronome.Measure,
 		'Metronome' => funkin.backend.rhythm.Metronome,
 		'RuntimeShader' => QuickRuntimeShader,
 		
+		'Measure' => funkin.backend.rhythm.Metronome.Measure,
 		'NoteEventType' => funkin.backend.play.NoteEvent.NoteEventType,
 		'SpriteRenderType' => funkin.backend.FunkinSprite.SpriteRenderType,
 		

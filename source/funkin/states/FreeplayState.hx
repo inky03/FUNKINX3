@@ -1,7 +1,7 @@
 package funkin.states;
 
 import funkin.objects.*;
-import funkin.backend.play.Song;
+import funkin.backend.play.Chart;
 
 using Lambda;
 
@@ -80,7 +80,7 @@ class FreeplayState extends funkin.backend.states.FunkinState {
 				var selectedItem:SongItem = displayItems.members[selection];
 				var variation:Variation = findVariation(currentVariation);
 				Mods.currentMod = selectedItem.mod;
-				PlayState.song = Song.loadSong(selectedItem.songPath, variation.difficulties[selectedDifficulty], variation.suffix);
+				PlayState.chart = Chart.loadChart(selectedItem.songPath, variation.difficulties[selectedDifficulty], variation.suffix);
 				FlxG.switchState(() -> new PlayState());
 			});
 		}

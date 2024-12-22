@@ -2,7 +2,7 @@ package funkin.states;
 
 import funkin.objects.play.*;
 import funkin.shaders.RGBSwap;
-import funkin.backend.play.Song;
+import funkin.backend.play.Chart;
 import funkin.states.FreeplaySubState.FreeplaySongText;
 
 import sys.thread.Thread;
@@ -21,7 +21,7 @@ class CharterState extends funkin.backend.states.FunkinState {
 	
 	public static var instance:CharterState;
 	public static var inEditor:Bool = false;
-	public static var song:Song;
+	public static var chart:Chart;
 	
 	public var quant:Int = 4;
 	public var quantText:FlxText;
@@ -60,7 +60,7 @@ class CharterState extends funkin.backend.states.FunkinState {
 	var strumGrabY:Null<Float> = null;
 	var heldKeys:Array<FlxKey> = [];
 	var heldKeybinds:Array<Bool> = [];
-	var copiedNotes:Array<SongNote> = [];
+	var copiedNotes:Array<ChartNote> = [];
 	var heldNotes:Array<CharterNote> = [];
 	var quants:Array<Int> = [4, 8, 12, 16, 24, 32, 48, 64, 96, 192];
 	
@@ -77,7 +77,7 @@ class CharterState extends funkin.backend.states.FunkinState {
 		barHit.add(barHitEvent);
 		
 		genericRGB ??= new RGBSwap(0xb3a9b8, FlxColor.WHITE, 0x333333);
-		song ??= Song.loadSong('test');
+		chart ??= Chart.loadChart('test');
 		inEditor = true;
 		instance = this;
 		
@@ -159,19 +159,19 @@ class CharterState extends funkin.backend.states.FunkinState {
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
 		FlxG.stage.addEventListener(MouseEvent.MOUSE_MOVE, mouseMoveEvent);
 		
-		if (song != null) {
+		if (chart != null) {
 			setWindowTitle();
-			song.instLoaded = false;
-			var songPaths:Array<String> = ['data/songs/${song.path}/', 'songs/${song.path}/'];
-			for (path in songPaths) song.loadMusic(path, false);
-			if (song.instLoaded)
-				song.inst.onComplete = finishSong;
+			chart.instLoaded = false;
+			var songPaths:Array<String> = ['data/songs/${chart.path}/', 'songs/${chart.path}/'];
+			for (path in songPaths) chart.loadMusic(path, false);
+			if (chart.instLoaded)
+				chart.inst.onComplete = finishChart;
 			
-			scrollSpeed = song.scrollSpeed;
-			conductorInUse.metronome.tempoChanges = song.tempoChanges;
-			conductorInUse.syncTracker = song.instLoaded ? song.inst : null;
+			scrollSpeed = chart.scrollSpeed;
+			conductorInUse.metronome.tempoChanges = chart.tempoChanges;
+			conductorInUse.syncTracker = chart.instLoaded ? chart.inst : null;
 			
-			for (note in song.generateNotes(true))
+			for (note in chart.generateNotes(true))
 				queueNote(note);
 		}
 		songPaused = true;
@@ -215,10 +215,10 @@ class CharterState extends funkin.backend.states.FunkinState {
 		elapsed = getRealElapsed();
 		
 		if (FlxG.keys.justPressed.ENTER) {
-			song ??= new Song('unnamed');
-			song.tempoChanges = conductorInUse.metronome.tempoChanges;
-			saveToSong(song);
-			PlayState.song = song;
+			chart ??= new Chart('unnamed');
+			chart.tempoChanges = conductorInUse.metronome.tempoChanges;
+			saveToChart(chart);
+			PlayState.chart = chart;
 			FlxG.switchState(new PlayState());
 			return;
 		}
@@ -362,14 +362,14 @@ class CharterState extends funkin.backend.states.FunkinState {
 			conductorInUse.songPosition += elapsed * msPerSec;
 			restrictConductor();
 			
-			if (song != null && song.instLoaded) {
+			if (chart != null && chart.instLoaded) {
 				if (conductorInUse.songPosition <= 0 && msPerSec < 0) {
-					song.inst.stop();
-				} else if (msPerSec != 1000 || !scrolling || !song.inst.playing) {
-					if (!song.inst.playing)
-						song.inst.play(true, conductorInUse.songPosition);
+					chart.inst.stop();
+				} else if (msPerSec != 1000 || !scrolling || !chart.inst.playing) {
+					if (!chart.inst.playing)
+						chart.inst.play(true, conductorInUse.songPosition);
 					else
-						song.inst.time = conductorInUse.songPosition;
+						chart.inst.time = conductorInUse.songPosition;
 				}
 			}
 			
@@ -476,9 +476,9 @@ class CharterState extends funkin.backend.states.FunkinState {
 		}
 		lastMouseY = event.stageY;
 	}
-	public function finishSong() {
+	public function finishChart() {
 		songPaused = true;
-		conductorInUse.songPosition = song.inst.length;
+		conductorInUse.songPosition = chart.inst.length;
 	}
 	public function forEachNote(func:Note -> Void, includeQueued:Bool = false) {
 		for (strumline in strumlines)
@@ -629,13 +629,13 @@ class CharterState extends funkin.backend.states.FunkinState {
 		return scrollSpeed / .7;
 	}
 	public function set_songPaused(isPaused:Bool) {
-		if (song != null && song.instLoaded) {
+		if (chart != null && chart.instLoaded) {
 			if (isPaused) {
-				song.inst.stop();
+				chart.inst.stop();
 			} else {
-				if (conductorInUse.songPosition >= song.inst.length)
+				if (conductorInUse.songPosition >= chart.inst.length)
 					return songPaused = true;
-				song.inst.play(true, conductorInUse.songPosition);
+				chart.inst.play(true, conductorInUse.songPosition);
 			}
 		}
 		for (strumline in strumlines) {
@@ -663,7 +663,7 @@ class CharterState extends funkin.backend.states.FunkinState {
 		var leniency:Float = 1 / 256;
 		var prevBeat:Float = conductorInUse.metronome.beat;
 		var quantMultiplier:Float = (quant * .25);
-		var pauseSong:Bool = false;
+		var pauseChart:Bool = false;
 		if (noteControlMode) {
 			keyPressNoteControl(key);
 		}
@@ -690,7 +690,7 @@ class CharterState extends funkin.backend.states.FunkinState {
 					shiftNotes(getSelectedNotes(), scrollMod / quantMultiplier);
 				} else {
 					placeNotes();
-					pauseSong = true;
+					pauseChart = true;
 					var targetBeat:Float = prevBeat + scrollMod / quantMultiplier;
 					if (Math.abs(prevBeat - Math.round(prevBeat * quantMultiplier) / quantMultiplier) < leniency * 2)
 						conductorInUse.metronome.setBeat(Math.round(targetBeat * quantMultiplier) / quantMultiplier);
@@ -699,21 +699,21 @@ class CharterState extends funkin.backend.states.FunkinState {
 				}
 			case FlxKey.PAGEUP | FlxKey.PAGEDOWN:
 				placeNotes();
-				pauseSong = true;
+				pauseChart = true;
 				if (key == FlxKey.PAGEUP) scrollMod *= -1;
 				if (Math.abs(conductorInUse.metronome.bar - Std.int(conductorInUse.metronome.bar)) < (1 / quant - .0006))
 					conductorInUse.metronome.setBar(Math.max(0, conductorInUse.metronome.bar + scrollMod));
 				conductorInUse.metronome.setBar((scrollMod < 0 ? Math.floor : Math.ceil)(conductorInUse.metronome.bar));
 			case FlxKey.HOME:
-				pauseSong = true;
+				pauseChart = true;
 				conductorInUse.metronome.setMS(0);
 			case FlxKey.END:
-				pauseSong = true;
+				pauseChart = true;
 				conductorInUse.metronome.setMS(findSongLength());
 			default:
 		}
 		
-		if (pauseSong && !songPaused)
+		if (pauseChart && !songPaused)
 			songPaused = true;
 		
 		restrictConductor();
@@ -812,9 +812,9 @@ class CharterState extends funkin.backend.states.FunkinState {
 			copiedNotes.resize(0);
 			for (note in selectedNotes) {
 				if (note.isHoldPiece) continue;
-				copiedNotes.push(note.toSongNote());
+				copiedNotes.push(note.toChartNote());
 			}
-			copiedNotes.sort(Song.sortByTime);
+			copiedNotes.sort(Chart.sortByTime);
 		}
 	}
 	public function keyPressNoteControl(key:FlxKey) {
@@ -830,7 +830,7 @@ class CharterState extends funkin.backend.states.FunkinState {
 					note.selected = false;
 				if (copiedNotes.length > 0) {
 					var generatedNotes:Array<CharterNote> = [];
-					for (note in Song.generateNotesFromArray(copiedNotes, true)) {
+					for (note in Chart.generateNotesFromArray(copiedNotes, true)) {
 						var charterNote:CharterNote = cast note;
 						if (charterNote == null) continue;
 						
@@ -881,8 +881,8 @@ class CharterState extends funkin.backend.states.FunkinState {
 	}
 	public function restrictConductor() {
 		var limitTime:Float = Math.max(conductorInUse.metronome.ms, 0);
-		if (song != null && song.instLoaded)
-			limitTime = Math.min(limitTime, song.inst.length);
+		if (chart != null && chart.instLoaded)
+			limitTime = Math.min(limitTime, chart.inst.length);
 		conductorInUse.songPosition = limitTime;
 	}
 	public function placeNotes() {
@@ -892,7 +892,7 @@ class CharterState extends funkin.backend.states.FunkinState {
 		}
 	}
 	public function findSongLength() {
-		var length:Null<Float> = song?.songLength;
+		var length:Null<Float> = chart?.songLength;
 		if (length == null) // todo
 			length = 0;
 		return length;
@@ -1027,27 +1027,27 @@ class CharterState extends funkin.backend.states.FunkinState {
 			}
 		}
 	}
-	public function saveToSong(song:Song) {
-		if (song == null) return;
-		song.notes.resize(0);
+	public function saveToChart(chart:Chart) {
+		if (chart == null) return;
+		chart.notes.resize(0);
 		for (strumline in strumlines) {
 			for (lane in strumline.lanes) {
 				for (note in lane.getAllNotes()) {
 					if (note.isHoldPiece) continue;
-					song.notes.push(note.toSongNote());
+					chart.notes.push(note.toChartNote());
 				}
 			}
 		}
-		song.sort();
-		song.findSongLength();
+		chart.sort();
+		chart.findSongLength();
 	}
 	public function setWindowTitle(mod:Bool = false) {
 		var win:lime.ui.Window = FlxG.stage.window;
-		win.title = song.name;
+		win.title = chart.name;
 		if (mod)
 			win.title += '*';
-		if (song.difficulty != '')
-			win.title += ' (' + song.difficulty.toLowerCase() + ')';
+		if (chart.difficulty != '')
+			win.title += ' (' + chart.difficulty.toLowerCase() + ')';
 		
 		win.title += ' | ' + Main.windowTitle;
 	}

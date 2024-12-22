@@ -1,7 +1,7 @@
 import flixel.group.FlxTypedSpriteGroup;
 import flixel.effects.FlxFlicker;
 import flixel.math.FlxAngle;
-import funkin.backend.play.Song;
+import funkin.backend.play.Chart;
 
 var picoStrumline:Strumline;
 
@@ -15,7 +15,7 @@ var tankmanSpriteGroup:FlxTypedSpriteGroup;
 
 function createPost() {
 	if (player3.character == 'pico-speaker') {
-		var picoSong:Song = Song.loadSong(PlayState.song.path, 'picospeaker', '', SongFormat.MODERN);
+		var picoSong:Chart = Chart.loadChart(PlayState.chart.path, 'picospeaker');
 		picoStrumline = new Strumline(4);
 		picoStrumline.cpu = true;
 		picoStrumline.noteEvent.add(picoNoteEvent);

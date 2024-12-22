@@ -1,12 +1,12 @@
 package funkin.objects;
 
-import funkin.backend.play.Song;
+import funkin.backend.play.Chart;
 
 using StringTools;
 
 //THIS IS ALL KINDOF A MESS BUT IT WORKS??? I THINK
 class Stage extends FlxSpriteGroup {
-	var song:Song;
+	var chart:Chart;
 	public var name:String;
 	public var json:Dynamic;
 	public var hasContent:Bool = false;
@@ -19,14 +19,14 @@ class Stage extends FlxSpriteGroup {
 
 	var state = FlxG.state;
 	
-	public function new(?song:Song) {
+	public function new(?chart:Chart) {
 		super();
-		this.song = song;
+		this.chart = chart;
 	}
 	
-	public function setup(?stageId:String, ?songData:Song) {
+	public function setup(?stageId:String, ?chartData:Chart) {
 		// right now only works with vslice stage jsons
-		songData ??= song;
+		chartData ??= chart;
         if (stageId != null) {
     		Log.minor('loading stage "$stageId"');
 
@@ -156,8 +156,8 @@ class Stage extends FlxSpriteGroup {
 		for (name in Reflect.fields(charas)) {
 			var chara:ModernStageChar = Reflect.field(charas, name);
 			var char:Null<String> = null;
-			if (song != null) {
-				char = Reflect.field(song, switch (name) {
+			if (chart != null) {
+				char = Reflect.field(chart, switch (name) {
 					case 'bf': 'player1';
 					case 'dad': 'player2';
 					case 'gf': 'player3';
@@ -186,9 +186,9 @@ class Stage extends FlxSpriteGroup {
 		loadCharactersGeneric();
 	}
 	function loadCharactersGeneric() {
-		var player1:Character = new Character(0, 0, song?.player1 ?? 'bf', 'bf');
-		var player2:Character = new Character(0, 0, song?.player2 ?? 'dad', 'dad');
-		var player3:Character = new Character(0, 0, song?.player3 ?? 'gf', 'gf');
+		var player1:Character = new Character(0, 0, chart?.player1 ?? 'bf', 'bf');
+		var player2:Character = new Character(0, 0, chart?.player2 ?? 'dad', 'dad');
+		var player3:Character = new Character(0, 0, chart?.player3 ?? 'gf', 'gf');
 		player1.stagePos.set(250, 750 - player1.height);
 		player2.stagePos.set(-250 - player2.width, 750 - player2.height);
 		player3.stagePos.set(-player3.width * .5, 680 - player3.height);

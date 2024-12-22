@@ -115,7 +115,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		}
 		updateHitbox();
 	}
-	public function toSongNote():funkin.backend.play.Song.SongNote {
+	public function toChartNote():funkin.backend.play.Chart.ChartNote {
 		return {laneIndex: noteData, msTime: msTime, kind: noteKind, msLength: msLength, player: player};
 	}
 	

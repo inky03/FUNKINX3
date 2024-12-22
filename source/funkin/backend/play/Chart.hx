@@ -25,17 +25,15 @@ steps are not a thing in music theory in the definition friday night funkin' / f
 
 /*
 LOADING A SONG:
-for legacy / psych engine format ... Song.loadLegacySong('songName', 'difficulty')
-for modern (fnf 0.3.0+) format ... Song.loadModernSong('songName', 'difficulty', ?'suffix')
-for simfile (stepmania) ... Song.loadStepMania('songName', 'difficulty')
+Chart.loadChart('songName', 'difficulty', ?'suffix', ?ChartFormat)
 */
 
-class Song {
+class Chart {
 	public var path:String = '';
 	public var name:String = 'Unnamed';
 	public var artist:String = 'Unknown';
 	public var difficulty:String = '';
-	public var format:SongFormat = UNKNOWN;
+	public var format:ChartFormat = UNKNOWN;
 
 	public var chart:Any; //BasicFormat?
 	public var json:Dynamic;
@@ -43,8 +41,8 @@ class Song {
 	public var keyCount:Int = 4;
 	public var scrollSpeed:Float = 1;
 	public var initialBpm:Float = 100;
-	public var notes:Array<SongNote> = [];
-	public var events:Array<SongEvent> = [];
+	public var notes:Array<ChartNote> = [];
+	public var events:Array<ChartEvent> = [];
 	public var tempoChanges:Array<TempoChange> = [new TempoChange(-4, 100, new TimeSignature())];
 
 	public var instLoaded:Bool;
@@ -65,28 +63,31 @@ class Song {
 		inst = new FlxSound();
 		FlxG.sound.list.add(inst);
 	}
+	public function toString() {
+		return 'Chart($name)';
+	}
 	
-	public static function loadSong(path:String, ?difficulty:String, ?suffix:String, format:SongFormat = AUTO) {
+	public static function loadChart(path:String, ?difficulty:String, ?suffix:String, format:ChartFormat = AUTO) {
 		return switch (format) {
 			case AUTO:
 				loadAutoDetect(path, difficulty, suffix);
 			case LEGACY:
-				loadLegacySong(path, difficulty, suffix);
+				loadLegacyChart(path, difficulty, suffix);
 			case MODERN:
-				loadModernSong(path, difficulty, suffix);
+				loadModernChart(path, difficulty, suffix);
 			case STEPMANIA:
 				loadStepMania(path, difficulty, suffix);
 			case CNE:
-				loadCNESong(path, difficulty, suffix);
+				loadCNEChart(path, difficulty, suffix);
 			default:
 				Log.warning('unknown song format (attempted to load "$path")');
-				new Song(path, 4);
+				new Chart(path, 4);
 		}
 	}
-	public static function chartExists(path:String, ?difficulty:String, ?suffix:String, format:SongFormat = AUTO) {
-		var foundFormat:SongFormat = findSongFormat(path, difficulty, suffix);
+	public static function chartExists(path:String, ?difficulty:String, ?suffix:String, format:ChartFormat = AUTO) {
+		var foundFormat:ChartFormat = findChartFormat(path, difficulty, suffix);
 		if (format == AUTO) {
-			return foundFormat != SongFormat.UNKNOWN;
+			return foundFormat != ChartFormat.UNKNOWN;
 		} else {
 			return foundFormat == format;
 		}
@@ -159,7 +160,7 @@ class Song {
 		if (instLoaded) {
 			this.songLength = inst.length;
 		} else {
-			var lastNote:SongNote = notes[notes.length - 1];
+			var lastNote:ChartNote = notes[notes.length - 1];
 			this.songLength = (lastNote == null ? 0 : lastNote.msTime + lastNote.msLength) + 500;
 		}
 		return this.songLength;
@@ -167,12 +168,12 @@ class Song {
 	
 	// TODO: these could just not be static
 	// suffix is for playable characters
-	static function loadLegacySong(path:String, difficulty:String = 'normal', suffix:String = '', keyCount:Int = 4) { // move to moonchart format???
+	static function loadLegacyChart(path:String, difficulty:String = 'normal', suffix:String = '', keyCount:Int = 4) { // move to moonchart format???
 		difficulty = difficulty.toLowerCase();
 		Log.minor('loading legacy FNF song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 		
-		var song = new Song(path, keyCount);
-		song.json = Song.loadLegacyJson(path, difficulty);
+		var song = new Chart(path, keyCount);
+		song.json = loadLegacyJson(path, difficulty);
 		song.difficulty = difficulty;
 		
 		if (song.json == null) return song;
@@ -215,7 +216,7 @@ class Song {
 			var stepCrochet:Float = crochet * .25;
 			var focus:Int = -1;
 			
-			var sections:Array<LegacySongSection>;
+			var sections:Array<LegacyChartSection>;
 			var jsonNotes:Dynamic = song.json.notes;
 			if (Reflect.hasField(jsonNotes, difficulty)) {
 				sections = Reflect.field(jsonNotes, difficulty);
@@ -228,7 +229,7 @@ class Song {
 					var eventTime:Float = eventBlob[0];
 					var events:Array<Array<String>> = eventBlob[1];
 					for (event in events) {
-						var songEvent:SongEvent = {name: event[0], msTime: eventTime, params: ['value1' => event[1], 'value2' => event[2]]};
+						var songEvent:ChartEvent = {name: event[0], msTime: eventTime, params: ['value1' => event[1], 'value2' => event[2]]};
 						song.events.push(songEvent);
 					}
 				}
@@ -308,7 +309,7 @@ class Song {
 		var sscPath:String = '${Util.pathSuffix(songPath, suffix)}.ssc';
 		var smPath:String = '$songPath.sm';
 		var useShark:Bool = Paths.exists(sscPath);
-		var song:Song = new Song(path, 4); // todo: sm multikey (implement multikey in the first place)
+		var song:Chart = new Chart(path, 4); // todo: sm multikey (implement multikey in the first place)
 
 		if (!Paths.exists(smPath) && !useShark) {
 			Log.warning('sm or ssc file not found... (chart not generated)');
@@ -341,14 +342,14 @@ class Song {
 		song.audioSuffix = suffix;
 		return song;
 	}
-	static function loadModernSong(path:String, difficulty:String = 'normal', suffix:String = '') {
+	static function loadModernChart(path:String, difficulty:String = 'normal', suffix:String = '') {
 		difficulty = difficulty.toLowerCase();
 		Log.minor('loading modern FNF song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 
 		var songPath:String = 'data/songs/$path/$path';
 		var chartPath:String = '${Util.pathSuffix('$songPath-chart', suffix)}.json';
 		var metaPath:String = '${Util.pathSuffix('$songPath-metadata', suffix)}.json';
-		var song:Song = new Song(path, 4);
+		var song:Chart = new Chart(path, 4);
 
 		if (!Paths.exists(chartPath) || !Paths.exists(metaPath)) {
 			Log.warning('chart or metadata JSON not found... (chart not generated)');
@@ -381,14 +382,14 @@ class Song {
 		song.audioSuffix = suffix;
 		return song;
 	}
-	static function loadCNESong(path:String, difficulty:String = 'Normal', suffix:String = '') {
+	static function loadCNEChart(path:String, difficulty:String = 'Normal', suffix:String = '') {
 		Log.minor('loading CNE song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 
 		var songPath:String = 'data/songs/$path';
 		var chartPath:String = '$songPath/charts/${Util.pathSuffix(difficulty, suffix)}.json';
 		var metaPath:String = '$songPath/${Util.pathSuffix('meta', suffix)}.json';
 		var chartPathA:String = chartPath;
-		var song:Song = new Song(path, 4);
+		var song:Chart = new Chart(path, 4);
 
 		if (!Paths.exists(chartPath)) chartPath = '$songPath/$difficulty.json';
 		if (!Paths.exists(chartPath) || !Paths.exists(metaPath)) {
@@ -422,7 +423,7 @@ class Song {
 		song.audioSuffix = suffix;
 		return song;
 	}
-	static function findSongFormat(path:String, ?difficulty:String = 'Normal', ?suffix:String):SongFormat {
+	static function findChartFormat(path:String, ?difficulty:String = 'Normal', ?suffix:String):ChartFormat {
 		var diffLower:String = difficulty.toLowerCase();
 		var songPath:String = 'data/songs/$path/$path';
 
@@ -454,15 +455,15 @@ class Song {
 		if (difficulty != null) difficulty = difficulty.toLowerCase();
 		Log.minor('detecting format from song "$path"');
 		
-		return switch (findSongFormat(path, difficulty, suffix)) {
+		return switch (findChartFormat(path, difficulty, suffix)) {
 			case MODERN:
-				loadModernSong(path, difficulty, suffix);
+				loadModernChart(path, difficulty, suffix);
 			case STEPMANIA | SHARK:
 				loadStepMania(path, difficulty, suffix);
 			case LEGACY:
-				loadLegacySong(path, difficulty, suffix);
+				loadLegacyChart(path, difficulty, suffix);
 			case CNE:
-				loadCNESong(path, difficulty, suffix);
+				loadCNEChart(path, difficulty, suffix);
 			default:
 				var diffLower:String = difficulty.toLowerCase();
 				var songPath:String = 'data/songs/$path/$path';
@@ -485,7 +486,7 @@ class Song {
 				Log.minor('- legacy: $legacyChartPath');
 				Log.minor('- codename engine:');
 				Log.minor('  - metadata: $cneMetaPath');
-				new Song(path, 4);
+				new Chart(path, 4);
 		}
 	}
 	static function loadLegacyJson(path:String, difficulty:String = 'normal') {
@@ -513,13 +514,13 @@ class Song {
 		Log.info('generated ${notes.length} note objects! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		return notes;
 	}
-	public static function generateNotesFromArray(songNotes:Array<SongNote>, singleSegmentHolds:Bool = false, ?song:Song) {
+	public static function generateNotesFromArray(songNotes:Array<ChartNote>, singleSegmentHolds:Bool = false, ?chart:Chart) {
 		var noteArray:Array<Note> = [];
 		var tempMetronome:Metronome = null;
 		var type:Dynamic = (CharterState.inEditor ? CharterNote : Note);
-		if (song != null) {
+		if (chart != null) {
 			tempMetronome = new Metronome();
-			tempMetronome.tempoChanges = song.tempoChanges;
+			tempMetronome.tempoChanges = chart.tempoChanges;
 		}
 		
 		for (songNote in songNotes) {
@@ -594,7 +595,7 @@ class Song {
 	}
 }
 
-enum SongFormat {
+enum ChartFormat {
 	AUTO;
 	MODERN;
 	LEGACY; // psych / pre0.3
@@ -608,20 +609,20 @@ enum SongFormat {
 interface TimedEvent {
 	public var msTime:Float;
 }
-@:structInit class SongNote implements TimedEvent {
+@:structInit class ChartNote implements TimedEvent {
 	public var laneIndex:Int;
 	public var msTime:Float = 0;
 	public var kind:String = '';
 	public var msLength:Float = 0;
 	public var player:Bool = true;
 }
-@:structInit class SongEvent implements TimedEvent {
+@:structInit class ChartEvent implements TimedEvent {
 	public var name:String;
 	public var msTime:Float;
 	public var params:Map<String, Any>;
 }
 
-typedef LegacySongSection = {
+typedef LegacyChartSection = {
 	var sectionNotes:Array<Array<Any>>;
 	var ?sectionBeats:Float;
 	var ?lengthInSteps:Float;
