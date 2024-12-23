@@ -1,10 +1,12 @@
 package;
 
+import funkin.debug.DebugDisplay;
+import funkin.backend.FunkinSoundTray;
+
 import flixel.FlxGame;
-import openfl.display.Sprite;
 import openfl.events.UncaughtErrorEvent;
 
-class Main extends Sprite {
+class Main extends openfl.display.Sprite {
 	public static var instance:Main;
 	
 	public static var soundTray(get, never):FunkinSoundTray;
@@ -37,7 +39,7 @@ class Main extends Sprite {
 		
 		Mods.refresh();
 		DiscordRPC.prepare();
-		var game:FlxGame = new FlxGame(0, 0, MainMenuState);
+		var game:FlxGame = new FlxGame(0, 0, funkin.states.MainMenuState);
 		@:privateAccess game._customSoundTray = FunkinSoundTray;
 		addChild(game);
 		addChild(debugDisplay = new DebugDisplay(10, 3));
