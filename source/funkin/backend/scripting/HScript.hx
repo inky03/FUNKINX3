@@ -1,11 +1,8 @@
 package funkin.backend.scripting;
 
-import flixel.util.FlxAxes;
-import flixel.addons.display.FlxRuntimeShader;
-#if (flixel_addons >= "3.3.0")
-import flixel.addons.system.macros.FlxRuntimeShaderMacro;
-#end
+import funkin.backend.FunkinRuntimeShader;
 
+import flixel.util.FlxAxes;
 import crowplexus.iris.Iris;
 import crowplexus.iris.IrisConfig;
 import crowplexus.iris.ErrorSeverity;
@@ -34,7 +31,6 @@ class HScript extends Iris {
 		'FlxSound' => flixel.sound.FlxSound,
 		'FlxTween' => flixel.tweens.FlxTween,
 		'FlxSpriteGroup' => FlxSpriteGroup,
-		'FlxRuntimeShader' => FlxRuntimeShader,
 		'ShaderFilter' => openfl.filters.ShaderFilter,
 		
 		'FunkinSound' => funkin.backend.FunkinSound,
@@ -82,6 +78,7 @@ class HScript extends Iris {
 		scriptName = name;
 		
 		interp = modInterp = new ModInterp();
+		modInterp.hscript = this;
 		preset();
 	}
 	
@@ -183,136 +180,26 @@ enum HScriptFunctionEnum {
 	STOPALL;
 }
 
-class QuickRuntimeShader extends FlxRuntimeShader {
-	public var frag:Null<String> = null;
-	public var vert:Null<String> = null;
-	public var name:String;
-	var compiled:Bool;
-	var perfect:Bool;
-
+class QuickRuntimeShader extends FunkinRuntimeShader {
 	public function new(name:String) {
 		this.name = name;
-		frag = Paths.shaderFrag(name);
-		vert = Paths.shaderVert(name);
+		var frag:String = Paths.shaderFrag(name);
+		var vert:String = Paths.shaderVert(name);
 		if (frag == null && vert == null) {
 			Log.warning('shader code for "$name" not found...');
 			Log.minor('verify paths:');
 			Log.minor('- vertex: shaders/$name.vert');
 			Log.minor('- fragment: shaders/$name.frag');
 		} else {
-			Log.minor('loaded shader code for "$name"');
-		}
-		super(frag, vert);
-	}
-
-	function getLog(infoLog:String, source:String):String {
-		var logLines:Array<String> = infoLog.trim().split('\n');
-		var sourceLines:Array<String> = source.split('\n');
-		var finalLog:StringBuf = new StringBuf();
-		var first:Bool = true;
-		for (i => logLine in logLines) {
-			if (!first) finalLog.add('\n');
-			if (logLine.startsWith('ERROR')) {
-				var info:Array<String> = logLine.split(':');
-
-				var col:Int = Std.parseInt(info[1]);
-				var line:Int = Std.parseInt(info[2]);
-				var codeLine:String = sourceLines[line - 1];
-				var msg:String = logLine.substr((info[0] + info[1] + info[2]).length + 3, logLine.length).trim();
-
-				#if I_AM_BORING_ZZZ
-				finalLog.add('ERROR: $msg');
-				finalLog.add('@ LINE $line: $codeLine');
-				#else
-				finalLog.add(Log.colorTag(Std.string(line).lpad(' ', 4) + ' | $codeLine\n', brightYellow));
-				finalLog.add(Log.colorTag('     | ', brightYellow) + Log.colorTag(msg, red));
-				#end
-				first = false;
-			}
-		}
-		return finalLog.toString();
-	}
-	@:noCompletion override function __createGLShader(source:String, type:Int):openfl.display3D._internal.GLShader {
-		@:privateAccess var gl = __context.gl;
-
-		var shader = gl.createShader(type);
-		gl.shaderSource(shader, source);
-		gl.compileShader(shader);
-		var shaderInfoLog = gl.getShaderInfoLog(shader).trim();
-		var compileStatus = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
-
-		if (compileStatus == 0) {
-			var isVertex:Bool = type == gl.VERTEX_SHADER;
-			var message:String = 'error compiling ${isVertex ? 'vertex' : 'fragment'} code from shader "$name"...'; //$source
-			Log.error(message);
-			Sys.println(getLog(shaderInfoLog, source));
-
-			Log.minor('compiling with default code...');
-			#if (flixel_addons >= "3.3.0")
-			var typeString:String = (isVertex ? 'Vertex' : 'Fragment');
-			var source:String = FlxRuntimeShaderMacro.retrieveMetadata('gl${typeString}Source', false);
-			source = source.replace('#pragma header', FlxRuntimeShaderMacro.retrieveMetadata('gl${typeString}Header', false));
-			source = source.replace('#pragma body', FlxRuntimeShaderMacro.retrieveMetadata('gl${typeString}Body', false));
-			#else
-			var source:String;
-			if (type == gl.VERTEX_SHADER) {
-				source = FlxRuntimeShader.BASE_VERTEX_SOURCE.replace('#pragma header', FlxRuntimeShader.BASE_VERTEX_HEADER);
-				source = source.replace('#pragma body', FlxRuntimeShader.BASE_VERTEX_BODY);
+			var str:String;
+			if (frag != null) {
+				str = (vert == null ? 'fragment' : 'fragment and vertex');
 			} else {
-				source = FlxRuntimeShader.BASE_FRAGMENT_SOURCE.replace('#pragma header', FlxRuntimeShader.BASE_FRAGMENT_HEADER);
-				source = source.replace('#pragma body', FlxRuntimeShader.BASE_FRAGMENT_BODY);
+				str = 'vertex';
 			}
-			#end
-			gl.shaderSource(shader, source);
-			gl.compileShader(shader);
-			perfect = false;
-			// dev FlxRuntimeShaderMacro.retrieveMetadata('gl${type == gl.VERTEX_SHADER ? 'Vertex' : 'Fragment'}Source', false)
+			Log.minor('loaded $str shader code for "$name"');
 		}
-
-		return shader;
-	}
-	@:noCompletion override function __createGLProgram(vert:String, frag:String):openfl.display3D._internal.GLProgram {
-		Log.minor('initializing shader "$name"');
-		perfect = true;
-
-		@:privateAccess var gl = __context.gl;
-
-		var vertexShader = __createGLShader(vert, gl.VERTEX_SHADER);
-		var fragmentShader = __createGLShader(frag, gl.FRAGMENT_SHADER);
-
-		var program = gl.createProgram();
-
-		// Fix support for drivers that don't draw if attribute 0 is disabled
-		for (param in __paramFloat) {
-			if (param.name.indexOf("Position") > -1 && StringTools.startsWith(param.name, "openfl_")) {
-				gl.bindAttribLocation(program, 0, param.name);
-				break;
-			}
-		}
-
-		try {
-			gl.attachShader(program, vertexShader);
-			gl.attachShader(program, fragmentShader);
-			gl.linkProgram(program);
-			compiled = (gl.getProgramParameter(program, gl.LINK_STATUS) != 0);
-			if (!compiled)
-				Log.error('could not initialize shader program for "$name"...\n${gl.getProgramInfoLog(program)}');
-		} catch(e:Dynamic) {
-			compiled = false;
-			Log.error('could not initialize shader program for "$name"...\n(LINK ERROR)');
-		}
-
-		if (compiled) {
-			if (perfect)
-				Log.info('initialized shader program for "$name"!');
-			else
-				Log.warning('initialized shader program for "$name" with errors');
-		}
-
-		return program;
-	}
-	function resetShader() {
-
+		super(frag, vert, name);
 	}
 }
 

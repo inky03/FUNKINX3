@@ -283,7 +283,6 @@ class PlayState extends funkin.backend.states.FunkinState {
 	}
 
 	override public function update(elapsed:Float) {
-		elapsed = getRealElapsed();
 		hscripts.run('updatePre', [elapsed, paused, dead]);
 
 		if (FlxG.keys.justPressed.ESCAPE) {

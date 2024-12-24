@@ -212,8 +212,6 @@ class CharterState extends funkin.backend.states.FunkinState {
 	}
 	
 	override public function update(elapsed:Float) {
-		elapsed = getRealElapsed();
-		
 		if (FlxG.keys.justPressed.ENTER) {
 			chart ??= new Chart('unnamed');
 			chart.tempoChanges = conductorInUse.metronome.tempoChanges;

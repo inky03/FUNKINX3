@@ -72,7 +72,6 @@ class GameOverSubState extends funkin.backend.states.FunkinSubState {
 		playState.hscripts.run('deathCreate', [wasInstant, this]);
 	}
 	public override function update(elapsed:Float) {
-		elapsed = getRealElapsed();
 		playState.hscripts.run('updatePre', [elapsed, false, true]);
 		
 		if (FlxG.keys.justPressed.ESCAPE && !confirmed) {

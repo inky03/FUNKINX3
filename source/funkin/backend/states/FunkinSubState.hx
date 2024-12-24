@@ -6,9 +6,6 @@ import funkin.backend.rhythm.Conductor;
 import flixel.util.FlxSignal.FlxTypedSignal;
 
 class FunkinSubState implements IFunkinState extends FlxSubState {
-	var time:Float = -1;
-	public var realElapsed:Float;
-
 	public var curBar:Int = -1;
 	public var curBeat:Int = -1;
 	public var curStep:Int = -1;
@@ -52,15 +49,7 @@ class FunkinSubState implements IFunkinState extends FlxSubState {
 		curStep = -1;
 		conductorInUse.songPosition = 0;
 	}
-
-	public function getRealElapsed() {
-		var curTime:Float = haxe.Timer.stamp();
-		if (time < 0) time = curTime;
-		var realTime:Float = Math.min(curTime - time, FlxG.maxElapsed);
-		realElapsed = realTime;
-		time = curTime;
-		return realElapsed;
-	}
+	
 	override function update(elapsed:Float) {
 		if (paused) return;
 

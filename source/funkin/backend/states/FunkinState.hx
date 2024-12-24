@@ -6,9 +6,6 @@ import funkin.backend.rhythm.Conductor;
 import flixel.util.FlxSignal.FlxTypedSignal;
 
 class FunkinState implements IFunkinState extends FlxState {
-	var time:Float = -1;
-	public var realElapsed:Float;
-
 	public var curBar:Int = -1;
 	public var curBeat:Int = -1;
 	public var curStep:Int = -1;
@@ -62,15 +59,7 @@ class FunkinState implements IFunkinState extends FlxState {
 	public function resetState() {
 		FlxG.resetState();
 	}
-
-	public function getRealElapsed() {
-		var curTime:Float = haxe.Timer.stamp();
-		if (time < 0) time = curTime;
-		var realTime:Float = Math.min(curTime - time, FlxG.maxElapsed);
-		realElapsed = realTime;
-		time = curTime;
-		return realElapsed;
-	}
+	
 	override function update(elapsed:Float) {
 		if (FlxG.keys.justPressed.F5) resetState();
 		

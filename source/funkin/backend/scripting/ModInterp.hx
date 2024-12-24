@@ -1,12 +1,13 @@
 package funkin.backend.scripting;
 
-import crowplexus.hscript.Tools;
 import crowplexus.hscript.Expr;
+import crowplexus.hscript.Tools;
 
 class ModInterp extends crowplexus.hscript.Interp {
 	public static var intercept:Array<Dynamic>;
+	public var hscript:HScript;
 	
-	public function interceptSetVar(name:String, v:Dynamic) {
+	override function setVar(name:String, v:Dynamic) {
 		if (variables.exists(name)) {
 			variables.set(name, v);
 			return;
@@ -114,146 +115,6 @@ class ModInterp extends crowplexus.hscript.Interp {
 			return null;
 		} else {
 			return v;
-		}
-	}
-	
-	// allat just to replace one inlined function
-	override function assign(e1:Expr, e2:Expr):Dynamic {
-		var v = expr(e2);
-		switch (Tools.expr(e1)) {
-			case EIdent(id):
-				var l = locals.get(id);
-				if (l == null)
-					interceptSetVar(id, v)
-				else {
-					if (l.const != true)
-						l.r = v;
-					else
-						warn(ECustom("Cannot reassign final, for constant expression -> " + id));
-				}
-			case EField(e, f, s):
-				var e = expr(e);
-				if (e == null)
-					if (!s)
-						error(EInvalidAccess(f));
-					else
-						return null;
-				v = set(e, f, v);
-			case EArray(e, index):
-				var arr: Dynamic = expr(e);
-				var index: Dynamic = expr(index);
-				if (isMap(arr)) {
-					setMapValue(arr, index, v);
-				} else {
-					arr[index] = v;
-				}
-
-			default:
-				error(EInvalidOp("="));
-		}
-		return v;
-	}
-	override function evalAssignOp(op, fop, e1, e2): Dynamic {
-		var v;
-		switch (Tools.expr(e1)) {
-			case EIdent(id):
-				var l = locals.get(id);
-				v = fop(expr(e1), expr(e2));
-				if (l == null)
-					interceptSetVar(id, v)
-				else {
-					if (l.const != true)
-						l.r = v;
-					else
-						warn(ECustom("Cannot reassign final, for constant expression -> " + id));
-				}
-			case EField(e, f, s):
-				var obj = expr(e);
-				if (obj == null)
-					if (!s)
-						error(EInvalidAccess(f));
-					else
-						return null;
-				v = fop(get(obj, f), expr(e2));
-				v = set(obj, f, v);
-			case EArray(e, index):
-				var arr: Dynamic = expr(e);
-				var index: Dynamic = expr(index);
-				if (isMap(arr)) {
-					v = fop(getMapValue(arr, index), expr(e2));
-					setMapValue(arr, index, v);
-				} else {
-					v = fop(arr[index], expr(e2));
-					arr[index] = v;
-				}
-			default:
-				return error(EInvalidOp(op));
-		}
-		return v;
-	}
-	override function increment(e: Expr, prefix: Bool, delta: Int): Dynamic {
-		#if hscriptPos
-		curExpr = e;
-		var e = e.e;
-		#end
-		switch (e) {
-			case EIdent(id):
-				var l = locals.get(id);
-				var v: Dynamic = (l == null) ? resolve(id) : l.r;
-				function setTo(a) {
-					if (l == null)
-						interceptSetVar(id, a)
-					else {
-						if (l.const != true)
-							l.r = a;
-						else
-							error(ECustom("Cannot reassign final, for constant expression -> " + id));
-					}
-				}
-				if (prefix) {
-					v += delta;
-					setTo(v);
-				} else {
-					setTo(v + delta);
-				}
-				return v;
-			case EField(e, f, s):
-				var obj = expr(e);
-				if (obj == null)
-					if (!s)
-						error(EInvalidAccess(f));
-					else
-						return null;
-				var v: Dynamic = get(obj, f);
-				if (prefix) {
-					v += delta;
-					set(obj, f, v);
-				} else
-					set(obj, f, v + delta);
-				return v;
-			case EArray(e, index):
-				var arr: Dynamic = expr(e);
-				var index: Dynamic = expr(index);
-				if (isMap(arr)) {
-					var v = getMapValue(arr, index);
-					if (prefix) {
-						v += delta;
-						setMapValue(arr, index, v);
-					} else {
-						setMapValue(arr, index, v + delta);
-					}
-					return v;
-				} else {
-					var v = arr[index];
-					if (prefix) {
-						v += delta;
-						arr[index] = v;
-					} else
-						arr[index] = v + delta;
-					return v;
-				}
-			default:
-				return error(EInvalidOp((delta > 0) ? "++" : "--"));
 		}
 	}
 }

@@ -133,8 +133,6 @@ class FreeplaySubState extends funkin.backend.states.FunkinSubState {
 	}
 
 	public override function update(elapsed:Float) {
-		elapsed = getRealElapsed();
-		
 		if (FlxG.keys.justPressed.ESCAPE && inputEnabled) back();
 
 		super.update(elapsed);
