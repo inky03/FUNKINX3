@@ -31,12 +31,12 @@ class Character extends FunkinSprite {
 	
 	public var vocalsLoaded(default, null):Bool = false;
 	public var volume(default, set):Float = 1;
-	public var vocals:FlxSound;
+	public var vocals:FunkinSound;
 	
 	public function new(x:Float, y:Float, ?character:String, ?fallback:String) {
 		super(x, y);
 		rotateOffsets = true;
-		vocals = new FlxSound();
+		vocals = new FunkinSound();
 		FlxG.sound.list.add(vocals);
 		this.fallbackCharacter = fallback;
 		if (character == null) // lol
@@ -70,6 +70,7 @@ class Character extends FunkinSprite {
 		vocalsLoaded = false;
 		var paths:Array<String> = ['data/songs/$songPath', 'songs/$songPath'];
 		try {
+			var time:Float = Sys.time();
 			for (path in paths) {
 				if (Paths.exists(path)) {
 					var grrr:String = '$path/Voices';
@@ -86,7 +87,7 @@ class Character extends FunkinSprite {
 						vocals.play();
 						vocals.stop();
 						vocals.volume = volume;
-						Log.info('vocals loaded for character "$character"!!');
+						Log.info('vocals loaded for character "$character"!! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 						return true;
 					}
 				}

@@ -64,13 +64,14 @@ class Paths {
 
 	public static function getPath(key:String, allowMods:Bool = true, ?library:String) {
 		if (allowMods) {
-			var currentMod:String = Mods.currentMod;
+			final currentMod:String = Mods.currentMod;
 			if (currentMod != '') {
 				var path:String = modPath(key, currentMod, library);
 				if (FileSystem.exists(path)) return path;
 			}
 			for (mod in Mods.get()) {
-				if (!mod.global) continue;
+				if (!mod.global || mod.directory == currentMod)
+					continue;
 				var path:String = modPath(key, mod.directory, library);
 				if (FileSystem.exists(path)) return path;
 				if (library != null) {
@@ -95,16 +96,14 @@ class Paths {
 		if (allowMods) {
 			if (FileSystem.exists(globalModPath(key)))
 				files.push({path: globalModPath(key), type: GLOBAL});
-			if (!allMods) {
-				var currentMod:String = Mods.currentMod;
-				if (currentMod != '') {
-					var path:String = modPath(key, currentMod, library);
-					if (FileSystem.exists(path)) files.push({mod: currentMod, path: path});
-				}
+			
+			final currentMod:String = Mods.currentMod;
+			if (currentMod != '') {
+				var path:String = modPath(key, currentMod, library);
+				if (FileSystem.exists(path)) files.push({mod: currentMod, path: path});
 			}
 			for (mod in Mods.get()) {
-				if (!allMods) break;
-				if (!mod.global || mod.directory == Mods.currentMod)
+				if ((!mod.global && !allMods) || (allMods && mod.directory == currentMod))
 					continue;
 				var path:String = modPath(key, mod.directory, library);
 				if (FileSystem.exists(path)) files.push({mod: mod.directory, path: path});

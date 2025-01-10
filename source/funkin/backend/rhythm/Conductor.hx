@@ -23,18 +23,19 @@ class Conductor {
 		if (paused) return;
 		songPosition += Math.min(elapsedMS, 250) * timeScale;
 		if (syncTracker != null && syncTracker.playing) {
+			timeScale = syncTracker.pitch;
 			if (Math.abs(songPosition - syncTracker.time) > maxDisparity * timeScale)
 				songPosition = syncTracker.time;
 		}
 	}
 	
-	public function get_crochet() return (metronome.getCrochet(metronome.bpm, metronome.timeSignature.denominator));
-	public function get_stepCrochet() return (crochet * .25);
+	public function get_crochet():Float { return (metronome.getCrochet(metronome.bpm, metronome.timeSignature.denominator)); }
+	public function get_stepCrochet():Float { return (crochet * .25); }
 	
-	public function get_songPosition() return metronome.ms;
-	public function set_songPosition(newMS:Float) return metronome.setMS(newMS);
-	public function get_timeSignature() return metronome.timeSignature;
-	public function get_bpm() return metronome.bpm;
+	public function get_songPosition():Float { return metronome.ms; }
+	public function set_songPosition(newMS:Float):Float { return metronome.setMS(newMS); }
+	public function get_timeSignature():TimeSignature { return metronome.timeSignature; }
+	public function get_bpm():Float { return metronome.bpm; }
 	
 	public function resetToDefault() {
 		metronome = new Metronome();

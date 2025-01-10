@@ -46,7 +46,7 @@ class Chart {
 	public var tempoChanges:Array<TempoChange> = [new TempoChange(-4, 100, new TimeSignature())];
 
 	public var instLoaded:Bool;
-	public var inst:FlxSound;
+	public var inst:FunkinSound;
 	public var songLength:Float = 0;
 	public var audioSuffix:String = '';
 
@@ -60,7 +60,7 @@ class Chart {
 		this.keyCount = keyCount;
 		
 		instLoaded = false;
-		inst = new FlxSound();
+		inst = new FunkinSound();
 		FlxG.sound.list.add(inst);
 	}
 	public function toString() {
@@ -570,6 +570,7 @@ class Chart {
 		var instPath:String = path + Util.pathSuffix('Inst', audioSuffix);
 		// Log.minor('attempting to load instrumental from $instPath...');
 		try {
+			var time:Float = Sys.time();
 			var ogg:openfl.media.Sound = Paths.ogg(instPath);
 			if (ogg != null) {
 				inst.loadEmbedded(ogg);
@@ -579,7 +580,7 @@ class Chart {
 				inst.play();
 				inst.stop();
 				inst.volume = 1;
-				Log.info('instrumental loaded!!');
+				Log.info('instrumental loaded!! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 				return true;
 			}
 		} catch (e:Exception) {

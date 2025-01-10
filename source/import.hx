@@ -40,6 +40,7 @@ import funkin.backend.Controls;
 import funkin.backend.FunkinSound;
 import funkin.backend.FunkinSprite;
 import funkin.backend.FunkinCamera;
+import funkin.backend.FunkinSoundGroup;
 import funkin.backend.rhythm.*;
 import funkin.backend.states.*;
 

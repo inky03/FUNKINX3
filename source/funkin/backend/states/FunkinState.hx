@@ -50,7 +50,7 @@ class FunkinState implements IFunkinState extends FlxState {
 		return obj;
 	}
 	
-	public function resetMusic() {
+	public function resetConductor() {
 		curBar = -1;
 		curBeat = -1;
 		curStep = -1;

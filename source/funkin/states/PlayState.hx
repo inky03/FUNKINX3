@@ -50,8 +50,6 @@ class PlayState extends funkin.backend.states.FunkinState {
 	public var hudZoomIntensity:Float = 2;
 	
 	public static var chart:Chart = null;
-	public var songSpeed(default, set):Float = 1;
-	public var syncVocals:Array<FlxSound> = [];
 	public var events:Array<ChartEvent> = [];
 	public var notes:Array<Note> = [];
 	public var songName:String;
@@ -68,8 +66,9 @@ class PlayState extends funkin.backend.states.FunkinState {
 	public var percent:Float = 0;
 	public var dead:Bool = false;
 	public var gameOver:GameOverSubState;
-
-	public var hitsound:FlxSound;
+	
+	public var music:FunkinSoundGroup;
+	public var hitsound:FunkinSound;
 	
 	public var godmode:Bool;
 	public var downscroll:Bool;
@@ -89,13 +88,12 @@ class PlayState extends funkin.backend.states.FunkinState {
 		
 		conductorInUse = new Conductor();
 		conductorInUse.metronome.tempoChanges = chart.tempoChanges;
-		conductorInUse.syncTracker = chart.instLoaded ? chart.inst : null;
+		
+		hitsound = FunkinSound.load(Paths.sound('gameplay/hitsounds/hitsound'), .7);
+		music = new FunkinSoundGroup();
 		
 		hscripts.loadFromFolder('scripts/global');
 		hscripts.loadFromFolder('scripts/songs/${chart.path}');
-		
-		hitsound = FunkinSound.load(Paths.sound('gameplay/hitsounds/hitsound'));
-		hitsound.volume = .7;
 		
 		stepHit.add(stepHitEvent);
 		beatHit.add(beatHitEvent);
@@ -142,7 +140,15 @@ class PlayState extends funkin.backend.states.FunkinState {
 		chart.instLoaded = false;
 		var songPaths:Array<String> = ['data/songs/${chart.path}/', 'songs/${chart.path}/'];
 		for (path in songPaths) chart.loadMusic(path, false);
-		if (!chart.instLoaded) {
+		if (chart.instLoaded) {
+			music.add(chart.inst);
+			music.syncBase = chart.inst;
+			music.onSoundFinished.add((snd:FunkinSound) -> {
+				if (snd == music.syncBase)
+					finishSong();
+			});
+			conductorInUse.syncTracker = chart.inst;
+		} else {
 			Log.warning('chart instrumental not found...');
 			Log.minor('verify paths:');
 			for (path in songPaths)
@@ -249,9 +255,6 @@ class PlayState extends funkin.backend.states.FunkinState {
 			events.push(event);
 			pushedEvent(event);
 		}
-		if (chart.instLoaded) {
-			chart.inst.onComplete = finishSong;
-		}
 		for (i in 0...4) Paths.sound('gameplay/hitsounds/miss$i');
 		Paths.sound('gameplay/hitsounds/hitsoundTail');
 		Paths.sound('gameplay/hitsounds/hitsoundFail');
@@ -291,7 +294,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 		for (chara in [player1, player2, player3]) {
 			if (chara == null) continue;
 			if (chara.vocalsLoaded)
-				syncVocals.push(chara.vocals);
+				music.add(chara.vocals);
 		}
 	}
 
@@ -321,13 +324,9 @@ class PlayState extends funkin.backend.states.FunkinState {
 					strumline.queueNote(note);
 				}
 				for (event in chart.events) events.push(event);
-				chart.inst.time = 0;
-				chart.inst.pause();
-				for (track in syncVocals) {
-					track.time = 0;
-					track.pause();
-				}
-				resetMusic();
+				music.pause();
+				music.time = 0;
+				resetConductor();
 				conductorInUse.metronome.setBeat(-5);
 				resetScore();
 			}
@@ -361,11 +360,9 @@ class PlayState extends funkin.backend.states.FunkinState {
 				paused = !paused;
 				var pauseVocals:Bool = (paused || conductorInUse.songPosition < 0);
 				if (pauseVocals) {
-					chart.inst.pause();
-					for (track in syncVocals) track.pause();
+					music.pause();
 				} else {
-					if (chart.instLoaded) chart.inst.play(true, conductorInUse.songPosition);
-					for (track in syncVocals) track.play(true, conductorInUse.songPosition);
+					music.play(true, conductorInUse.songPosition);
 					syncMusic(false, true);
 				}
 				FlxTimer.globalManager.forEach((timer:FlxTimer) -> { if (!timer.finished) timer.active = !paused; });
@@ -417,32 +414,19 @@ class PlayState extends funkin.backend.states.FunkinState {
 		FlxG.switchState(() -> new FreeplayState());
 	}
 	
-	public function stopMusic() {
-		for (track in syncVocals) track.stop();
-		chart?.inst.stop();
-	}
 	public function syncMusic(forceSongpos:Bool = false, forceTrackTime:Bool = false) {
-		if (chart.instLoaded && chart.inst.playing && !conductorInUse.paused) {
-			if ((forceSongpos && conductorInUse.songPosition < chart.inst.time) || Math.abs(chart.inst.time - conductorInUse.songPosition) > 75)
-				conductorInUse.songPosition = chart.inst.time;
+		var syncBase:FunkinSound = music.syncBase;
+		if (chart.instLoaded && syncBase != null && syncBase.playing && !conductorInUse.paused) {
+			if ((forceSongpos && conductorInUse.songPosition < syncBase.time) || Math.abs(syncBase.time - conductorInUse.songPosition) > 75)
+				conductorInUse.songPosition = syncBase.time;
 			if (forceTrackTime) {
-				for (track in syncVocals) {
-					if (Math.abs(chart.inst.time - track.time) > 75)
-						track.time = chart.inst.time;
-				}
+				if (Math.abs(music.getDisparity(syncBase.time)) > 75)
+					music.syncToBase();
 			}
 		}
 	}
 	public function getSongPos() {
 		return conductorInUse.songPosition;
-	}
-	public function set_songSpeed(newRate:Float) {
-		conductorInUse.timeScale = newRate;
-		if (chart != null && chart.inst != null)
-			chart.inst.pitch = newRate;
-		for (track in syncVocals)
-			track.pitch = newRate;
-		return newRate;
 	}
 
 	public function pushedEvent(event:ChartEvent) {
@@ -601,8 +585,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 					popCountdown('go');
 					FunkinSound.playOnce(Paths.sound('gameplay/countdown/$folder/introGO'));
 				case 0:
-					if (chart.instLoaded) chart.inst.play(true);
-					for (track in syncVocals) track.play(true);
+					music.play(true);
 					syncMusic(true, true);
 				default:
 			}
@@ -650,7 +633,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 				conductorInUse.songPosition = newTimeMaybe; // too rigged? (Math.abs(newTimeMaybe) < Math.abs(oldTime) ? newTimeMaybe : oldTime);
 			
 			if (keybind >= 0) {
-				hscripts.run('keybindPressed', [keybind]);
+				hscripts.run('keybindPressed', [keybind, key]);
 				playerStrumline.fireInput(key, true);
 			}
 			
@@ -666,7 +649,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 		var keybind:Int = Controls.keybindFromArray(keybinds, key);
 
 		if (keybind >= 0) {
-			hscripts.run('keybindReleased', [keybind]);
+			hscripts.run('keybindReleased', [keybind, key]);
 			playerStrumline.fireInput(key, false);
 		}
 	}
@@ -777,7 +760,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 		
 		gameOver = new GameOverSubState(instant);
 		function actuallyDie() {
-			stopMusic();
+			music.stop();
 			camGame.zoomTarget = gameOver.cameraZoom * stage.zoom;
 			camGame.zoomFollowLerp = camGame.followLerp = 3;
 			camGame.pauseZoomLerp = false;
@@ -792,8 +775,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 			camGame.pauseZoomLerp = true;
 			
 			final deathDuration:Float = .4;
-			chart?.inst.fadeOut(deathDuration);
-			for (track in syncVocals) track.fadeOut(deathDuration);
+			music.fadeOut(deathDuration);
 			
 			FlxTween.tween(camGame, {zoom: camGame.zoom + .3}, deathDuration, {ease: FlxEase.elasticOut, onComplete: (_) -> { actuallyDie(); }});
 		}
