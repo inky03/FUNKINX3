@@ -33,14 +33,14 @@
 	<assets path="alsoft.ini"/>
 	<source path="source" />
 	<assets path="assets" />
-	<!-- assets path="mods" -->
 
 	<!-- ______________________________ Game flags ______________________________ -->
 
 	<define name="USE_HSCRIPT" />
-
-	<!-- disable hardcoded assets layer -->
-	<define name="SOFT_ASSETS" />
+	
+	<!-- modding -->
+	<define name="MODS_ALLOWED" />
+	<define name="SOFT_ASSETS" if="MODS_ALLOWED" />
 
 	<!-- if you want to disable console colors... -->
 	<!-- define name="I_AM_BORING_ZZZ" -->

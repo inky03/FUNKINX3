@@ -570,12 +570,15 @@ class Chart {
 		var instPath:String = path + Util.pathSuffix('Inst', audioSuffix);
 		// Log.minor('attempting to load instrumental from $instPath...');
 		try {
-			inst.loadEmbedded(Paths.ogg(instPath));
-			if (inst.length > 0) {
+			var ogg:openfl.media.Sound = Paths.ogg(instPath);
+			if (ogg != null) {
+				inst.loadEmbedded(ogg);
 				songLength = inst.length;
 				instLoaded = true;
+				inst.volume = 0;
 				inst.play();
 				inst.stop();
+				inst.volume = 1;
 				Log.info('instrumental loaded!!');
 				return true;
 			}

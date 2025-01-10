@@ -103,10 +103,11 @@ class Paths {
 				}
 			}
 			for (mod in Mods.get()) {
-				if (!allMods && (!mod.global || mod.directory == Mods.currentMod))
+				if (!allMods) break;
+				if (!mod.global || mod.directory == Mods.currentMod)
 					continue;
 				var path:String = modPath(key, mod.directory, library);
-				if (FileSystem.exists(path)) files.push({mod: '', path: path});
+				if (FileSystem.exists(path)) files.push({mod: mod.directory, path: path});
 			}
 		}
 

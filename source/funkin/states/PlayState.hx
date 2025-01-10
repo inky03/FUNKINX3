@@ -75,8 +75,12 @@ class PlayState extends funkin.backend.states.FunkinState {
 	public var downscroll:Bool;
 	public var middlescroll:Bool;
 	
+	public function new() {
+		chart ??= new Chart('');
+		super();
+	}
+	
 	override public function create() {
-		if (chart == null) chart = new Chart(''); // lol!
 		super.create();
 		Main.watermark.visible = false;
 		godmode = false; // practice mode?
@@ -144,19 +148,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 			for (path in songPaths)
 				Log.minor('- $path${Util.pathSuffix('Inst', chart.audioSuffix)}.ogg');
 		}
-		for (chara in [player1, player2, player3]) {
-			if (chara == null) continue;
-			chara.loadVocals(chart.path, chart.audioSuffix);
-			if (chara.vocalsLoaded)
-				syncVocals.push(chara.vocals);
-		}
-		if (player1 != null && !player1.vocalsLoaded && player1.character != chart.player1) player1.loadVocals(chart.path, chart.audioSuffix, chart.player1);
-		if (player2 != null && !player2.vocalsLoaded && player2.character != chart.player2) player2.loadVocals(chart.path, chart.audioSuffix, chart.player2);
-		if (player1 != null && player2 != null && !player1.vocalsLoaded && !player2.vocalsLoaded) {
-			player1.loadVocals(chart.path, chart.audioSuffix, '');
-			if (!player1.vocalsLoaded)
-				Log.warning('chart vocals not found...');
-		}
+		loadVocals(chart.path, chart.audioSuffix);
 		
 		uiGroup = new FlxSpriteGroup();
 		uiGroup.camera = camHUD;
@@ -280,6 +272,27 @@ class PlayState extends funkin.backend.states.FunkinState {
 				Paths.image(img);
 		}
 		conductorInUse.metronome.setBeat(playCountdown ? -5 : -1);
+	}
+	
+	public function loadVocals(path:String, audioSuffix:String = '') {
+		for (chara in [player1, player2, player3]) {
+			if (chara == null) continue;
+			chara.loadVocals(path, audioSuffix);
+		}
+		if (player1 != null && !player1.vocalsLoaded && player1.character != chart.player1)
+			player1.loadVocals(path, audioSuffix, chart.player1);
+		if (player2 != null && !player2.vocalsLoaded && player2.character != chart.player2)
+			player2.loadVocals(path, audioSuffix, chart.player2);
+		if ((player1 == null || !player1.vocalsLoaded) && (player2 == null || !player2.vocalsLoaded)) {
+			player1.loadVocals(path, audioSuffix, '');
+			if (!player1.vocalsLoaded)
+				Log.warning('song vocals not found...');
+		}
+		for (chara in [player1, player2, player3]) {
+			if (chara == null) continue;
+			if (chara.vocalsLoaded)
+				syncVocals.push(chara.vocals);
+		}
 	}
 
 	override public function update(elapsed:Float) {
@@ -633,14 +646,14 @@ class PlayState extends funkin.backend.states.FunkinState {
 			var keybind:Int = Controls.keybindFromArray(keybinds, key);
 			var oldTime:Float = conductorInUse.songPosition;
 			var newTimeMaybe:Float = conductorInUse.syncTracker?.time ?? oldTime;
-			if (conductorInUse.syncTracker?.playing ?? false)
+			if (conductorInUse.syncTracker != null && conductorInUse.syncTracker.playing)
 				conductorInUse.songPosition = newTimeMaybe; // too rigged? (Math.abs(newTimeMaybe) < Math.abs(oldTime) ? newTimeMaybe : oldTime);
-
+			
 			if (keybind >= 0) {
 				hscripts.run('keybindPressed', [keybind]);
 				playerStrumline.fireInput(key, true);
 			}
-
+			
 			conductorInUse.songPosition = oldTime;
 		}
 	}
@@ -763,11 +776,17 @@ class PlayState extends funkin.backend.states.FunkinState {
 		camGame.pauseFollowLerp = false;
 		
 		gameOver = new GameOverSubState(instant);
+		function actuallyDie() {
+			stopMusic();
+			camGame.zoomTarget = gameOver.cameraZoom * stage.zoom;
+			camGame.zoomFollowLerp = camGame.followLerp = 3;
+			camGame.pauseZoomLerp = false;
+			openSubState(gameOver);
+		}
 		
 		if (instant) {
-			stopMusic();
 			focusOnCharacter(player1, true);
-			openSubState(gameOver);
+			actuallyDie();
 		} else {
 			camGame.followLerp = 10;
 			camGame.pauseZoomLerp = true;
@@ -776,13 +795,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 			chart?.inst.fadeOut(deathDuration);
 			for (track in syncVocals) track.fadeOut(deathDuration);
 			
-			FlxTween.tween(camGame, {zoom: camGame.zoom + .3}, deathDuration, {ease: FlxEase.elasticOut, onComplete: (_) -> {
-				stopMusic();
-				camGame.zoomTarget = gameOver.cameraZoom * stage.zoom;
-				camGame.zoomFollowLerp = camGame.followLerp = 3;
-				camGame.pauseZoomLerp = false;
-				openSubState(gameOver);
-			}});
+			FlxTween.tween(camGame, {zoom: camGame.zoom + .3}, deathDuration, {ease: FlxEase.elasticOut, onComplete: (_) -> { actuallyDie(); }});
 		}
 	}
 	public function resetScore() {

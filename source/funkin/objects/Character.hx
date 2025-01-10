@@ -78,8 +78,9 @@ class Character extends FunkinSprite {
 					if (chara != '' && characterSuffix == '')
 						break;
 					var vocalsPath:String = Util.pathSuffix(grrr, characterSuffix) + variationSuffix;
-					vocals.loadEmbedded(Paths.ogg(vocalsPath));
-					if (vocals.length > 0) {
+					var ogg:openfl.media.Sound = Paths.ogg(vocalsPath);
+					if (ogg != null) {
+						vocals.loadEmbedded(ogg);
 						vocalsLoaded = true;
 						vocals.volume = 0;
 						vocals.play();

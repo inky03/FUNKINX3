@@ -62,6 +62,7 @@ class FunkinState implements IFunkinState extends FlxState {
 	
 	override function update(elapsed:Float) {
 		if (FlxG.keys.justPressed.F5) resetState();
+		if (FlxG.keys.justPressed.F6) Mods.refresh();
 		
 		if (paused) return;
 		

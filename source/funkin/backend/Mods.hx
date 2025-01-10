@@ -7,18 +7,21 @@ class Mods {
 	inline public static function get() return list;
 	public static function refresh() {
 		list.resize(0);
-		if (!FileSystem.exists('mods')) return list;
+		#if MODS_ALLOWED
+		if (!FileSystem.exists('mods'))
+			return list;
+		
 		for (dir in FileSystem.readDirectory('mods')) {
-			if (FileSystem.exists('$dir/pack.json')) {
+			if (FileSystem.exists('mods/$dir/pack.json')) {
 				var mod:Mod = {
 					directory: dir,
-					global: true, // todo
-					name: ''
+					global: true // todo
 				};
 				list.push(mod);
 			}
 		}
 		Log.info('refreshed mod list!');
+		#end
 		return list;
 	}
 }
@@ -28,4 +31,8 @@ class Mod {
 	public var global:Bool = false;
 	public var directory:String = '';
 	public var name:String = 'Unknown';
+	
+	public function toString():String {
+		return 'Mod($directory)';
+	}
 }
