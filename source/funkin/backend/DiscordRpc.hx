@@ -12,7 +12,7 @@ class DiscordRPC {
 	public static var clientID(default, set):String = '1285413579893506118';
 	
 	#if hxdiscord_rpc
-	public static var presence:DiscordRichPresence = DiscordRichPresence.create();
+	public static var presence:DiscordRichPresence = new DiscordRichPresence();
 	
 	public static function prepare() {
 		initialize();
@@ -21,11 +21,11 @@ class DiscordRPC {
 	public static function initialize() {
 		if (initialized) return;
 		
-		final handlers:DiscordEventHandlers = DiscordEventHandlers.create();
+		final handlers:DiscordEventHandlers = new DiscordEventHandlers();
 		handlers.ready = cpp.Function.fromStaticFunction(onReady);
 		handlers.disconnected = cpp.Function.fromStaticFunction(onDisconnected);
 		handlers.errored = cpp.Function.fromStaticFunction(onError);
-		Discord.Initialize(clientID, cpp.RawPointer.addressOf(handlers), 1, null);
+		Discord.Initialize(clientID, cpp.RawPointer.addressOf(handlers), true, null);
 		
 		Thread.create(() -> {
 			while (true) {
