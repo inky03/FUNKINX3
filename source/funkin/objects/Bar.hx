@@ -16,7 +16,7 @@ class Bar extends FlxSpriteGroup {
 	
 	public var leftToRight:Bool = true;
 	
-	public function new(x:Float = 0, y:Float = 0, overlayImage:String = 'healthBar', value:Bar -> Float = null) {
+	public function new(x:Float = 0, y:Float = 0, valueFunction:Bar -> Float = null, overlayImage:String = 'healthBar') {
 		super(x, y);
 		overlay = new FunkinSprite().loadTexture(overlayImage);
 		leftBar = new FunkinSprite().makeGraphic(Std.int(overlay.width), Std.int(overlay.height), -1);
@@ -25,7 +25,7 @@ class Bar extends FlxSpriteGroup {
 		add(leftBar);
 		add(rightBar);
 		updateHitbox();
-		valueFunc = value;
+		valueFunc = valueFunction;
 		
 		barRect.width = leftBar.width - barRect.x * 2;
 		barRect.height = leftBar.height - barRect.y * 2;
@@ -35,17 +35,26 @@ class Bar extends FlxSpriteGroup {
 		percent = targetPercent;
 		setColors();
 	}
-	public function loadTexture(overlayImage:String = 'healthBar') {
+	public function loadTexture(overlayImage:String = 'healthBar'):Bar {
 		overlay.loadTexture(overlayImage);
-		leftBar.setGraphicSize(overlay.width, overlay.height);
-		rightBar.setGraphicSize(overlay.width, overlay.height);
-		leftBar.updateHitbox();
-		rightBar.updateHitbox();
-		updateBars();
+		reloadBars();
+		return this;
 	}
-	public function setColors(leftColor:FlxColor = 0xff0000, rightColor:FlxColor = 0x66ff33) {
+	public function loadFillTexture(?leftFill:String, ?rightFill:String):Bar {
+		if (leftFill != null) {
+			leftBar.loadTexture(leftFill);
+		} else {
+			leftBar.makeGraphic(Std.int(overlay.width), Std.int(overlay.height), -1);
+		}
+		if (rightFill == null)
+			rightBar.graphic = leftBar.graphic;
+		reloadBars();
+		return this;
+	}
+	public function setColors(leftColor:FlxColor = 0xff0000, rightColor:FlxColor = 0x66ff33):Bar {
 		leftBar.color = leftColor;
 		rightBar.color = rightColor;
+		return this;
 	}
 	
 	public override function update(elapsed:Float) {
@@ -55,12 +64,19 @@ class Bar extends FlxSpriteGroup {
 		barCenter.set(leftBar.x + leftBar.clipRect.x + leftBar.clipRect.width, y + height * .5);
 	}
 	
-	public function set_percent(newPercent:Float) {
+	function set_percent(newPercent:Float) {
 		if (percent != newPercent) {
 			percent = newPercent;
 			updateBars();
 		}
 		return newPercent;
+	}
+	function reloadBars() {
+		leftBar.setGraphicSize(overlay.width, overlay.height);
+		rightBar.setGraphicSize(overlay.width, overlay.height);
+		leftBar.updateHitbox();
+		rightBar.updateHitbox();
+		updateBars();
 	}
 	public function updateBars() {
 		var fPercent:Float = (leftToRight ? 100 - percent : percent) * .01;

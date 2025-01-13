@@ -32,7 +32,7 @@ class Util { // maybe these utils can be on their own specific purpose classes
 	}
 
 	// keyboard
-	public static function get_keyMod():lime.ui.KeyModifier {
+	static function get_keyMod():lime.ui.KeyModifier {
 		return @:privateAccess FlxG.stage.application.__backend.keyEventInfo.modifier;
 	}
 	public static function capsLockEnabled():Bool { // p sure these are abstracted so, to be nice

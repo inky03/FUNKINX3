@@ -1,17 +1,20 @@
 package;
 
+import funkin.states.CrashState;
 import funkin.debug.DebugDisplay;
+import funkin.backend.FunkinGame;
 import funkin.backend.FunkinSoundTray;
-
-import openfl.events.UncaughtErrorEvent;
 
 class Main extends openfl.display.Sprite {
 	public static var instance:Main;
 	
+	public static var compiledTo(get, never):String;
+	public static var compiledWith(get, never):String;
+	
 	public static var soundTray(get, never):FunkinSoundTray;
 	public static var windowTitle(default, null):String;
 	public static var debugDisplay:DebugDisplay;
-	public static var engineVersion = '0.0.5';
+	public static var engineVersion = '0.0.6';
 	public static var watermark:FlxText;
 	public static var showWatermark(default, set):Bool;
 	
@@ -48,7 +51,7 @@ class Main extends openfl.display.Sprite {
 		FlxG.updateFramerate = 144;
 		FlxG.fixedTimestep = false;
 		
-		watermark = new FlxText(10, FlxG.height + 5, FlxG.width, 'funkinmess $engineVersion\nengine by emi3');
+		watermark = new FlxText(10, FlxG.height + 5, FlxG.width, 'FUNKINX3 $engineVersion\nengine by emi3');
 		watermark.setFormat(Paths.font('vcr.ttf'), 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		watermark.alpha = .7;
 		watermark.updateHitbox();
@@ -60,6 +63,7 @@ class Main extends openfl.display.Sprite {
 		showWatermark = true;
 		
 		DiscordRPC.presence.largeImageText = 'funkinmess $engineVersion';
+		openfl.Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(openfl.events.UncaughtErrorEvent.UNCAUGHT_ERROR, CrashState.handleUncaughtError);
 	}
 	
 	public static function get_soundTray() {
@@ -70,70 +74,29 @@ class Main extends openfl.display.Sprite {
 		FlxTween.tween(watermark, {y: FlxG.height + (show ? -40 : 5)}, 1, {ease: FlxEase.quartOut});
 		return showWatermark = show;
 	}
-}
-
-class FunkinGame extends flixel.FlxGame {
-	var _time:Float = -1;
 	
-	override function switchState() {
-		_time = -1;
-		super.switchState();
+	static function get_compiledTo():String {
+		return 
+		#if windows
+		'Windows'
+		#elseif linux
+		'Linux'
+		#elseif mac
+		'Mac'
+		#elseif html5
+		'HTML5'
+		#else
+		'Unknown'
+		#end;
 	}
-	
-	override function update():Void {
-		if (!_state.active || !_state.exists)
-			return;
-
-		if (_nextState != null)
-			switchState();
-
-		#if FLX_DEBUG
-		if (FlxG.debugger.visible)
-			ticks = getTicks();
-		#end
-		
-		var curTime:Float = haxe.Timer.stamp();
-		var realTime:Float = 0;
-		if (_time >= 0)
-			realTime = Math.min(curTime - _time, FlxG.maxElapsed);
-		_elapsedMS = realTime * 1000;
-		_time = curTime;
-		_total = ticks;
-		
-		updateElapsed();
-
-		FlxG.signals.preUpdate.dispatch();
-
-		updateInput();
-
-		#if FLX_POST_PROCESS
-		if (postProcesses[0] != null)
-			postProcesses[0].update(realTime);
-		#end
-
-		#if FLX_SOUND_SYSTEM
-		FlxG.sound.update(realTime);
-		#end
-		FlxG.plugins.update(realTime);
-
-		_state.tryUpdate(realTime);
-
-		FlxG.cameras.update(realTime);
-		FlxG.signals.postUpdate.dispatch();
-
-		#if FLX_DEBUG
-		debugger.stats.flixelUpdate(getTicks() - ticks);
-		#end
-
-		#if FLX_POINTER_INPUT
-		var len = FlxG.swipes.length;
-		while (len-- > 0) {
-			final swipe = FlxG.swipes.pop();
-			if (swipe != null)
-				swipe.destroy();
-		}
-		#end
-
-		filters = filtersEnabled ? _filters : null;
+	static function get_compiledWith():String {
+		return 
+		#if cpp
+		'HXCPP'
+		#elseif hl
+		'Hashlink'
+		#else
+		'Unknown'
+		#end;
 	}
 }

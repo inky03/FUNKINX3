@@ -9,17 +9,20 @@ using StringTools;
 
 class FunkinRuntimeShader extends FlxRuntimeShader {
 	var compiled:Bool;
+	var __frag:String;
+	var __vert:String;
+	
 	public var name:String;
 	public var frag(default, set):Null<String> = null;
 	public var vert(default, set):Null<String> = null;
-	var __frag:String;
-	var __vert:String;
+	public var postProcessing(default, set):Bool = false;
 	
 	public function new(?frag:String, ?vert:String, ?name:String) {
 		this.name = name ?? 'unknown';
 		this.frag = frag;
 		this.vert = vert;
 		super(frag, vert);
+		postProcessing = (hasParameter('uScreenResolution') && hasParameter('uCameraBounds'));
 	}
 	public override function toString() {
 		return 'FunkinRuntimeShader($name)';
@@ -136,6 +139,30 @@ class FunkinRuntimeShader extends FlxRuntimeShader {
 		return program;
 	}
 	
+	public function hasParameter(name:String):Bool {
+		return (data != null && Reflect.hasField(data, name));
+	}
+	public function postUpdateView(camera:FlxCamera) {
+		setFloatArray('uCameraBounds', [camera.viewLeft, camera.viewTop, camera.viewRight, camera.viewBottom]);
+	}
+	public function postUpdateFrame(frame:flixel.graphics.frames.FlxFrame) {
+		if (hasParameter('uFrameBounds'))
+			setFloatArray('uFrameBounds', [frame.uv.x, frame.uv.y, frame.uv.width, frame.uv.height]);
+	}
+	
+	function set_postProcessing(isPost:Bool) {
+		if (isPost) {
+			if (!hasParameter('uScreenResolution') || !hasParameter('uCameraBounds')) {
+				Log.warning('shader "$name" can\'t be used for post processing!');
+				return false;
+			}
+			setFloatArray('uScreenResolution', [FlxG.width, FlxG.height]);
+			setFloatArray('uCameraBounds', [0, 0, FlxG.width, FlxG.height]);
+			if (hasParameter('uFrameBounds'))
+				setFloatArray('uFrameBounds', [0, 0, FlxG.width, FlxG.height]);
+		}
+		return isPost;
+	}
 	function set_vert(?newCode:String) {
 		glVertexSource = newCode;
 		__vert = glVertexSource;

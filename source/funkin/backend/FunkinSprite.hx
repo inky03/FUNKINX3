@@ -64,8 +64,25 @@ class FunkinSprite extends FlxSprite {
 			animate.flipX = flipX;
 			animate.flipY = flipY;
 			if (visible) animate.draw();
-		} else
+		} else {
 			super.draw();
+		}
+	}
+	function updateShader(camera:FlxCamera) {
+		if (shader == null || !Std.isOfType(shader, FunkinRuntimeShader))
+			return;
+		
+		var funk:FunkinRuntimeShader = cast shader;
+		funk.postUpdateView(camera);
+		funk.postUpdateFrame(frame);
+	}
+	public override function drawSimple(camera:FlxCamera) {
+		updateShader(camera);
+		super.drawSimple(camera);
+	}
+	public override function drawComplex(camera:FlxCamera) {
+		updateShader(camera);
+		super.drawComplex(camera);
 	}
 	
 	function resetData() {

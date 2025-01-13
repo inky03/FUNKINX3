@@ -68,28 +68,26 @@ class Character extends FunkinSprite {
 	public function loadVocals(songPath:String, suffix:String = '', ?chara:String):Bool {
 		chara ??= character;
 		vocalsLoaded = false;
-		var paths:Array<String> = ['data/songs/$songPath', 'songs/$songPath'];
 		try {
+			var path:String = 'data/songs/$songPath';
 			var time:Float = Sys.time();
-			for (path in paths) {
-				if (Paths.exists(path)) {
-					var grrr:String = '$path/Voices';
-					var variationSuffix:String = Util.pathSuffix('', suffix);
-					var characterSuffix:String = findPathSuffix(grrr, '$variationSuffix.ogg', chara);
-					if (chara != '' && characterSuffix == '')
-						break;
-					var vocalsPath:String = Util.pathSuffix(grrr, characterSuffix) + variationSuffix;
-					var ogg:openfl.media.Sound = Paths.ogg(vocalsPath);
-					if (ogg != null) {
-						vocals.loadEmbedded(ogg);
-						vocalsLoaded = true;
-						vocals.volume = 0;
-						vocals.play();
-						vocals.stop();
-						vocals.volume = volume;
-						Log.info('vocals loaded for character "$character"!! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
-						return true;
-					}
+			if (Paths.exists(path)) {
+				var grrr:String = '$path/Voices';
+				var variationSuffix:String = Util.pathSuffix('', suffix);
+				var characterSuffix:String = findPathSuffix(grrr, '$variationSuffix.ogg', chara);
+				if (chara != '' && characterSuffix == '')
+					return false;
+				var vocalsPath:String = Util.pathSuffix(grrr, characterSuffix) + variationSuffix;
+				var ogg:openfl.media.Sound = Paths.ogg(vocalsPath);
+				if (ogg != null) {
+					vocals.loadEmbedded(ogg);
+					vocalsLoaded = true;
+					vocals.volume = 0;
+					vocals.play();
+					vocals.stop();
+					vocals.volume = volume;
+					Log.info('vocals loaded for character "$character"!! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
+					return true;
 				}
 			}
 		} catch (e:haxe.Exception) {

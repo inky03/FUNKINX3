@@ -83,12 +83,12 @@ class MainMenuState extends funkin.backend.states.FunkinState {
 	public function menuRedirect(selection:Int) {
 		switch (buttonNames[selection]) {
 			case 'options':
-				FlxG.switchState(() -> new OptionsState());
+				FlxG.switchState(new OptionsState());
 			case 'freeplay':
 				if (FlxG.keys.pressed.SHIFT)
 					openSubState(new FreeplaySubState());
 				else
-					FlxG.switchState(() -> new FreeplayState());
+					FlxG.switchState(new FreeplayState());
 			default:
 				FlxG.resetState();
 		}

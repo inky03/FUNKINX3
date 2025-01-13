@@ -76,6 +76,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 	
 	public function new() {
 		chart ??= new Chart('');
+		chart.instLoaded = false;
 		super();
 	}
 	
@@ -91,6 +92,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 		
 		hitsound = FunkinSound.load(Paths.sound('gameplay/hitsounds/hitsound'), .7);
 		music = new FunkinSoundGroup();
+		songName = chart.name;
 		
 		hscripts.loadFromFolder('scripts/global');
 		hscripts.loadFromFolder('scripts/songs/${chart.path}');
@@ -99,20 +101,16 @@ class PlayState extends funkin.backend.states.FunkinState {
 		beatHit.add(beatHitEvent);
 		barHit.add(barHitEvent);
 		
-		camHUD = new FunkinCamera();
-		camGame = new FunkinCamera();
+		@:privateAccess FlxG.cameras.defaults.resize(0);
 		camOther = new FunkinCamera();
+		camGame = new FunkinCamera();
+		camHUD = new FunkinCamera();
 		camHUD.bgColor.alpha = 0;
 		camGame.bgColor.alpha = 0;
 		camOther.bgColor.alpha = 0;
-		FlxG.cameras.add(camGame, false);
+		FlxG.cameras.add(camGame, true);
 		FlxG.cameras.add(camHUD, false);
 		FlxG.cameras.add(camOther, false);
-		
-		@:privateAccess {
-			FlxG.cameras.defaults.resize(0);
-			FlxG.cameras.defaults.push(camGame);
-		}
 		
 		camFocusTarget = new FlxObject(0, FlxG.height * .5);
 		camGame.follow(camFocusTarget, LOCKON, 3);
@@ -130,16 +128,11 @@ class PlayState extends funkin.backend.states.FunkinState {
 		player2 = stage.getCharacter('dad');
 		player3 = stage.getCharacter('gf');
 		
-		// add stage character positions one day Smiles
-		// update: i did ( it sucks i think )
-		
 		focusOnCharacter(player3 ?? player1);
 		camGame.snapToTarget();
 		
-		songName = chart.name;
-		chart.instLoaded = false;
-		var songPaths:Array<String> = ['data/songs/${chart.path}/', 'songs/${chart.path}/'];
-		for (path in songPaths) chart.loadMusic(path, false);
+		var path:String = 'data/songs/${chart.path}/';
+		chart.loadMusic(path, false);
 		if (chart.instLoaded) {
 			music.add(chart.inst);
 			music.syncBase = chart.inst;
@@ -150,9 +143,8 @@ class PlayState extends funkin.backend.states.FunkinState {
 			conductorInUse.syncTracker = chart.inst;
 		} else {
 			Log.warning('chart instrumental not found...');
-			Log.minor('verify paths:');
-			for (path in songPaths)
-				Log.minor('- $path${Util.pathSuffix('Inst', chart.audioSuffix)}.ogg');
+			Log.minor('verify path:');
+			Log.minor('- $path${Util.pathSuffix('Inst', chart.audioSuffix)}.ogg');
 		}
 		loadVocals(chart.path, chart.audioSuffix);
 		
@@ -178,7 +170,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 		
 		if (middlescroll) {
 			playerStrumline.screenCenter(X);
-			opponentStrumline.fitToSize(opponentStrumline.width * .7);
+			opponentStrumline.fitToSize(playerStrumline.leftBound - 50 - opponentStrumline.leftBound, 0, Y);
 		}
 		
 		opponentStrumline.noteEvent.add(opponentNoteEvent);
@@ -202,18 +194,13 @@ class PlayState extends funkin.backend.states.FunkinState {
 			notes.push(note);
 		}
 		
-		if (middlescroll) {
-			playerStrumline.center(X);
-			opponentStrumline.fitToSize(playerStrumline.leftBound - 50 - opponentStrumline.leftBound, 0, Y);
-		}
-		
 		ratingGroup = new FlxTypedSpriteGroup<FunkinSprite>();
 		ratingGroup.setPosition(player3?.getMidpoint()?.x ?? FlxG.width * .5, player3?.getMidpoint()?.y ?? FlxG.height * .5);
 		ratingGroup.zIndex = (player3?.zIndex ?? 0) + 10;
 		if (stage != null) stage.insertZIndex(ratingGroup);
 		else add(ratingGroup);
 		
-		healthBar = new Bar(0, FlxG.height - 50, 'healthBar', (_) -> health);
+		healthBar = new Bar(0, FlxG.height - 50, (_) -> health, 'healthBar');
 		healthBar.bounds.max = maxHealth;
 		healthBar.y -= healthBar.height;
 		healthBar.screenCenter(X);
@@ -424,9 +411,6 @@ class PlayState extends funkin.backend.states.FunkinState {
 					music.syncToBase();
 			}
 		}
-	}
-	public function getSongPos() {
-		return conductorInUse.songPosition;
 	}
 
 	public function pushedEvent(event:ChartEvent) {

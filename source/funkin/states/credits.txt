@@ -1,0 +1,33 @@
+just so i dont forget (for Credits ".hx" State):
+
+FUNKINX3 DEVELOPERS
+ashley (emi3) - programmer, custom art, sound design
+claire (fllics) - <3 programmer, contributed stage scripts, helps me export spritemaps (gf)
+
+FUNKINX3 CONTRIBUTORS
+cobalt - helped me figure out how to fix macros
+doggogit - 1 merged PR (fix cpp compiling stuffs)
+squidboy84 - he lets me borrow his computer to test windows compiling haha thank you man
+
+LIBRARIES
+flixel and openfl - need i say more? frameworks used for the ENTIRE PROJECT
+maru - moonchart (parser for non common chart formats such as stepmania, cne and base game)
+jwambaugh - tjson (tolerant json)
+crowplexus - hscript iris (good hscript fork)
+majigsaw77 - hxdiscord_rpc (rich presence for cpp)
+
+SPECIAL THANKS
+funkin crew - made FRIDAY NIGHT FUNKIN', proprietary of most assets, borrowed parts of backend class implementations
+psych engine - formats support, discord rpc base, paths implementations, a lot of ideas generally
+plankdev, hypersurge, elitemastereric - fixes for hashlink and deprecation in tjson
+codename engine - chart format support
+smokey, cyn - openal sound fix
+sword - some useful pointers
+crowplexus - some useful pointers (crash handler)
+unholywanderer04 - obligatory unholywanderer04 mention
+my cat - he sits on my lap, hes very funny
+
+ADDITIONAL NOTES
+- all artwork in this engine is from base FRIDAY NIGHT FUNKIN' and/or my own, no artwork has been taken from other engines or projects
+
+THANK YOU

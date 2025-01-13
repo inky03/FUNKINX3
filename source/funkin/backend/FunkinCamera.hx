@@ -20,10 +20,30 @@ class FunkinCamera extends FlxCamera {
 		updateFlashSpritePosition();
 		updateShake(elapsed);
 	}
-
 	public override function follow(target:FlxObject, ?style:FlxCameraFollowStyle, ?lerp:Float):Void {
 		super.follow(target, style, lerp);
 		followLerp = lerp ?? -1;
+	}
+	public override function snapToTarget() {
+		super.snapToTarget();
+		if (zoomTarget != null)
+			zoom = zoomTarget;
+	}
+	override function render() {
+		if (filters != null) {
+			for (filter in filters) {
+				if (!Std.isOfType(filter, openfl.filters.ShaderFilter))
+					continue;
+				
+				var filt:openfl.filters.ShaderFilter = cast filter;
+				
+				if (Std.isOfType(filt.shader, FunkinRuntimeShader)) {
+					var funk:FunkinRuntimeShader = cast filt.shader;
+					funk.postUpdateView(this);
+				}
+			}
+		}
+		super.render();
 	}
 
 	public function updateFollowMod(elapsed:Float):Void {
@@ -90,7 +110,6 @@ class FunkinCamera extends FlxCamera {
 			scroll.y = Util.smoothLerp(scroll.y, _scrollTarget.y, followLerp * elapsed);
 		}
 	}
-
 	public function updateZoomFollow(elapsed:Float) {
 		if (pauseZoomLerp) return;
 		if (zoomFollowLerp < 0) {
@@ -98,12 +117,6 @@ class FunkinCamera extends FlxCamera {
 		} else if (zoomFollowLerp > 0) {
 			zoom = Util.smoothLerp(zoom, zoomTarget, zoomFollowLerp * elapsed);
 		}
-	}
-
-	public override function snapToTarget() {
-		super.snapToTarget();
-		if (zoomTarget != null)
-			zoom = zoomTarget;
 	}
 
 	override function set_followLerp(value:Float)

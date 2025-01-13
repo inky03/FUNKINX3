@@ -1,5 +1,6 @@
 package funkin.backend.scripting;
 
+#if ALLOW_SCRIPTS // TODO: make the game actually compile without the define
 import funkin.backend.FunkinRuntimeShader;
 
 import flixel.util.FlxAxes;
@@ -18,6 +19,7 @@ class HScript extends Iris {
 		#if hl
 		'Math' => HScriptMath,
 		#end
+		'Main' => Main,
 		'Type' => Type,
 		'Reflect' => Reflect,
 		'HScript' => HScript,
@@ -426,3 +428,6 @@ class HScriptBlendMode {
 		}
 	}
 }
+#else
+class HScript {}
+#end

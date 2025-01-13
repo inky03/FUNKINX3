@@ -28,11 +28,9 @@ function createPost() {
 	scrollingSky.zIndex = 10;
 
 	rainShader = new RuntimeShader('rain');
-	rainShader.setFloatArray('uScreenResolution', [FlxG.width, FlxG.height]);
-	rainShader.setFloatArray('uCameraBounds', [0, 0, FlxG.width, FlxG.height]);
 	game.camGame.filters = [new ShaderFilter(rainShader)];
 	
-	switch (PlayState.song.path) {
+	switch (PlayState.chart.path) {
 		case 'darnell':
 			rainShaderStartIntensity = 0;
 			rainShaderEndIntensity = .1;
@@ -43,7 +41,7 @@ function createPost() {
 			rainShaderStartIntensity = .2;
 			rainShaderEndIntensity = .4;
 	}
-	songLength = PlayState.song.songLength ?? 0;
+	songLength = PlayState.chart.songLength ?? 0;
 	rainShader.setFloat('uScale', FlxG.height / 200);
 	rainShader.setFloat('uIntensity', rainShaderStartIntensity);
 	rainShader.setFloatArray('uRainColor', [0x66 / 0xff, 0x80 / 0xff, 0xcc / 0xff]);
@@ -65,11 +63,9 @@ function update(elapsed, paused, dead) {
 
 	if (scrollingSky != null)
 		scrollingSky.scrollX -= elapsed * 22;
-
-	var cam:FlxCamera = game.camGame;
+	
 	var time:Float = conductor.songPosition / 1000;
 	var rainIntensity:Float = FlxMath.remapToRange(conductor.songPosition, 0, songLength, rainShaderStartIntensity, rainShaderEndIntensity);
-	rainShader.setFloatArray('uCameraBounds', [cam.viewLeft, cam.viewTop, cam.viewRight, cam.viewBottom]);
 	rainShader.setFloat('uIntensity', rainIntensity);
 	rainShader.setFloat('uTime', time);
 }
