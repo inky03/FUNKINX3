@@ -19,7 +19,7 @@
 	<icon path="art/appicon/16.png" size='16'/>
 	<icon path="art/appicon/32.png" size='32'/>
 	<icon path="art/appicon/64.png" size='64'/>
-	<icon path="art/appicon/full.png"/>
+	<icon path="art/appicon/256.png"/>
 	
 	<!-- ______________________________ Game Flags ______________________________ -->
 	
