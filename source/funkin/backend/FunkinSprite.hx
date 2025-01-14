@@ -5,7 +5,7 @@ import flixel.graphics.frames.FlxAtlasFrames;
 import flixel.graphics.frames.FlxFramesCollection;
 import flixel.math.FlxPoint.FlxCallbackPoint;
 import flixel.util.FlxSignal.FlxTypedSignal;
-import flxanimate.animate.FlxAnim;
+import funkin.backend.FunkinAnimate;
 import haxe.io.Path;
 
 class FunkinSprite extends FlxSprite {
@@ -145,11 +145,11 @@ class FunkinSprite extends FlxSprite {
 	public function loadAnimate(path:String, ?library:String) {
 		resetData();
 		animate = new FunkinAnimate().loadAnimate(path, library);
-		animate.anim.onComplete.add(() -> {
+		animate.funkAnim.onComplete.add(() -> {
 			if (renderType == ANIMATEATLAS)
 				_onAnimationComplete();
 		});
-		animate.anim.onFrame.add((frameNumber:Int) -> {
+		animate.funkAnim.onFrame.add((frameNumber:Int) -> {
 			if (renderType == ANIMATEATLAS)
 				_onAnimationFrame(frameNumber);
 		});
@@ -241,8 +241,8 @@ class FunkinSprite extends FlxSprite {
 	}
 	public function addAnimation(name:String, prefix:String, fps:Float = 24, loop:Bool = false, ?frameIndices:Array<Int>, ?assetPath:String, flipX:Bool = false, flipY:Bool = false) {
 		if (isAnimate) {
-			if (animate == null || animate.anim == null) return;
-			var anim:flxanimate.animate.FlxAnim = animate.anim;
+			if (animate == null || animate.funkAnim == null) return;
+			var anim:FunkinAnimateAnim = animate.funkAnim;
 			var symbolExists:Bool = (anim.symbolDictionary != null && anim.symbolDictionary.exists(prefix));
 			if (frameIndices == null || frameIndices.length == 0) {
 				if (symbolExists) {
@@ -254,8 +254,8 @@ class FunkinSprite extends FlxSprite {
 			} else {
 				if (symbolExists) {
 					anim.addBySymbolIndices(name, prefix, frameIndices, fps, loop);
-				} else {
-					var keyFrame = anim.getFrameLabel(prefix);
+				} else { // frame label by indices
+					var keyFrame = anim.getFrameLabel(prefix); // todo: move to FunkinAnimateAnim
 					try {
 						var keyFrameIndices:Array<Int> = keyFrame.getFrameIndices();
 						var finalIndices:Array<Int> = [];
@@ -287,8 +287,7 @@ class FunkinSprite extends FlxSprite {
 		if (isAnimate) {
 			if (animate == null) return;
 			if (animationExists(anim)) {
-				animate.anim.play(anim, forced, reversed, frame);
-				animate.anim.update(0);
+				animate.funkAnim.play(anim, forced, reversed, frame);
 				animExists = true;
 			}
 		} else {
@@ -320,21 +319,21 @@ class FunkinSprite extends FlxSprite {
 		if (preload) // necessary for multi-atlas sprites
 			preloadAnimAsset(anim);
 		if (isAnimate) {
-			return animate.anim.exists(anim);
+			return animate.funkAnim.exists(anim);
 		} else {
 			return animation.exists(anim) ?? false;
 		}
 	}
 	public function isAnimationFinished():Bool {
 		if (isAnimate) {
-			return animate.anim.finished ?? false;
+			return animate.funkAnim.finished ?? false;
 		} else {
 			return animation.finished ?? false;
 		}
 	}
 	public function finishAnimation() {
 		if (isAnimate) {
-			animate.anim.finish();
+			animate.funkAnim.finish();
 		} else {
 			animation.finish();
 		}
@@ -366,13 +365,13 @@ class FunkinSprite extends FlxSprite {
 		else return height;
 	}
 	public function get_anim() {
-		return (isAnimate ? animate.anim : animation);
+		return (isAnimate ? animate.funkAnim : animation);
 	}
 	public function get_isAnimate() {
 		return (renderType == ANIMATEATLAS && animate != null);
 	}
 	public function get_currentAnimation() {
-		if (isAnimate) return animate.anim.name;
+		if (isAnimate) return animate.funkAnim.name;
 		else return animation.name;
 	}
 }

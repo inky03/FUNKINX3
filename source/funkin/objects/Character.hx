@@ -271,7 +271,7 @@ class Character extends FunkinSprite {
 	}
 	public function fallback(?attempted:String) {
 		if (fallbackCharacter == null || attempted == null) { // dont attempt if fallback failed to fall back :p
-			Log.info('fallback failed lol: loading super fallback character');
+			Log.warning('fallback failed lol: loading super fallback character');
 			useDefault();
 		} else {
 			Log.minor('attempting to fall back to "$fallbackCharacter"...');
@@ -284,11 +284,11 @@ class Character extends FunkinSprite {
 		renderType = SPARROW;
 		characterDataType = MODERN;
 		loadAtlas('characters/bf');
-		addAnimation('idle', 'BF idle dance', 24, false);
-		var singAnimations:Array<String> = ['LEFT', 'DOWN', 'UP', 'RIGHT'];
+		addAnimation('idle', 'idle', 24, false);
+		var singAnimations:Array<String> = ['left', 'down', 'up', 'right'];
 		for (ani in singAnimations) {
-			addAnimation('sing$ani', 'BF NOTE ${ani}0', 24, false);
-			addAnimation('sing${ani}miss', 'BF NOTE ${ani} MISS', 24, false);
+			addAnimation('sing$ani', ani, 24, false);
+			addAnimation('sing${ani}miss', 'miss $ani', 24, false);
 		}
 		setAnimationOffset('idle', -5, 0);
 		setAnimationOffset('singLEFT', 5, -6);

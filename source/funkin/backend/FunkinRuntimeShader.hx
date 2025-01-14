@@ -24,7 +24,7 @@ class FunkinRuntimeShader extends FlxRuntimeShader {
 		super(frag, vert);
 		postProcessing = (hasParameter('uScreenResolution') && hasParameter('uCameraBounds'));
 	}
-	public override function toString() {
+	public #if (flixel_addons >= "3.3.0") override #end function toString() {
 		return 'FunkinRuntimeShader($name)';
 	}
 	function getLog(infoLog:String, source:String):String {

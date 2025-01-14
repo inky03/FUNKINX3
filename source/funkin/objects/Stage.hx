@@ -96,8 +96,14 @@ class Stage extends FlxSpriteGroup {
 	}
 
 	public function beatHit(beat:Int) {
-		for (prop in props) prop.dance(beat);
-		for (chara in characters) chara.dance(beat);
+		for (prop in props) {
+			if (prop.alive && prop.exists)
+				prop.dance(beat);
+		}
+		for (chara in characters) {
+			if (chara.alive && chara.exists)
+				chara.dance(beat);
+		}
 	}
 	public function destroyProps() {
 		for (prop in props) prop.destroy();
