@@ -3,7 +3,6 @@ package;
 import funkin.states.CrashState;
 import funkin.debug.DebugDisplay;
 import funkin.backend.FunkinGame;
-import funkin.backend.FunkinSoundTray;
 
 class Main extends openfl.display.Sprite {
 	public static var instance:Main;
@@ -11,7 +10,7 @@ class Main extends openfl.display.Sprite {
 	public static var compiledTo(get, never):String;
 	public static var compiledWith(get, never):String;
 	
-	public static var soundTray(get, never):FunkinSoundTray;
+	public static var soundTray(get, never):funkin.backend.FunkinSoundTray;
 	public static var windowTitle(default, null):String;
 	public static var debugDisplay:DebugDisplay;
 	public static var engineVersion = '0.0.6';
@@ -42,7 +41,6 @@ class Main extends openfl.display.Sprite {
 		Mods.refresh();
 		DiscordRPC.prepare();
 		var game:FunkinGame = new FunkinGame(0, 0, funkin.states.MainMenuState);
-		@:privateAccess game._customSoundTray = FunkinSoundTray;
 		addChild(game);
 		addChild(debugDisplay = new DebugDisplay(10, 3));
 
@@ -67,7 +65,7 @@ class Main extends openfl.display.Sprite {
 	}
 	
 	public static function get_soundTray() {
-		return cast(FlxG.game.soundTray, FunkinSoundTray);
+		return cast(FlxG.game.soundTray, funkin.backend.FunkinSoundTray);
 	}
 	public static function set_showWatermark(show:Bool) {
 		if (showWatermark == show) return showWatermark;

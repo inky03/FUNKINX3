@@ -1,6 +1,10 @@
 package funkin.backend;
 
 import openfl.Assets;
+import openfl.display.BlendMode;
+import openfl.geom.ColorTransform;
+import flixel.math.FlxMatrix;
+import flixel.graphics.frames.FlxFrame;
 import flxanimate.zip.Zip;
 import flxanimate.animate.*;
 import flxanimate.animate.FlxAnim;
@@ -14,6 +18,9 @@ import StringTools;
 
 class FunkinAnimate extends FlxAnimate { // this is kind of useless, but pop off
 	public var funkAnim:FunkinAnimateAnim;
+	
+	public var zoomFactor:Float = 1;
+	public var initialZoom:Float = 1;
 	
 	public function new(x:Float = 0, y:Float = 0, ?path:String, ?settings:flxanimate.Settings) {
 		super(x, y);
@@ -147,6 +154,82 @@ class FunkinAnimate extends FlxAnimate { // this is kind of useless, but pop off
 		} catch (e:Dynamic) {
 			destroyAnim();
 		}
+	}
+	
+	override function drawLimb(limb:FlxFrame, _matrix:FlxMatrix, ?colorTransform:ColorTransform = null, filterin:Bool = false, ?blendMode:BlendMode, ?scrollFactor:FlxPoint = null, cameras:Array<FlxCamera> = null) {
+		if (cameras == null)
+			@:privateAccess cameras = FlxCamera._defaultCameras;
+		if (alpha <= 0 || (colorTransform != null && colorTransform.alphaMultiplier == 0) || limb == null || limb.type == EMPTY)
+			return;
+		
+		blendMode ??= BlendMode.NORMAL;
+		
+		for (camera in cameras) {
+			_mat.identity();
+			limb.prepareMatrix(_mat);
+			
+			var matrix:FlxMatrix = _mat;
+			matrix.concat(_matrix);
+			
+			if (!filterin) {
+				getScreenPosition(_point, camera).subtractPoint(offset);
+				
+				if (limb != _pivot && limb != _indicator) {
+					matrix.translate(-origin.x, -origin.y);
+
+					matrix.scale(scale.x, scale.y);
+
+					if (bakedRotationAngle <= 0) {
+						updateTrig();
+
+						if (angle != 0)
+							matrix.rotateWithTrig(_cosAngle, _sinAngle);
+					}
+
+					_point.addPoint(origin);
+				} else {
+					matrix.scale(.9, .9);
+
+					matrix.a /= camera.zoom;
+					matrix.d /= camera.zoom;
+					matrix.tx /= camera.zoom;
+					matrix.ty /= camera.zoom;
+				}
+				
+				if (isPixelPerfectRender(camera))
+					_point.floor();
+				
+				matrix.translate(_point.x, _point.y);
+			}
+			
+			FunkinSprite.transformMatrixZoom(matrix, camera, zoomFactor, initialZoom);
+			
+			if (!filterin && !limbOnScreen(limb, matrix, camera))
+				continue;
+			
+			camera.drawPixels(limb, null, matrix, colorTransform, blendMode, filterin || antialiasing, this.shader);
+		}
+
+		width = rect.width;
+		height = rect.height;
+		frameWidth = Std.int(width);
+		frameHeight = Std.int(height);
+
+		#if FLX_DEBUG
+		if (FlxG.debugger.drawDebug && limb != _pivot && limb != _indicator) {
+			var oldX = x;
+			var oldY = y;
+
+			x = rect.x;
+			y = rect.y;
+			drawDebug();
+			x = oldX;
+			y = oldY;
+		}
+		#end
+		#if FLX_DEBUG
+		FlxBasic.visibleCount++;
+		#end
 	}
 }
 

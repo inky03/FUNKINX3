@@ -74,6 +74,8 @@ class PlayState extends funkin.backend.states.FunkinState {
 	public var downscroll:Bool;
 	public var middlescroll:Bool;
 	
+	public var songFinished:Bool = false;
+	
 	public function new() {
 		chart ??= new Chart('');
 		chart.instLoaded = false;
@@ -387,14 +389,14 @@ class PlayState extends funkin.backend.states.FunkinState {
 		
 		hscripts.run('updatePost', [elapsed, false, false]);
 		
-		if (!chart.instLoaded && conductorInUse.songPosition >= chart.songLength && !conductorInUse.paused) {
+		if (!chart.instLoaded && !songFinished && conductorInUse.songPosition >= chart.songLength && !conductorInUse.paused) {
 			finishSong();
 		}
 	}
 
 	public function finishSong() {
-		var result:Dynamic = hscripts.run('finishSong');
-		if (result == HScript.STOP) {
+		songFinished = true;
+		if (hscripts.run('finishSong') == HScript.STOP) {
 			conductorInUse.paused = true;
 			return;
 		}

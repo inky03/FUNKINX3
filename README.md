@@ -21,7 +21,7 @@ perfect! you can now proceed to run these commands in your terminal to install t
 haxelib install tjson
 haxelib install moonchart
 haxelib install hxdiscord_rpc
-haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate 24c710fe3d907a624c79474ffe27f57ae8113c33
+haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate.git dev
 haxelib git hscript-iris https://github.com/crowplexus/hscript-iris.git dev
 ```
 (hscript-iris and flxanimate use indev versions)

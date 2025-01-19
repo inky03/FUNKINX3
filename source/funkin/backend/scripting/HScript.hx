@@ -101,9 +101,9 @@ class HScript extends Iris {
 
 		switch (level) {
 			#if I_AM_BORING_ZZZ
-			case FATAL: posPrefix = 'FATAL:$posPrefix:';
-			case ERROR: posPrefix = 'ERROR:$posPrefix:';
-			case WARN: posPrefix = 'WARNING:$posPrefix:';
+			case FATAL: posPrefix = '[ FATAL:$posPrefix ]';
+			case ERROR: posPrefix = '[ ERROR:$posPrefix ]';
+			case WARN: posPrefix = '[ WARNING:$posPrefix ]';
 			default:
 			#else
 			case FATAL: posPrefix = Log.colorTag(' FATAL:$posPrefix ', black, brightRed);

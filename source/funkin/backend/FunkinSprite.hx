@@ -1,12 +1,12 @@
 package funkin.backend;
 
 import flixel.util.FlxAxes;
+import flixel.util.FlxSignal;
+import flixel.math.FlxMatrix;
+import flixel.graphics.frames.FlxFrame;
 import flixel.graphics.frames.FlxAtlasFrames;
 import flixel.graphics.frames.FlxFramesCollection;
-import flixel.math.FlxPoint.FlxCallbackPoint;
-import flixel.util.FlxSignal.FlxTypedSignal;
 import funkin.backend.FunkinAnimate;
-import haxe.io.Path;
 
 class FunkinSprite extends FlxSprite {
 	public var onAnimationComplete:FlxTypedSignal<String -> Void> = new FlxTypedSignal();
@@ -21,6 +21,9 @@ class FunkinSprite extends FlxSprite {
 	public var animOffset:FlxPoint;
 	public var rotateOffsets:Bool = false;
 	public var scaleOffsets:Bool = true;
+	
+	public var zoomFactor:Float = 1;
+	public var initialZoom:Float = 1;
 
 	var renderType:SpriteRenderType = SPARROW;
 	public var isAnimate(get, never):Bool;
@@ -40,19 +43,22 @@ class FunkinSprite extends FlxSprite {
 		super.destroy();
 	}
 	public override function update(elapsed:Float) {
-		super.update(elapsed);
 		if (isAnimate) {
 			animate.update(elapsed);
 			frameWidth = Std.int(animate.width); //idgaf
 			frameHeight = Std.int(animate.height);
+		} else {
+			super.update(elapsed);
 		}
 	}
 	public override function draw() {
 		refreshOffset();
 		if (renderType == ANIMATEATLAS && animate != null) {
 			animate.colorTransform = colorTransform; // lmao
-			animate.scrollFactor = scrollFactor;
 			animate.antialiasing = antialiasing;
+			animate.scrollFactor = scrollFactor;
+			animate.initialZoom = initialZoom;
+			animate.zoomFactor = zoomFactor;
 			animate.setPosition(x, y);
 			animate.cameras = cameras;
 			animate.shader = shader;
@@ -81,8 +87,44 @@ class FunkinSprite extends FlxSprite {
 		super.drawSimple(camera);
 	}
 	public override function drawComplex(camera:FlxCamera) {
+		// todo: implement this in flxsprite instead of funkinsprite? (zoomFactor wont work for flxtexts and such)
 		updateShader(camera);
-		super.drawComplex(camera);
+		
+		_frame.prepareMatrix(_matrix, FlxFrameAngle.ANGLE_0, checkFlipX(), checkFlipY());
+		
+		_matrix.translate(-origin.x, -origin.y);
+		_matrix.scale(scale.x, scale.y);
+		
+		if (bakedRotationAngle <= 0) {
+			updateTrig();
+
+			if (angle != 0)
+				_matrix.rotateWithTrig(_cosAngle, _sinAngle);
+		}
+		
+		getScreenPosition(_point, camera);
+		_point.add(-offset.x, -offset.y);
+		_matrix.translate(_point.x + origin.x, _point.y + origin.y);
+		
+		if (isPixelPerfectRender(camera)) {
+			_matrix.tx = Math.floor(_matrix.tx);
+			_matrix.ty = Math.floor(_matrix.ty);
+		}
+		
+		transformMatrixZoom(_matrix, camera, zoomFactor, initialZoom);
+		camera.drawPixels(_frame, framePixels, _matrix, colorTransform, blend, antialiasing, shader);
+	}
+	public static function transformMatrixZoom(matrix:FlxMatrix, camera:FlxCamera, zoomFactor:Float = 1, initialZoom:Float = 1):FlxMatrix {
+		if (zoomFactor == 1) return matrix;
+		
+		final zoomMult:Float = FlxMath.lerp(initialZoom / camera.zoom, 1, zoomFactor);
+		matrix.translate(-camera.width * .5, -camera.height * .5);
+		matrix.scale(zoomMult, zoomMult);
+		matrix.translate(camera.width * .5, camera.height * .5);
+		return matrix;
+	}
+	public override function isSimpleRenderBlit(?camera:FlxCamera):Bool {
+		return (zoomFactor == 1 && super.isSimpleRenderBlit(camera));
 	}
 	
 	function resetData() {
@@ -93,7 +135,7 @@ class FunkinSprite extends FlxSprite {
 	}
 	public function loadAuto(path:String, ?library:String) {
 		final pngExists:Bool = Paths.exists('images/$path.png', library);
-		if (Paths.exists('images/${Path.addTrailingSlash(path)}Animation.json', library)) {
+		if (Paths.exists('images/${haxe.io.Path.addTrailingSlash(path)}Animation.json', library)) {
 			loadAnimate(path, library);
 		} else if (pngExists) {
 			if (Paths.exists('images/$path.xml', library)) {

@@ -3,6 +3,11 @@ package funkin.backend;
 class FunkinGame extends flixel.FlxGame {
 	var _time:Float = -1;
 	
+	public function new(width:Int = 0, height:Int = 0, ?initialState:flixel.util.typeLimit.NextState.InitialState, updateFramerate:Int = 60, drawFramerate:Int = 60, skipSplash:Bool = false, startFullscreen:Bool = false) {
+		super(width, height, initialState, updateFramerate, drawFramerate, skipSplash, startFullscreen);
+		_customSoundTray = funkin.backend.FunkinSoundTray;
+	}
+	
 	override function switchState() {
 		_time = -1;
 		super.switchState();

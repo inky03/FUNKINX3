@@ -58,22 +58,7 @@ class HScripts {
 		}
 		return returnValue;
 	}
-	public function loadFromFolder(path:String):Void {
-		var dirList:Array<String> = [Paths.sharedPath(path)];
-		dirList.push(Paths.modPath(path));
-		for (mod in Mods.get()) {
-			dirList.push(Paths.modPath(path, mod.directory));
-		}
-		for (dir in dirList) {
-			if (FileSystem.exists(dir)) {
-				Log.minor('loading hscripts @ "$dir"');
-				for (file in FileSystem.readDirectory(dir)) {
-					if (!file.endsWith('.hx') && !file.endsWith('.hxs')) continue;
-					loadFromFile('$dir/$file');
-				}
-			}
-		}
-	}
+	
 	function getScriptName(name:String, unique:Bool = false, warn:Bool = false) {
 		var found:HScript = find(name);
 		if (found != null && unique) {
@@ -83,6 +68,7 @@ class HScripts {
 		}
 		return name;
 	}
+	
 	public function loadFromString(code:String, ?name:String):Null<HScript> {
 		name ??= 'hscript';
 		if (exists(name)) {
@@ -126,6 +112,22 @@ class HScripts {
 		} else {
 			hs.destroy();
 			return null;
+		}
+	}
+	public function loadFromFolder(path:String):Void {
+		var dirList:Array<String> = [Paths.sharedPath(path)];
+		dirList.push(Paths.modPath(path));
+		for (mod in Mods.get()) {
+			dirList.push(Paths.modPath(path, mod.directory));
+		}
+		for (dir in dirList) {
+			if (FileSystem.exists(dir)) {
+				Log.minor('loading hscripts @ "$dir"');
+				for (file in FileSystem.readDirectory(dir)) {
+					if (!file.endsWith('.hx') && !file.endsWith('.hxs')) continue;
+					loadFromFile('$dir/$file');
+				}
+			}
 		}
 	}
 	public function loadFromPaths(basepath:String, unique:Bool = false) {

@@ -4,9 +4,9 @@ class Log {
 	public static var reset:String = '\033[0m';
 	#if I_AM_BORING_ZZZ
 	public static function colorTag(text:String, _, __) return text;
-	public static function warning(text:String) return Sys.println('WARNING: $text');
-	public static function error(text:String) return Sys.println('ERROR: $text');
-	public static function fatal(text:String) return Sys.println('FATAL: $text');
+	public static function warning(text:String) return Sys.println('[ WARNING ] $text');
+	public static function error(text:String) return Sys.println('[ ERROR ] $text');
+	public static function fatal(text:String) return Sys.println('[ FATAL ] $text');
 	public static function info(text:String) return Sys.println(text);
 	public static function minor(text:String) return Sys.println(text);
 	#else
