@@ -444,7 +444,7 @@ class PlayState extends FunkinState {
 		iconP1.offset.x = 0;
 		iconP2.offset.x = iconP2.frameWidth;
 		iconP2.setPosition(healthBar.barCenter.x - 60 + iconP2.width * .5, healthBar.barCenter.y - iconP2.height * .5);
-		iconP1.setPosition(healthBar.barCenter.x + 60 + iconP1.width * .5, healthBar.barCenter.y - iconP1.height * .5);
+		iconP1.setPosition(healthBar.barCenter.x + 60 - iconP1.width * .5, healthBar.barCenter.y - iconP1.height * .5);
 		super.update(elapsed);
 		
 		syncMusic();

@@ -1,4 +1,5 @@
-this engine is HEAVILY UNFINISHED; be wary of MISSING FEATURES and BREAKING API CHANGES while i keep working on it
+this engine is HEAVILY UNFINISHED; be wary of MISSING FEATURES and BREAKING API CHANGES while i keep working on it<br>
+see [CREDITS.md](CREDITS.md) for a list of credits
 
 # compiling
 

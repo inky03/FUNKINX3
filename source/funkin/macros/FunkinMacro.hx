@@ -14,7 +14,7 @@ class FunkinMacro {
 		fields = fields.concat([{
 			name: "zIndex",
 			access: [Access.APublic],
-			kind: FieldType.FProp('default', 'set', TPath({name: 'Int', pack: []}), macro $v{0}),
+			kind: FieldType.FProp('default', 'set', macro:Int, macro $v{0}),
 			pos: pos
 		}, {
 			name: "set_zIndex",
