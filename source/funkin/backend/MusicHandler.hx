@@ -8,13 +8,13 @@ class MusicHandler {
 	public static var musicMeta:Null<MusicMeta>;
 	
 	static function get_music() return FlxG.sound.music;
-	public static function playMusic(mus:String) {
+	public static function playMusic(mus:String, forced:Bool = false) {
 		var folderPath:String = '$mus';
 		var musPath:String = mus;
 		if (Paths.exists('music/$folderPath'))
 			musPath = '$folderPath/$mus';
 		@:privateAccess
-		if (FlxG.sound.music == null || FlxG.sound.music._sound != Paths.music(musPath)) {
+		if (forced || FlxG.sound.music == null || !FlxG.sound.music.playing || FlxG.sound.music._sound != Paths.music(musPath)) {
 			FlxG.sound.playMusic(Paths.music(musPath));
 			musicMeta = loadMeta(mus);
 		}

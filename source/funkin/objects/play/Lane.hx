@@ -11,7 +11,7 @@ import flixel.graphics.frames.FlxFramesCollection;
 
 using StringTools;
 
-class Lane extends FlxSpriteGroup {
+class Lane extends FunkinSpriteGroup {
 	public var rgbShader:RGBSwap;
 	public var splashRGB:RGBSwap;
 
@@ -36,9 +36,9 @@ class Lane extends FlxSpriteGroup {
 	
 	public var receptor:Receptor;
 	public var noteCover:NoteCover;
-	public var notes:FlxTypedSpriteGroup<Note>;
-	public var noteSplashes:FlxTypedSpriteGroup<NoteSplash>;
-	public var noteSparks:FlxTypedSpriteGroup<NoteSpark>;
+	public var notes:FunkinTypedSpriteGroup<Note>;
+	public var noteSparks:FunkinTypedSpriteGroup<NoteSpark>;
+	public var noteSplashes:FunkinTypedSpriteGroup<NoteSplash>;
 	public var queue:Array<Note> = [];
 
 	public var selfDraw:Bool = false;
@@ -75,9 +75,9 @@ class Lane extends FlxSpriteGroup {
 
 		noteCover = new NoteCover(data);
 		receptor = new Receptor(0, 0, data);
-		notes = new FlxTypedSpriteGroup<Note>();
-		noteSparks = new FlxTypedSpriteGroup<NoteSpark>(0, 0, 5);
-		noteSplashes = new FlxTypedSpriteGroup<NoteSplash>(0, 0, 5);
+		notes = new FunkinTypedSpriteGroup();
+		noteSparks = new FunkinTypedSpriteGroup(0, 0, 5);
+		noteSplashes = new FunkinTypedSpriteGroup(0, 0, 5);
 		spawnRadius = Note.distanceToMS(FlxG.height, scrollSpeed);
 		receptor.lane = this; //lol
 		this.noteData = data;
@@ -88,7 +88,6 @@ class Lane extends FlxSpriteGroup {
 		topMembers.push(noteSplashes);
 
 		noteCover.shader = splashRGB.shader;
-		updateHitbox();
 
 		spark().alpha = .0001;
 		splash().alpha = .0001;
@@ -171,6 +170,7 @@ class Lane extends FlxSpriteGroup {
 			receptor.playAnimation('static', true);
 			if (heldNote != null) {
 				killSustainsOf(heldNote);
+				heldNote.consumed = true;
 				heldNote = null;
 			}
 		}
@@ -290,6 +290,8 @@ class Lane extends FlxSpriteGroup {
 	}
 	public function insertNote(note:Note, pos:Int = -1) {
 		if (notes.members.contains(note)) return;
+		if (note.parent != null && note.parent.consumed) return;
+		
 		note.shader ??= rgbShader.shader;
 		note.hitWindow = hitWindow;
 		note.lane = this;

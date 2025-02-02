@@ -1,14 +1,15 @@
 package funkin.backend;
 
+import flixel.math.FlxMatrix;
 import flixel.util.FlxAxes;
 import flixel.util.FlxSignal;
-import flixel.math.FlxMatrix;
+import flixel.util.FlxDestroyUtil;
 import flixel.graphics.frames.FlxFrame;
 import flixel.graphics.frames.FlxAtlasFrames;
 import flixel.graphics.frames.FlxFramesCollection;
 import funkin.backend.FunkinAnimate;
 
-class FunkinSprite extends FlxSprite {
+class FunkinSprite extends FlxSprite implements IFunkinSpriteAnim {
 	public var onAnimationComplete:FlxTypedSignal<String -> Void> = new FlxTypedSignal();
 	public var onAnimationFrame:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
 	public var currentAnimation(get, never):Null<String>;
@@ -31,14 +32,19 @@ class FunkinSprite extends FlxSprite {
 	public var animate:FunkinAnimate;
 	
 	var _loadedAtlases:Array<String> = [];
+	var _transPoint:FlxPoint;
 	
 	public function new(x:Float = 0, y:Float = 0, isSmooth:Bool = true) {
 		super(x, y);
-		spriteOffset = new FlxPoint();
-		animOffset = new FlxPoint();
+		_transPoint = new FlxPoint();
+		spriteOffset = FlxPoint.get();
+		animOffset = FlxPoint.get();
 		smooth = isSmooth;
 	}
 	public override function destroy() {
+		_transPoint = FlxDestroyUtil.put(_transPoint);
+		animOffset = FlxDestroyUtil.put(animOffset);
+		spriteOffset = FlxDestroyUtil.put(spriteOffset);
 		if (animate != null) animate.destroy();
 		super.destroy();
 	}
@@ -52,7 +58,7 @@ class FunkinSprite extends FlxSprite {
 		}
 	}
 	public override function draw() {
-		refreshOffset();
+		transformSpriteOffset(_transPoint);
 		if (renderType == ANIMATEATLAS && animate != null) {
 			animate.colorTransform = colorTransform; // lmao
 			animate.antialiasing = antialiasing;
@@ -62,7 +68,7 @@ class FunkinSprite extends FlxSprite {
 			animate.setPosition(x, y);
 			animate.cameras = cameras;
 			animate.shader = shader;
-			animate.offset = offset;
+			animate.offset.set(_transPoint.x, _transPoint.y);
 			animate.origin = origin;
 			animate.scale = scale;
 			animate.alpha = alpha;
@@ -82,9 +88,34 @@ class FunkinSprite extends FlxSprite {
 		funk.postUpdateView(camera);
 		funk.postUpdateFrame(frame);
 	}
+	public override function getScreenBounds(?newRect:FlxRect, ?camera:FlxCamera):FlxRect {
+		transformSpriteOffset(_transPoint);
+		if (newRect == null)
+			newRect = FlxRect.get();
+		
+		if (camera == null)
+			camera = FlxG.camera;
+		
+		newRect.setPosition(x, y);
+		if (pixelPerfectPosition)
+			newRect.floor();
+		_scaledOrigin.set(origin.x * scale.x, origin.y * scale.y);
+		newRect.x += -Std.int(camera.scroll.x * scrollFactor.x) - offset.x - _transPoint.x + origin.x - _scaledOrigin.x;
+		newRect.y += -Std.int(camera.scroll.y * scrollFactor.y) - offset.y - _transPoint.y + origin.y - _scaledOrigin.y;
+		if (isPixelPerfectRender(camera))
+			newRect.floor();
+		newRect.setSize(frameWidth * Math.abs(scale.x), frameHeight * Math.abs(scale.y));
+		return newRect.getRotatedBounds(angle, _scaledOrigin, newRect);
+	}
 	public override function drawSimple(camera:FlxCamera) {
 		updateShader(camera);
-		super.drawSimple(camera);
+		
+		getScreenPosition(_point, camera).subtractPoint(offset);
+		if (isPixelPerfectRender(camera))
+			_point.floor();
+
+		_point.copyToFlash(_flashPoint);
+		camera.copyPixels(_frame, framePixels, _flashRect, _flashPoint, colorTransform, blend, antialiasing);
 	}
 	public override function drawComplex(camera:FlxCamera) {
 		// todo: implement this in flxsprite instead of funkinsprite? (zoomFactor wont work for flxtexts and such)
@@ -102,8 +133,10 @@ class FunkinSprite extends FlxSprite {
 				_matrix.rotateWithTrig(_cosAngle, _sinAngle);
 		}
 		
+		transformSpriteOffset(_transPoint);
 		getScreenPosition(_point, camera);
 		_point.add(-offset.x, -offset.y);
+		_point.add(-_transPoint.x, -_transPoint.y);
 		_matrix.translate(_point.x + origin.x, _point.y + origin.y);
 		
 		if (isPixelPerfectRender(camera)) {
@@ -223,11 +256,10 @@ class FunkinSprite extends FlxSprite {
 		super.makeGraphic(width, height, color, unique, key);
 		return this;
 	}
-	public override function centerOffsets(adjustPosition:Bool = false) {
-		super.centerOffsets(adjustPosition);
-		spriteOffset.set(offset.x / (scaleOffsets ? scale.x : 1), offset.y / (scaleOffsets ? scale.y : 1));
+	public function setOffset(x:Float = 0, y:Float = 0) {
+		offset.set();
+		spriteOffset.set(x / (scaleOffsets ? scale.x : 1), y / (scaleOffsets ? scale.y : 1));
 	}
-	public function setOffset(x:Float = 0, y:Float = 0) spriteOffset.set(x / (scaleOffsets ? scale.x : 1), y / (scaleOffsets ? scale.y : 1));
 
 	public function hasAnimationPrefix(prefix:String) {
 		var frames:Array<flixel.graphics.frames.FlxFrame> = [];
@@ -235,22 +267,32 @@ class FunkinSprite extends FlxSprite {
 		animation.findByPrefix(frames, prefix);
 		return (frames.length > 0);
 	}
-	inline public function refreshOffset() {
+	inline public function transformSpriteOffset(point:FlxPoint):FlxPoint {
 		var xP:Float = (spriteOffset.x + animOffset.x) * (scaleOffsets ? scale.x : 1);
 		var yP:Float = (spriteOffset.y + animOffset.y) * (scaleOffsets ? scale.y : 1);
 		if (rotateOffsets && angle % 360 != 0) {
 			var rad:Float = angle / 180 * Math.PI;
 			var cos:Float = FlxMath.fastCos(rad);
 			var sin:Float = FlxMath.fastSin(rad);
-			offset.set(cos * xP - sin * yP, cos * yP + sin * xP);
-		} else
-			offset.set(xP, yP);
+			point.set(cos * xP - sin * yP, cos * yP + sin * xP);
+		} else {
+			point.set(xP, yP);
+		}
+		return point;
 	}
 	
 	public function centerToScreen(axes:FlxAxes = XY, byPivot:Bool = false) {
 		if (isAnimate) {
 			if (byPivot) {
-				setPosition(FlxG.width * .5 - animate.origin.x, FlxG.height * .5 - animate.origin.y);
+				switch (axes) {
+					case X:
+						x = FlxG.width * .5 - animate.origin.x;
+					case Y:
+						y = FlxG.height * .5 - animate.origin.y;
+					case XY:
+						setPosition(FlxG.width * .5 - animate.origin.x, FlxG.height * .5 - animate.origin.y);
+					case NONE:
+				}
 			} else {
 				animate.screenCenter(axes);
 				setPosition(animate.x, animate.y);
@@ -270,7 +312,8 @@ class FunkinSprite extends FlxSprite {
 		} else {
 			super.updateHitbox();
 		}
-		spriteOffset.set(offset.x / (scaleOffsets ? scale.x : 1), offset.y / (scaleOffsets ? scale.y : 1));
+		// Sys.println('HITBOX UPDATED $width x $height -> $offset');
+		// spriteOffset.set(offset.x / (scaleOffsets ? scale.x : 1), offset.y / (scaleOffsets ? scale.y : 1));
 	}
 
 	public function setAnimationOffset(name:String, x:Float = 0, y:Float = 0):FlxPoint {
@@ -281,7 +324,7 @@ class FunkinSprite extends FlxSprite {
 			return offsets[name] = FlxPoint.get(x, y);
 		}
 	}
-	public function addAnimation(name:String, prefix:String, fps:Float = 24, loop:Bool = false, ?frameIndices:Array<Int>, ?assetPath:String, flipX:Bool = false, flipY:Bool = false) {
+	public function addAnimation(name:String, ?prefix:String, fps:Float = 24, loop:Bool = false, ?frameIndices:Array<Int>, ?assetPath:String, flipX:Bool = false, flipY:Bool = false) {
 		if (isAnimate) {
 			if (animate == null || animate.funkAnim == null) return;
 			var anim:FunkinAnimateAnim = animate.funkAnim;
@@ -341,11 +384,14 @@ class FunkinSprite extends FlxSprite {
 		if (animExists) {
 			if (offsets.exists(anim)) {
 				var offset:FlxPoint = offsets[anim];
-				animOffset.x = offset.x;
-				animOffset.y = offset.y;
-			} else
-				animOffset.set(0, 0);
+				setAnimOffset(offset.x, offset.y);
+			} else {
+				setAnimOffset();
+			}
 		}
+	}
+	public function setAnimOffset(x:Float = 0, y:Float = 0):Void {
+		animOffset.set(x, y);
 	}
 	public function preloadAnimAsset(anim:String) { // preloads animation with a different spritesheet path
 		if (isAnimate) return;
@@ -358,12 +404,26 @@ class FunkinSprite extends FlxSprite {
 		}
 	}
 	public function animationExists(anim:String, preload:Bool = false):Bool {
-		if (preload) // necessary for multi-atlas sprites
+		if (preload)
 			preloadAnimAsset(anim);
 		if (isAnimate) {
 			return animate.funkAnim.exists(anim);
 		} else {
-			return animation.exists(anim) ?? false;
+			return animation.exists(anim);
+		}
+	}
+	public function renameAnimation(oldAnim:String, newAnim:String) {
+		if (isAnimate) {
+			animate.funkAnim.rename(oldAnim, newAnim);
+		} else {
+			animation.rename(oldAnim, newAnim);
+		}
+	}
+	public function getAnimationNameList():Array<String> {
+		if (isAnimate) {
+			return animate.funkAnim.getNameList();
+		} else {
+			return animation.getNameList();
 		}
 	}
 	public function isAnimationFinished():Bool {
@@ -398,24 +458,37 @@ class FunkinSprite extends FlxSprite {
 		return (smooth = newSmooth);
 	}
 
-	public override function get_width() {
+	override function get_width() {
 		if (isAnimate) return animate.width;
 		else return width;
 	}
-	public override function get_height() {
+	override function get_height() {
 		if (isAnimate) return animate.height;
 		else return height;
 	}
-	public function get_anim() {
+	function get_anim() {
 		return (isAnimate ? animate.funkAnim : animation);
 	}
-	public function get_isAnimate() {
+	function get_isAnimate() {
 		return (renderType == ANIMATEATLAS && animate != null);
 	}
-	public function get_currentAnimation() {
+	function get_currentAnimation() {
 		if (isAnimate) return animate.funkAnim.name;
 		else return animation.name;
 	}
+}
+interface IFunkinSpriteAnim { // the essentials, anyway
+	public var currentAnimation(get, never):Null<String>;
+	
+	public function preloadAnimAsset(anim:String):Void;
+	public function setOffset(x:Float = 0, y:Float = 0):Void;
+	public function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0):Void;
+	public function animationExists(anim:String, preload:Bool = false):Bool;
+	public function isAnimationFinished():Bool;
+	public function finishAnimation():Void;
+	
+	public var onAnimationComplete:FlxTypedSignal<String -> Void>;
+	public var onAnimationFrame:FlxTypedSignal<Int -> Void>;
 }
 
 enum SpriteRenderType {

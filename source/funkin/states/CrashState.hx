@@ -235,7 +235,7 @@ $message';
 		Log.info('saved crash report to $reportPath');
 		
 		caughtError = true;
-		FlxG.switchState(new CrashState(reportPath));
+		FlxG.switchState(() -> new CrashState(reportPath));
 		Log.error('GAME CRASHED!!!\n$errorMessage');
 	}
 	

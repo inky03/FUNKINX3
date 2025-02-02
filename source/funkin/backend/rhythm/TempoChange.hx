@@ -29,30 +29,35 @@ class TempoChange {
 class TimeSignature { //should this be a class?
 	public var numerator(default, set):Int;
 	public var denominator(default, set):Int;
-
-	public function new(num:Int = 4, denom:Int = 4) {
+	
+	public function new(num:Int = 4, den:Int = 4) {
 		numerator = num;
-		denominator = denom;
+		denominator = den;
 	}
-	public function set_numerator(newNum:Int) {
+	function set_numerator(newNum:Int):Int {
 		return numerator = Std.int(Math.max(newNum, 1));
 	}
-	public function set_denominator(newDenom:Int) {
+	function set_denominator(newDenom:Int):Int {
 		return denominator = Std.int(Math.max(newDenom, 1));
 	}
-	public function copyFrom(sign:Null<TimeSignature>) {
+	public function set(?num:Int, ?den:Int):TimeSignature {
+		if (den != null) denominator = den;
+		if (num != null) numerator = num;
+		return this;
+	}
+	public function copyFrom(sign:Null<TimeSignature>):TimeSignature {
 		if (sign == null) return this;
 		numerator = sign.numerator;
 		denominator = sign.denominator;
 		return this;
 	}
-	public function toString() {
+	public function toString():String {
 		return '$numerator/$denominator';
 	}
-	public function fromString(str:String) {
+	public function fromString(str:String):TimeSignature {
 		var split:Array<String> = str.split('/');
-		numerator = Std.parseInt(split[0] ?? '4');
-		denominator = Std.parseInt(split[1] ?? '4');
+		numerator = Util.parseInt(split[0], 4);
+		denominator = Util.parseInt(split[1], 4);
 		return this;
 	}
 }

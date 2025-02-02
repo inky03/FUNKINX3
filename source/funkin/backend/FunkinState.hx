@@ -1,11 +1,12 @@
-package funkin.backend.states;
+package funkin.backend;
 
 import funkin.backend.scripting.*;
+import funkin.backend.rhythm.Event;
 import funkin.backend.rhythm.Conductor;
 
 import flixel.util.FlxSignal.FlxTypedSignal;
 
-class FunkinState implements IFunkinState extends FlxState {
+class FunkinState extends FlxSubState {
 	public var curBar:Int = -1;
 	public var curBeat:Int = -1;
 	public var curStep:Int = -1;
@@ -17,9 +18,15 @@ class FunkinState implements IFunkinState extends FlxState {
 	public var beatHit:FlxTypedSignal<Int->Void> = new FlxTypedSignal<Int->Void>();
 	public var barHit:FlxTypedSignal<Int->Void> = new FlxTypedSignal<Int->Void>();
 	
+	public var events:Array<ITimedEvent<Dynamic>> = [];
+	
 	public var hscripts:HScripts = new HScripts();
 	
-	override function create() {
+	public function new() { // no one gaf about your bg color
+		super();
+	}
+	
+	override public function create() {
 		Main.soundTray.reloadSoundtrayGraphics();
 		Paths.trackedAssets.resize(0);
 		super.create();
@@ -84,16 +91,28 @@ class FunkinState implements IFunkinState extends FlxState {
 		if (prevBar != curBar) barHit.dispatch(curBar);
 		if (prevBeat != curBeat) beatHit.dispatch(curBeat);
 		if (prevStep != curStep) stepHit.dispatch(curStep);
+		
+		var limit:Int = 50; //avoid lags
+		while (events.length > 0 && conductorInUse.songPosition >= events[0].msTime && limit > 0) {
+			var event:ITimedEvent<Dynamic> = events.shift();
+			if (event.func != null)
+				event.func(event);
+			limit --;
+		}
 	}
 	
-	public function playMusic(mus:String) {
-		MusicHandler.playMusic(mus);
+	public function queueEvent(ms:Float = 0, ?func:Event -> Void) {
+		events.push(new Event(ms, func));
+	}
+	
+	public function playMusic(mus:String, forced:Bool = false) {
+		MusicHandler.playMusic(mus, forced);
 		MusicHandler.applyMeta(conductorInUse);
 	}
 	
 	public static function getCurrentConductor():Conductor {
-		if (Std.isOfType(FlxG.state, IFunkinState))
-			return cast(FlxG.state, IFunkinState).conductorInUse;
+		if (Std.isOfType(FlxG.state, FunkinState))
+			return cast(FlxG.state, FunkinState).conductorInUse;
 		return Conductor.global;
 	}
 }

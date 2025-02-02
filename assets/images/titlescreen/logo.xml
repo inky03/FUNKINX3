@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas imagePath="logo.png">
+	<!-- by emi3 exported in Adobe Flash CS6 (v12.0.0.481) -->
+	<SubTexture name="logo bumpin0000" x="1" y="1" width="688" height="428" frameX="-17" frameY="-12" frameWidth="723" frameHeight="450" rotated="false"/>
+	<SubTexture name="logo bumpin0001" x="1" y="431" width="723" height="450"/>
+	<SubTexture name="logo bumpin0002" x="1" y="431" width="723" height="450"/>
+	<SubTexture name="logo bumpin0003" x="1" y="883" width="703" height="437" frameX="-10" frameY="-7" frameWidth="723" frameHeight="450" rotated="false"/>
+	<SubTexture name="logo bumpin0004" x="1" y="883" width="703" height="437" frameX="-10" frameY="-7" frameWidth="723" frameHeight="450" rotated="false"/>
+	<SubTexture name="logo bumpin0005" x="1" y="1322" width="697" height="434" frameX="-13" frameY="-9" frameWidth="723" frameHeight="450" rotated="false"/>
+	<SubTexture name="logo bumpin0006" x="1" y="1322" width="697" height="434" frameX="-13" frameY="-9" frameWidth="723" frameHeight="450" rotated="false"/>
+</TextureAtlas>

@@ -1,10 +1,11 @@
 package funkin.states;
 
 import funkin.objects.Character;
+import funkin.objects.CharacterGroup;
 
 import openfl.media.Sound;
 
-class GameOverSubState extends funkin.backend.states.FunkinSubState {
+class GameOverSubState extends FunkinState {
 	public var cam:FunkinCamera;
 	public var playState:PlayState;
 	public var cameraZoom:Float = 1;
@@ -29,7 +30,7 @@ class GameOverSubState extends funkin.backend.states.FunkinSubState {
 		
 		wasInstant = instant;
 		playState = cast(FlxG.state, PlayState);
-		character = playState.player1;
+		character = playState.player1?.current;
 		FlxG.camera = cam = playState.camGame;
 		
 		playState.hscripts.run('death', [instant, this]);
@@ -60,22 +61,26 @@ class GameOverSubState extends funkin.backend.states.FunkinSubState {
 			if (character.animationExists(aniName, true)) {
 				character.playAnimation(aniName);
 				character.onAnimationComplete.add((anim:String) -> {
-					if (anim == aniName)
+					if (!started && anim == aniName)
 						startGameOver();
 				});
-			} else {
-				new FlxTimer().start(2.5, (_) -> { startGameOver(); });
 			}
+			new FlxTimer().start(2.5, (_) -> {
+				if (!started && character.isAnimationFinished())
+					startGameOver();
+			});
+		} else {
+			new FlxTimer().start(2.5, (_) -> startGameOver());
 		}
 		if (sound != null)
-			FlxG.sound.play(sound);
+			FunkinSound.playOnce(sound);
 		playState.hscripts.run('deathCreate', [wasInstant, this]);
 	}
 	public override function update(elapsed:Float) {
 		playState.hscripts.run('updatePre', [elapsed, false, true]);
 		
 		if (FlxG.keys.justPressed.ESCAPE && !confirmed) {
-			FlxG.switchState(() -> new FreeplayState());
+			FlxG.switchState(FreeplayState.new);
 			return;
 		}
 		if (FlxG.keys.justPressed.ENTER) {
@@ -95,11 +100,12 @@ class GameOverSubState extends funkin.backend.states.FunkinSubState {
 	public override function destroy() {
 		if (FlxG.sound.music != null)
 			FlxG.sound.music.stop();
-		remove(character);
+		if (character != null)
+			remove(character);
 		super.destroy();
 	}
 	
-	public function focusOnCharacter(chara:Character, center:Bool = false) {
+	public function focusOnCharacter(chara:Character) {
 		if (chara != null) {
 			playState.camFocusTarget.x = chara.getMidpoint().x + chara.deathData?.cameraOffsets[0] ?? 0;
 			playState.camFocusTarget.y = chara.getMidpoint().y + chara.deathData?.cameraOffsets[1] ?? 0;

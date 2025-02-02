@@ -3,6 +3,7 @@
 	"name": "Girlfriend",
 	"renderType": "animateatlas",
 	"assetPath": "characters/gf",
+	"side": "none",
 	"singTime": 8.0,
 	"animations": [
 		{

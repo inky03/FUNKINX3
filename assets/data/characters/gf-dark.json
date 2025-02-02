@@ -8,6 +8,7 @@
     "id": "gf",
     "flipX": false
   },
+  "side": "none",
   "singTime": 8.0,
   "animations": [
     {

@@ -1,26 +1,24 @@
 package funkin.backend.scripting;
 
-import flixel.util.typeLimit.OneOfTwo;
-
 using StringTools;
 
-class HScripts {
-	public var activeScripts:Array<HScript>;
+typedef HScriptAsset = flixel.util.typeLimit.OneOfTwo<String, HScript>;
+class HScripts { // todo: make this a flxtypedgroup?
+	public var activeScripts:Array<HScript> = [];
 	
-	public function new() {
-		activeScripts = [];
-	}
-	public function find(test:OneOfTwo<String, HScript>) {
+	public function new() {}
+	public function find(test:HScriptAsset) {
 		if (Std.isOfType(test, HScript)) {
 			return activeScripts.contains(test) ? test : null;
 		} else {
 			for (hscript in activeScripts) {
-				if (hscript.scriptName == test) return hscript;
+				if (hscript.scriptName == test)
+					return hscript;
 			}
 			return null;
 		}
 	}
-	public function exists(name:String) return (find(name) != null);
+	public function exists(test:HScriptAsset) return (find(test) != null);
 	public function findFromSuffix(test:String) {
 		for (hscript in activeScripts) {
 			if (hscript.scriptName.endsWith(test)) return hscript;
@@ -50,10 +48,15 @@ class HScripts {
 		for (hscript in activeScripts) {
 			var result:Dynamic = hscript.run(name, args, true);
 			switch (result) {
-				case null:
-				case HScript.STOPALL: return result;
-				case HScript.STOP: returnLocked = true; returnValue = result;
-				default: if (!returnLocked) returnValue = result;
+				case null: // dont change return value to null
+				case HScript.STOPALL:
+					return result;
+				case HScript.STOP:
+					returnLocked = true;
+					returnValue = result;
+				default:
+					if (!returnLocked)
+						returnValue = result;
 			}
 		}
 		return returnValue;
@@ -114,25 +117,25 @@ class HScripts {
 			return null;
 		}
 	}
-	public function loadFromFolder(path:String):Void {
-		var dirList:Array<String> = [Paths.sharedPath(path)];
-		dirList.push(Paths.modPath(path));
-		for (mod in Mods.get()) {
+	public function loadFromFolder(path:String, allMods:Bool = false):Void {
+		var dirList:Array<String> = [Paths.sharedPath(path), Paths.globalModPath(path)];
+		
+		for (mod in Mods.getLocal(allMods)) {
 			dirList.push(Paths.modPath(path, mod.directory));
 		}
 		for (dir in dirList) {
 			if (FileSystem.exists(dir)) {
 				Log.minor('loading hscripts @ "$dir"');
 				for (file in FileSystem.readDirectory(dir)) {
-					if (!file.endsWith('.hx') && !file.endsWith('.hxs')) continue;
+					if (!file.endsWith('.hx')) continue;
 					loadFromFile('$dir/$file');
 				}
 			}
 		}
 	}
-	public function loadFromPaths(basepath:String, unique:Bool = false) {
+	public function loadFromPaths(basePath:String, allMods:Bool = false, unique:Bool = false):Bool {
 		var found:Bool = false;
-		for (path in Paths.getPaths(basepath)) {
+		for (path in Paths.getPaths(basePath, true, allMods)) {
 			var scriptFile:String = path.path;
 			if (exists(scriptFile) && !unique) continue;
 			loadFromFile(scriptFile, unique);

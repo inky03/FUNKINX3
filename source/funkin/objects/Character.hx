@@ -2,38 +2,44 @@ package funkin.objects;
 
 using StringTools;
 
-class Character extends FunkinSprite {
-	public var animReset:Float = 0;
+class Character extends FunkinSprite implements ICharacter {
 	public var bopFrequency:Int = 2;
-	public var singForSteps:Float = 4;
-	public var conductorInUse:Conductor = FunkinState.getCurrentConductor();
-	
-	public var bop:Bool = true;
+	public var bop(default, set):Bool = true;
+	public var animReset(default, set):Float = 0;
+	public var singForSteps(default, set):Float = 4;
+	public var specialAnim(default, set):Bool = false;
+	public var conductorInUse(default, set):Conductor = FunkinState.getCurrentConductor();
+	public var scaleMultiplier:Float = 1;
 	public var sway:Bool = false;
-	public var specialAnim:Bool = false;
+	
+	var defaultFlipX:Bool;
+	var binSide:CharacterSide;
+	var dataSide:CharacterSide;
+	var characterGroup:CharacterGroup;
+	public var side(default, set):CharacterSide;
 	
 	var characterDataType:CharacterDataType;
 	public var fallbackCharacter:Null<String>;
 	public var character(default, set):Null<String>;
-	public var stagePos(default, never):FlxPoint = FlxPoint.get();
 	public var psychOffset(default, never):FlxPoint = FlxPoint.get();
 	public var originOffset(default, never):FlxPoint = FlxPoint.get();
 	public var cameraOffset(default, never):FlxPoint = FlxPoint.get();
 	public var stageCameraOffset(default, never):FlxPoint = FlxPoint.get();
+	var idleFrameSize(default, never):FlxPoint = FlxPoint.get();
 	
 	public var healthIcon:String = 'bf';
 	public var healthIconData:Null<ModernCharacterHealthIconData> = null;
 	
 	public var deathData:Null<ModernCharacterDeathData> = null;
 	
-	public var idleSuffix:String = '';
-	public var animSuffix:String = '';
+	public var idleSuffix(default, set):String = '';
+	public var animSuffix(default, set):String = '';
 	
 	public var vocalsLoaded(default, null):Bool = false;
 	public var volume(default, set):Float = 1;
 	public var vocals:FunkinSound;
 	
-	public function new(x:Float, y:Float, ?character:String, ?fallback:String) {
+	public function new(x:Float, y:Float, ?character:String, side:CharacterSide = IDGAF, ?fallback:String) {
 		super(x, y);
 		rotateOffsets = true;
 		vocals = new FunkinSound();
@@ -43,20 +49,16 @@ class Character extends FunkinSprite {
 			this.fallback();
 		else
 			this.character = character;
+		this.side = side;
 		this.onAnimationComplete.add((anim:String) -> {
 			playAnimation('$anim-loop');
 			playAnimation('$anim-hold');
 		});
 	}
 	
-	public function set_volume(newVolume:Float) {
-		vocals.volume = newVolume;
-		return volume = newVolume;
-	}
-	public function findPathSuffix(basePath:String = '', baseSuffix:String = '', ?chara:String):String {
-		chara ??= character;
+	public static function getPathSuffix(basePath:String = '', baseSuffix:String = '', chara:String = ''):String {
 		var charaSplit:Array<String> = chara.split('-');
-		while (charaSplit.length > 0) {
+		while (charaSplit.length > 0) { // trim dashes until it finds a working match
 			var searchSuffix:String = charaSplit.join('-');
 			var searchPath:String = Util.pathSuffix(basePath, searchSuffix);
 			if (Paths.exists('$searchPath$baseSuffix'))
@@ -65,33 +67,92 @@ class Character extends FunkinSprite {
 		}
 		return '';
 	}
-	public function loadVocals(songPath:String, suffix:String = '', ?chara:String):Bool {
-		chara ??= character;
-		vocalsLoaded = false;
+	public static function getVocals(songPath:String, suffix:String = '', chara:String = ''):openfl.media.Sound {
 		try {
-			var path:String = 'data/songs/$songPath';
 			var time:Float = Sys.time();
+			var path:String = 'data/songs/$songPath';
 			if (Paths.exists(path)) {
 				var grrr:String = '$path/Voices';
 				var variationSuffix:String = Util.pathSuffix('', suffix);
-				var characterSuffix:String = findPathSuffix(grrr, '$variationSuffix.ogg', chara);
+				var characterSuffix:String = getPathSuffix(grrr, '$variationSuffix.ogg', chara);
 				if (chara != '' && characterSuffix == '')
-					return false;
+					return null;
+				
 				var vocalsPath:String = Util.pathSuffix(grrr, characterSuffix) + variationSuffix;
-				var ogg:openfl.media.Sound = Paths.ogg(vocalsPath);
-				if (ogg != null) {
-					vocals.loadEmbedded(ogg);
-					vocalsLoaded = true;
-					vocals.volume = 0;
-					vocals.play();
-					vocals.stop();
-					vocals.volume = volume;
-					Log.info('vocals loaded for character "$character"!! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
-					return true;
+				var vocals:openfl.media.Sound = Paths.ogg(vocalsPath);
+				if (vocals.length > 0) {
+					var finalTime:Float = Math.round((Sys.time() - time) * 1000) / 1000;
+					if (chara == '') {
+						Log.info('generic vocals loaded!! (${finalTime}s)');
+					} else {
+						Log.info('vocals loaded for character "$chara"!! (${finalTime}s)');
+					}
+					return vocals;
+				} else {
+					return null;
 				}
 			}
 		} catch (e:haxe.Exception) {
-			Log.error('error when loading vocals -> ${e.message}');
+			Log.error('error when loading vocals from character "$chara" -> ${e.message}');
+		}
+		return null;
+	}
+	
+	function set_side(newSide:CharacterSide) {
+		if (side == newSide)
+			return newSide;
+		side = newSide;
+		refreshSide();
+		return newSide;
+	}
+	public function flip():Character {
+		if (side != IDGAF)
+			side = (side == RIGHT ? LEFT : RIGHT);
+		return this;
+	}
+	public function sideMatches(?side:CharacterSide):Bool {
+		side ??= this.side;
+		if (dataSide == IDGAF)
+			return true;
+		return (dataSide == side);
+	}
+	function refreshSide() {
+		flipX = (defaultFlipX == sideMatches());
+		if (offsets.exists(currentAnimation)) {
+			var offset:FlxPoint = offsets[currentAnimation];
+			setAnimOffset(offset.x, offset.y);
+		}
+	}
+	function flipAnim(anim:String):String {
+		if (sideMatches()) return anim;
+		
+		if (anim.startsWith('singLEFT')) {
+			return anim.replace('singLEFT', 'singRIGHT');
+		} else if (anim.startsWith('singRIGHT')) {
+			return anim.replace('singRIGHT', 'singLEFT');
+		}
+		return anim;
+	}
+	
+	function set_volume(newVolume:Float):Float {
+		return vocals.volume = newVolume;
+	}
+	public function findPathSuffix(basePath:String = '', baseSuffix:String = '', ?chara:String):String {
+		return getPathSuffix(basePath, baseSuffix, chara ?? character);
+	}
+	public function loadVocals(songPath:String, suffix:String = '', ?chara:String):Bool {
+		chara ??= character;
+		
+		var sound:openfl.media.Sound = getVocals(songPath, suffix, chara);
+		if (sound != null) {
+			vocals.loadEmbedded(sound);
+			vocalsLoaded = true;
+			vocals.volume = 0;
+			vocals.play().stop();
+			vocals.volume = volume;
+			return true;
+		} else {
+			vocalsLoaded = false;
 			vocals.volume = 0;
 		}
 		return false;
@@ -118,7 +179,7 @@ class Character extends FunkinSprite {
 	public function timeAnimSteps(?steps:Float) {
 		animReset = (steps ?? singForSteps) * conductorInUse.stepCrochet * .001;
 	}
-	public function animationIsLooping(anim:String) {
+	public function animationIsLooping(anim:String):Bool {
 		return (currentAnimation == '$anim-loop' || currentAnimation == '$anim-hold');
 	}
 	public function playAnimationSoft(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
@@ -128,17 +189,18 @@ class Character extends FunkinSprite {
 	public override function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
 		animReset = 0;
 		specialAnim = false;
-		super.playAnimation(anim + animSuffix, forced, reversed, frame);
+		super.playAnimation(flipAnim(anim) + animSuffix, forced, reversed, frame);
 	}
 	public function playAnimationSteps(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0) {
 		if (!specialAnim) {
-			var sameAnim:Bool = (currentAnimation != anim);
 			playAnimation(anim, forced, reversed, frame);
+			
+			var sameAnim:Bool = (currentAnimation == anim);
 			if (animationExists(anim) && (forced || !sameAnim || isAnimationFinished()))
 				timeAnimSteps(steps ?? singForSteps);
 		}
 	}
-	public function dance(beat:Int = 0, forced:Bool = false) {
+	public function dance(beat:Int = 0, forced:Bool = false):Bool {
 		if (!forced && (animReset > 0 || bopFrequency <= 0 || !bop || specialAnim))
 			return false;
 
@@ -149,6 +211,34 @@ class Character extends FunkinSprite {
 
 		return true;
 	}
+	public override function setAnimOffset(x:Float = 0, y:Float = 0):Void {
+		if (!sideMatches()) {
+			animOffset.set(-x + frameWidth - idleFrameSize.x, y);
+		} else {
+			animOffset.set(x, y);
+		}
+	}
+	override function get_currentAnimation() {
+		if (isAnimate) return flipAnim(animate.funkAnim.name);
+		else return flipAnim(animation.name);
+	}
+	override function _onAnimationComplete(?anim:String) {
+		onAnimationComplete.dispatch(currentAnimation ?? '');
+		if (characterGroup != null && this == characterGroup.current)
+			characterGroup.onAnimationComplete.dispatch(currentAnimation ?? '');
+	}
+	override function _onAnimationFrame(frame:Int) {
+		onAnimationFrame.dispatch(frame);
+		if (characterGroup != null && this == characterGroup.current)
+			characterGroup.onAnimationFrame.dispatch(frame);
+	}
+	function set_bop(value:Bool):Bool { return bop = value; };
+	function set_animReset(value:Float):Float { return animReset = value; };
+	function set_specialAnim(value:Bool):Bool { return specialAnim = value; };
+	function set_idleSuffix(value:String):String { return idleSuffix = value; }
+	function set_animSuffix(value:String):String { return animSuffix = value; }
+	function set_singForSteps(value:Float):Float { return singForSteps = value; };
+	function set_conductorInUse(conductor:Conductor):Conductor { return conductorInUse = conductor; }
 	
 	public function set_character(newChara:Null<String>) {
 		if (character == newChara) return character;
@@ -159,9 +249,6 @@ class Character extends FunkinSprite {
 		}
 		return character = newChara;
 	}
-	
-	public function flip()
-		return flipX = !flipX;
 	
 	public function loadCharacter(?character:String) { // no character provided attempts to load fallback
 		unloadAnimate();
@@ -210,31 +297,36 @@ class Character extends FunkinSprite {
 				loadAnimate(charData.assetPath);
 			default: throw new haxe.Exception('Render type "${charData.renderType}" is not supported!!');
 		}
-
 		var animations:Array<ModernCharacterAnim> = charData.animations;
 		for (animation in animations) {
 			addAnimation(animation.name, animation.prefix, animation.frameRate ?? 24, animation.looped ?? false, animation.frameIndices, animation.assetPath, animation.flipX, animation.flipY);
 			if (animation.offsets != null)
 				setAnimationOffset(animation.name, animation.offsets[0], animation.offsets[1]);
 		}
-		flipX = charData.flipX;
+		dataSide = switch (charData.side) {
+			case 'right': RIGHT;
+			case 'none': IDGAF;
+			default: LEFT; // we are woke by default
+		}
 		smooth = !charData.isPixel;
 		deathData = charData.death;
+		defaultFlipX = charData.flipX ?? false;
 		bopFrequency = charData.danceEvery ?? 1;
 		healthIconData = charData.healthIcon;
 		healthIcon = healthIconData?.id ?? character;
 		singForSteps = Math.max(charData.singTime ?? 8, 1);
-		var scale:Float = charData.scale ?? 1;
-		this.scale.set(scale, scale);
+		scaleMultiplier = charData.scale ?? 1;
+		this.scale.set(scaleMultiplier, scaleMultiplier);
 		if (charData.offsets != null) originOffset.set(charData.offsets[0] ?? 0, charData.offsets[1] ?? 0);
 		if (charData.cameraOffsets != null) cameraOffset.set(charData.cameraOffsets[0] ?? 0, charData.cameraOffsets[1] ?? 0);
 		
 		sway = (animationExists('danceLeft') && animationExists('danceRight'));
-		setBaseSize();
 		if (charData.startingAnimation != null) {
-			dance();
-		} else {
+			setBaseSize(charData.startingAnimation);
 			playAnimation(charData.startingAnimation);
+		} else {
+			setBaseSize();
+			dance();
 		}
 		finishAnimation();
 	}
@@ -250,11 +342,17 @@ class Character extends FunkinSprite {
 			addAnimation(animation.anim, animation.name, animation.fps, animation.loop, animation.indices, animation.assetPath);
 			setAnimationOffset(animation.anim, animation.offsets[0] / charData.scale, animation.offsets[1] / charData.scale);
 		}
-		flipX = charData.flip_x;
+		dataSide = switch (charData.side) {
+			case 'right': RIGHT;
+			case 'none': IDGAF;
+			default: LEFT;
+		}
+		scaleMultiplier = charData.scale;
 		healthIcon = charData.healthicon;
 		smooth = !charData.no_antialiasing;
 		singForSteps = charData.sing_duration;
-		scale.set(charData.scale, charData.scale);
+		defaultFlipX = charData.flip_x ?? false;
+		scale.set(scaleMultiplier, scaleMultiplier);
 		psychOffset.set(charData.position[0], charData.position[1]);
 		cameraOffset.set(charData.camera_position[0], charData.camera_position[1]);
 		
@@ -264,8 +362,9 @@ class Character extends FunkinSprite {
 		finishAnimation();
 	}
 	
-	function setBaseSize() { // lazy, maybe do this without changing cur anim eventually?
-		playAnimation(sway ? 'danceLeft' : 'idle');
+	function setBaseSize(?anim:String) { // lazy, maybe do this without changing cur anim eventually?
+		playAnimation(anim != null ? anim : (sway ? 'danceLeft' : 'idle'));
+		idleFrameSize.set(frameWidth, frameHeight);
 		finishAnimation();
 		updateHitbox();
 	}
@@ -280,6 +379,7 @@ class Character extends FunkinSprite {
 	}
 	public function useDefault() {
 		unloadAnimate();
+		dataSide = LEFT;
 		healthIcon = 'bf';
 		renderType = SPARROW;
 		characterDataType = MODERN;
@@ -314,10 +414,32 @@ class Character extends FunkinSprite {
 		finishAnimation();
 	}
 }
+interface ICharacter extends IFunkinSpriteAnim {
+	public var bop(default, set):Bool;
+	public var volume(default, set):Float;
+	public var animReset(default, set):Float;
+	public var specialAnim(default, set):Bool;
+	public var idleSuffix(default, set):String;
+	public var animSuffix(default, set):String;
+	public var side(default, set):CharacterSide;
+	public var character(default, set):Null<String>;
+	public var conductorInUse(default, set):Conductor;
+	
+	public function timeAnimSteps(?steps:Float):Void;
+	public function animationIsLooping(anim:String):Bool;
+	public function playAnimationSoft(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0):Void;
+	public function playAnimationSteps(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0):Void;
+	public function dance(beat:Int = 0, forced:Bool = false):Bool;
+}
 
-enum CharacterDataType {
-	PSYCH;
-	MODERN;
+enum abstract CharacterDataType(String) to String {
+	var PSYCH = 'psych';
+	var MODERN = 'modern';
+}
+enum abstract CharacterSide(String) to String {
+	var LEFT = 'left';
+	var IDGAF = 'none';
+	var RIGHT = 'right';
 }
 
 typedef PsychCharacterData = {
@@ -329,12 +451,14 @@ typedef PsychCharacterData = {
 
 	var position:Array<Float>;
 	var camera_position:Array<Float>;
-
-	var flip_x:Bool;
+	
 	var no_antialiasing:Bool;
 	var healthbar_colors:Array<Int>;
-	@:optional var vocals_file:String;
-	@:optional var _editor_isPlayer:Bool;
+	
+	var ?flip_x:Bool;
+	var ?side:String;
+	var ?vocals_file:String;
+	var ?_editor_isPlayer:Bool;
 }
 typedef PsychCharacterAnim = {
 	var anim:String;
@@ -343,46 +467,51 @@ typedef PsychCharacterAnim = {
 	var loop:Bool;
 	var indices:Array<Int>;
 	var offsets:Array<Int>;
-	@:optional var assetPath:String; // for quick tests
+	
+	var ?assetPath:String;
 }
 
 typedef ModernCharacterData = {
-	var flipX:Bool;
 	var name:String;
 	var isPixel:Bool;
 	var version:String;
 	var assetPath:String;
 	var animations:Array<ModernCharacterAnim>;
-	@:optional var scale:Float;
-	@:optional var danceEvery:Int;
-	@:optional var singTime:Float;
-	@:optional var renderType:String;
-	@:optional var offsets:Array<Float>;
-	@:optional var cameraOffsets:Array<Float>;
-	@:optional var startingAnimation:String;
-	@:optional var death:ModernCharacterDeathData;
-	@:optional var healthIcon:ModernCharacterHealthIconData;
+	
+	var ?flipX:Bool;
+	var ?side:String;
+	var ?scale:Float;
+	var ?danceEvery:Int;
+	var ?singTime:Float;
+	var ?renderType:String;
+	var ?offsets:Array<Float>;
+	var ?cameraOffsets:Array<Float>;
+	var ?startingAnimation:String;
+	var ?death:ModernCharacterDeathData;
+	var ?healthIcon:ModernCharacterHealthIconData;
 }
 typedef ModernCharacterDeathData = {
-	@:optional var preTransitionDelay:Float;
-	@:optional var cameraOffsets:Array<Float>;
-	@:optional var cameraZoom:Float;
+	var ?preTransitionDelay:Float;
+	var ?cameraOffsets:Array<Float>;
+	var ?cameraZoom:Float;
 }
 typedef ModernCharacterHealthIconData = {
 	var id:String;
 	var flipX:Bool;
-	@:optional var scale:Float;
-	@:optional var isPixel:Bool;
-	@:optional var offsets:Array<Int>;
+	
+	var ?scale:Float;
+	var ?isPixel:Bool;
+	var ?offsets:Array<Int>;
 }
 typedef ModernCharacterAnim = {
 	var name:String;
 	var prefix:String;
-	@:optional var flipX:Bool;
-	@:optional var flipY:Bool;
-	@:optional var looped:Bool;
-	@:optional var frameRate:Float;
-	@:optional var assetPath:String;
-	@:optional var offsets:Array<Float>;
-	@:optional var frameIndices:Array<Int>;
+	
+	var ?flipX:Bool;
+	var ?flipY:Bool;
+	var ?looped:Bool;
+	var ?frameRate:Float;
+	var ?assetPath:String;
+	var ?offsets:Array<Float>;
+	var ?frameIndices:Array<Int>;
 }

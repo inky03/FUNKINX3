@@ -5,7 +5,8 @@
   "healthIcon": {
     "id": "pico"
   },
-  "flipX": true,
+  "side": "right",
+  "flipX": false,
   "renderType": "animateatlas",
   "cameraOffsets": [250, -750],
   "singTime": 999.0,

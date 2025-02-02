@@ -115,7 +115,7 @@ class FunkinRuntimeShader extends FlxRuntimeShader {
 		var program = gl.createProgram();
 		
 		for (param in __paramFloat) {
-			if (param.name.indexOf("Position") > -1 && StringTools.startsWith(param.name, "openfl_")) {
+			if (param.name.indexOf('Position') > -1 && StringTools.startsWith(param.name, 'openfl_')) {
 				gl.bindAttribLocation(program, 0, param.name);
 				break;
 			}

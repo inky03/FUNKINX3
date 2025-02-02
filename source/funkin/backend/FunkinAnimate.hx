@@ -14,7 +14,7 @@ import flxanimate.frames.FlxAnimateFrames;
 import flixel.graphics.frames.FlxAtlasFrames;
 import flixel.graphics.frames.FlxFramesCollection;
 
-import StringTools;
+using StringTools;
 
 class FunkinAnimate extends FlxAnimate { // this is kind of useless, but pop off
 	public var funkAnim:FunkinAnimateAnim;
@@ -241,7 +241,8 @@ class FunkinAnimateAnim extends FlxAnim {
 	public function new(parent:FlxAnimate, ?animAtlas:AnimAtlas) {
 		super(parent, animAtlas);
 	}
-	override public function play(?name:String, ?force:Bool = false, ?reverse:Bool = false, ?frame:Int = 0) {
+	
+	public override function play(?name:String, ?force:Bool = false, ?reverse:Bool = false, ?frame:Int = 0) {
 		final canForce:Bool = (force || this.finished || _name != name || reverse != this.reversed);
 		if (!canForce)
 			return;
@@ -276,6 +277,21 @@ class FunkinAnimateAnim extends FlxAnim {
 	public function exists(name:String):Bool {
 		return (animsMap.exists(name) || (symbolDictionary != null && symbolDictionary.exists(name)));
 	}
+	public function rename(oldName:String, newName:String):Void {
+		var anim:SymbolStuff = animsMap.get(oldName);
+		if (anim == null) {
+			return;
+		}
+		animsMap.set(newName, anim);
+		animsMap.remove(oldName);
+	}
+	public function getNameList():Array<String> {
+		var list:Array<String> = [];
+		for (name => _ in animsMap)
+			list.push(name);
+		return list;
+	}
+	
 	override public function destroy() {
 		isPlaying = false;
 		curFrame = 0;

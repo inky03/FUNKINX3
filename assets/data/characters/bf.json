@@ -3,7 +3,7 @@
   "name": "Boyfriend",
   "renderType": "multisparrow",
   "assetPath": "characters/bf",
-  "flipX": true,
+  "side": "right",
   "singTime": 8.0,
   "animations": [
     {

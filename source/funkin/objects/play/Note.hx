@@ -2,6 +2,7 @@ package funkin.objects.play;
 
 import funkin.objects.play.Lane;
 import funkin.backend.play.Scoring;
+import funkin.objects.CharacterGroup;
 
 import flixel.graphics.frames.FlxFrame;
 import flixel.addons.display.FlxTiledSprite;
@@ -23,6 +24,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var lane:Lane;
 	
 	public var score:Score;
+	public var consumed:Bool = false;
 	public var goodHit:Bool = false;
 	public var lost:Bool = false;
 	public var noteOffset:FlxPoint;
@@ -73,6 +75,7 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		held = false;
 		lost = false;
 		goodHit = false;
+		consumed = false;
 		clipDistance = 0;
 		if (!isHoldPiece) {
 			canHit = true;
@@ -109,8 +112,8 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		addAnimation('hit', '$dirName note', 24, false);
 		playAnimation('hit', true);
 		if (isHoldPiece) {
-			addAnimation('hold', '$dirName hold piece', 24, false);
 			addAnimation('tail', '$dirName hold tail', 24, false);
+			addAnimation('hold', '$dirName hold piece', 24, false);
 			playAnimation(this.isHoldTail ? 'tail' : 'hold', true);
 		}
 		updateHitbox();

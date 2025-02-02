@@ -1,6 +1,8 @@
 package funkin.objects;
 
 import funkin.backend.play.Chart;
+import funkin.objects.CharacterGroup;
+import funkin.objects.Character;
 
 using StringTools;
 
@@ -13,7 +15,7 @@ class Stage extends FlxSpriteGroup {
 	public var stageValid:Bool = false;
 	public var format:StageFormat = NONE;
 	public var props:Map<String, StageProp> = new Map();
-	public var characters:Map<String, Character> = new Map();
+	public var characters:Map<String, CharacterGroup> = new Map();
 
 	public var zoom:Float = 1;
 
@@ -61,16 +63,15 @@ class Stage extends FlxSpriteGroup {
             	state.hscripts.loadFromPaths(scriptPath);
             hasContent = true;
         }
-
+        
         if (state != null)
         	state.hscripts.run('setupStage', [stageId, this]);
-
+        
         if (!hasContent) {
 			Log.warning('no stage content (json or script): loading fallback stage');
 			loadFallback();
 		}
-
-		startCharPositions();
+		
 		sortZIndex();
 	}
 	
@@ -94,7 +95,7 @@ class Stage extends FlxSpriteGroup {
 		}
 		return obj;
 	}
-
+	
 	public function beatHit(beat:Int) {
 		for (prop in props) {
 			if (prop.alive && prop.exists)
@@ -112,7 +113,7 @@ class Stage extends FlxSpriteGroup {
 	public function getProp(name:String):StageProp {
 		return props[name];
 	}
-	public function getCharacter(name:String):Character {
+	public function getCharacter(name:String):CharacterGroup {
 		return characters[name];
 	}
 	public function loadModernStageData(data:ModernStageData) {
@@ -160,24 +161,29 @@ class Stage extends FlxSpriteGroup {
 		for (name in Reflect.fields(charas)) {
 			var chara:ModernStageChar = Reflect.field(charas, name);
 			var char:Null<String> = null;
+			
+			var side:CharacterSide = (switch (name) {
+				case 'bf': RIGHT;
+				case 'gf': IDGAF;
+				default: LEFT;
+			});
 			if (chart != null) {
 				char = Reflect.field(chart, switch (name) {
 					case 'bf': 'player1';
 					case 'dad': 'player2';
 					case 'gf': 'player3';
-					default: null;
+					default: name;
 				});
 			}
-			var charaSprite:Character = new Character(0, 0, char, name);
-			add(charaSprite);
-			charaSprite.zIndex = chara.zIndex;
-			charaSprite.stageCameraOffset.set(chara.cameraOffsets[0], chara.cameraOffsets[1]);
-			charaSprite.stagePos.set(chara.position[0] - charaSprite.width * .5, chara.position[1] - charaSprite.height);
-            if (chara.scale != null) charaSprite.scale.set(chara.scale, chara.scale);
+			
+			var charaGroup:CharacterGroup = new CharacterGroup(chara.position[0], chara.position[1], char, side, name);
+			add(charaGroup);
+			charaGroup.zIndex = chara.zIndex;
+			charaGroup.stageCameraOffset.set(chara.cameraOffsets[0], chara.cameraOffsets[1]);
+            if (chara.scale != null) charaGroup.scale.set(chara.scale, chara.scale);
             
-			this.characters[name] = charaSprite;
+			this.characters[name] = charaGroup;
 		}
-		this.characters['bf']?.flip();
 	}
 	public function loadFallback() {
 		var basicBG:StageProp = props['basicBG'] = new StageProp();
@@ -190,26 +196,17 @@ class Stage extends FlxSpriteGroup {
 		loadCharactersGeneric();
 	}
 	function loadCharactersGeneric() {
-		var player1:Character = new Character(0, 0, chart?.player1 ?? 'bf', 'bf');
-		var player2:Character = new Character(0, 0, chart?.player2 ?? 'dad', 'dad');
-		var player3:Character = new Character(0, 0, chart?.player3 ?? 'gf', 'gf');
-		player1.stagePos.set(250, 750 - player1.height);
-		player2.stagePos.set(-250 - player2.width, 750 - player2.height);
-		player3.stagePos.set(-player3.width * .5, 680 - player3.height);
+		var player1:CharacterGroup = new CharacterGroup(250, 750, chart?.player1 ?? 'bf', RIGHT, 'bf');
+		var player2:CharacterGroup = new CharacterGroup(-250, 750, chart?.player2 ?? 'dad', LEFT, 'dad');
+		var player3:CharacterGroup = new CharacterGroup(0, 680, chart?.player3 ?? 'gf', IDGAF, 'gf');
 		player1.zIndex = 300;
 		player2.zIndex = 200;
 		player3.zIndex = 100;
-		player1.flip();
 		characters['bf'] = player1;
 		characters['dad'] = player2;
 		characters['gf'] = player3;
 		for (chara in [player1, player2, player3]) {
 			add(chara);
-		}
-	}
-	function startCharPositions() {
-		for (chara in characters) {
-			chara.setPosition(chara.stagePos.x + chara.originOffset.x, chara.stagePos.y + chara.originOffset.y);
 		}
 	}
 }

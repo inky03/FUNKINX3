@@ -8,6 +8,7 @@ class FunkinSoundGroup extends flixel.group.FlxGroup.FlxTypedGroup<FunkinSound> 
 	public var pitch(get, set):Float;
 	public var volume(get, set):Float;
 	public var playing(get, never):Bool;
+	public var soundLength(get, never):Float;
 	public var syncBase(get, default):FunkinSound;
 	public var onSoundFinished:FlxTypedSignal<FunkinSound -> Void> = new FlxTypedSignal();
 	
@@ -94,6 +95,11 @@ class FunkinSoundGroup extends flixel.group.FlxGroup.FlxTypedGroup<FunkinSound> 
 	}
 	function get_playing():Bool {
 		return syncBase?.playing ?? false;
+	}
+	function get_soundLength():Float {
+		var maxLength:Float = 0;
+		forEachAlive((snd:FunkinSound) -> maxLength = Math.max(maxLength, snd.length));
+		return maxLength;
 	}
 	
 	function set_time(time:Float):Float {

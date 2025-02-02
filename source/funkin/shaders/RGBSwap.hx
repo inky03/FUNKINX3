@@ -1,7 +1,5 @@
 package funkin.shaders;
 
-import flixel.system.FlxAssets.FlxShader;
-
 class RGBSwap { // im coming
 	public var red(default, set):FlxColor;
 	public var blue(default, set):FlxColor;
@@ -27,7 +25,7 @@ class RGBSwap { // im coming
 	}
 }
 
-class RGBSwapShader extends FlxShader {
+class RGBSwapShader extends flixel.system.FlxAssets.FlxShader {
 	@:glFragmentHeader('
 		#pragma header
 

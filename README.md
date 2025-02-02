@@ -1,5 +1,4 @@
-engine by me. yeah!<br>
-this engine is HEAVILY UNFINISHED, expect a lot of missing features...
+this engine is HEAVILY UNFINISHED; be wary of MISSING FEATURES and BREAKING API CHANGES while i keep working on it
 
 # compiling
 
@@ -16,7 +15,7 @@ haxelib install flixel
 haxelib run lime setup
 lime setup flixel
 ```
-perfect! you can now proceed to run these commands in your terminal to install the rest of the required libraries!
+perfect! you can now run these commands in your terminal to install the rest of the required libraries!
 ```console
 haxelib install tjson
 haxelib install moonchart

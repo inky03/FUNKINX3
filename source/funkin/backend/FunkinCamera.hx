@@ -1,5 +1,10 @@
 package funkin.backend;
 
+import openfl.display.Shader;
+import openfl.filters.ShaderFilter;
+import openfl.filters.BitmapFilter;
+
+typedef ShaderOrFilter = flixel.util.typeLimit.OneOfTwo<Shader, BitmapFilter>;
 class FunkinCamera extends FlxCamera {
 	public var pauseZoomLerp:Bool = false; // OK, this is hacky but i cant be arsed
 	public var pauseFollowLerp:Bool = false;
@@ -44,6 +49,54 @@ class FunkinCamera extends FlxCamera {
 			}
 		}
 		super.render();
+	}
+	
+	public function findShaderFilter(shd:Shader):ShaderFilter {
+		if (filters == null) return null;
+		
+		for (filter in filters) {
+			if (Std.isOfType(filter, ShaderFilter)) {
+				var filt:ShaderFilter = cast filter;
+				if (filt.shader == shd)
+					return filt;
+			}
+		}
+		return null;
+	}
+	public function addFilter(filter:ShaderOrFilter, pos:Int = -1):ShaderFilter {
+		if (filter == null) return null;
+		
+		var filterToPush:ShaderFilter;
+		if (Std.isOfType(filter, Shader)) {
+			var shd:Shader = cast filter;
+			
+			var foundFilter:ShaderFilter = findShaderFilter(shd);
+			if (foundFilter == null) {
+				filterToPush = new ShaderFilter(shd);
+			} else {
+				return foundFilter;
+			}
+		} else {
+			filterToPush = cast filter;
+			
+			if (filters.contains(filterToPush))
+				return filterToPush;
+		}
+		
+		filters ??= [];
+		filters.insert(pos, filterToPush);
+		return filterToPush;
+	}
+	public function removeFilter(filter:ShaderOrFilter):Void {
+		if (filter == null || filters == null) return;
+		
+		if (Std.isOfType(filter, Shader)) {
+			var foundFilter:ShaderFilter = findShaderFilter(cast filter);
+			if (foundFilter != null)
+				filters.remove(foundFilter);
+		} else {
+			filters.remove(cast filter);
+		}
 	}
 
 	public function updateFollowMod(elapsed:Float):Void {

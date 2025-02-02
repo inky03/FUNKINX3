@@ -30,7 +30,6 @@ import flixel.effects.FlxFlicker;
 import flixel.graphics.FlxGraphic;
 import flixel.group.FlxSpriteGroup;
 import flixel.group.FlxGroup.FlxTypedGroup;
-import flixel.group.FlxSpriteGroup.FlxTypedSpriteGroup;
 
 //funkin
 import funkin.util.*;
@@ -38,11 +37,12 @@ import funkin.debug.Log;
 import funkin.backend.Options;
 import funkin.backend.Controls;
 import funkin.backend.FunkinSound;
+import funkin.backend.FunkinState;
 import funkin.backend.FunkinSprite;
 import funkin.backend.FunkinCamera;
 import funkin.backend.FunkinSoundGroup;
+import funkin.backend.FunkinSpriteGroup;
 import funkin.backend.rhythm.*;
-import funkin.backend.states.*;
 
 import funkin.backend.Mods;
 import funkin.backend.Paths;

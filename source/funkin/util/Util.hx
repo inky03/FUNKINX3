@@ -62,6 +62,26 @@ class Util { // maybe these utils can be on their own specific purpose classes
 		if (a == null || b == null) return 0;
 		return FlxSort.byValues(order, a.zIndex, b.zIndex);
 	}
+	public static function getHighestZIndex(?iter:Iterable<FlxBasic>, ?fallback:Int = 0):Int {
+		if (iter == null)
+			return fallback;
+		var hi:Null<Int> = null;
+		for (member in iter) {
+			if (hi == null || hi < member.zIndex)
+				hi = member.zIndex;
+		}
+		return hi ?? fallback;
+	}
+	public static function getLowestZIndex(?iter:Iterable<FlxBasic>, ?fallback:Int = 0):Int {
+		if (iter == null)
+			return fallback;
+		var lo:Null<Int> = null;
+		for (member in iter) {
+			if (lo == null || lo > member.zIndex)
+				lo = member.zIndex;
+		}
+		return lo ?? fallback;
+	}
 	public static function get_gameScaleX() {
 		var scaleX:Float = FlxG.stage.window.width / FlxG.width;
 		return switch (FlxG.stage.scaleMode) {

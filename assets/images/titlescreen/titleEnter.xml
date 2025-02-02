@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas imagePath="titleEnter.png">
+	<!-- by emi3 exported in Adobe Flash CS6 (v12.0.0.481) -->
+	<SubTexture name="enter to begin0000" x="1" y="1" width="1018" height="95"/>
+	<SubTexture name="enter to begin0001" x="1" y="98" width="1018" height="95"/>
+</TextureAtlas>

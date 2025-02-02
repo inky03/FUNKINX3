@@ -16,6 +16,10 @@ jwambaugh - tjson (tolerant json)
 crowplexus - hscript iris (good hscript fork)
 majigsaw77 - hxdiscord_rpc (rich presence for cpp)
 
+OTHER
+neeEoo - matrix rotation code derived from flixel pull request #2679
+fenotype - techno font derived from their freeware font 11.20
+
 SPECIAL THANKS
 funkin crew - made FRIDAY NIGHT FUNKIN', proprietary of most assets, borrowed parts of backend class implementations
 psych engine - formats support, discord rpc base, paths implementations, a lot of ideas generally

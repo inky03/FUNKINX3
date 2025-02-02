@@ -1,5 +1,6 @@
 package funkin.backend.scripting;
 
+import crowplexus.iris.Iris;
 import crowplexus.hscript.Expr;
 import crowplexus.hscript.Tools;
 
@@ -53,7 +54,7 @@ class ModInterp extends crowplexus.hscript.Interp {
 			error(EInvalidAccess(f));
 		
 		#if hl
-		if (Reflect.hasField(o, '__evalues__')) { // hashlink enums
+		if (Type.typeof(o) == Type.ValueType.TObject && Reflect.hasField(o, '__evalues__')) { // hashlink enums
 			try {
 				var vals:hl.NativeArray<Dynamic> = Reflect.getProperty(o, '__evalues__');
 				for (i in 0...vals.length) {
@@ -62,7 +63,7 @@ class ModInterp extends crowplexus.hscript.Interp {
 						return val;
 				}
 			} catch (e:Dynamic) {}
-			return null;
+			error(EInvalidAccess(f));
 		}
 		#end
 		return Reflect.getProperty(o, f);
@@ -116,5 +117,39 @@ class ModInterp extends crowplexus.hscript.Interp {
 		} else {
 			return v;
 		}
+	}
+	
+	public function doImport(cls:String, ?alias:String) { // TODO: fun things
+		final aliasStr = (alias != null ? ' named $alias' : ''); // for errors
+		if (Iris.blocklistImports.contains(cls)) {
+			error(ECustom('Import of class $cls is blacklisted'));
+			return null;
+		}
+		
+		var n = Tools.last(cls.split('.'));
+		if (imports.exists(n))
+			return imports.get(n);
+		
+		var c:Dynamic = getOrImportClass(cls);
+		if (c == null)
+			return warn(ECustom('Import$aliasStr of class $cls could not be added'));
+		else {
+			imports.set(n, c);
+			if (alias != null)
+				imports.set(alias, c);
+		}
+		return null;
+	}
+	public override function expr(e: Expr): Dynamic {
+		#if hscriptPos
+		curExpr = e;
+		var eDef = e.e;
+		#end
+		switch (eDef) {
+			case EImport(v, as):
+				return doImport(v, as);
+			default:
+		}
+		return super.expr(e);
 	}
 }

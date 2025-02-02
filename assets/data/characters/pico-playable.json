@@ -10,7 +10,8 @@
     "cameraOffsets": [10, -40],
     "cameraZoom": 1.0
   },
-  "flipX": true,
+  "side": "right",
+  "flipX": false,
   "renderType": "multisparrow",
   "animations": [
     {

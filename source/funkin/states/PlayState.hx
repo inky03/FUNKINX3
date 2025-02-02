@@ -1,39 +1,41 @@
 package funkin.states;
 
-import flixel.system.debug.stats.Stats;
 import openfl.events.KeyboardEvent;
 import flixel.input.keyboard.FlxKey;
-import flixel.FlxState;
 
 import funkin.backend.scripting.HScript;
 import funkin.backend.play.ScoreHandler;
 import funkin.backend.play.NoteEvent;
 import funkin.backend.play.Scoring;
 import funkin.backend.play.Chart;
+import funkin.objects.CharacterGroup;
+import funkin.objects.Character;
 import funkin.objects.play.*;
 import funkin.objects.*;
 
 using StringTools;
 
-class PlayState extends funkin.backend.states.FunkinState {
-	public var player1:Character;
-	public var player2:Character;
-	public var player3:Character;
+class PlayState extends FunkinState {
+	public var player1:CharacterGroup;
+	public var player2:CharacterGroup;
+	public var player3:CharacterGroup;
 	
 	public var stage:Stage;
 	public var curStage:String;
+	public var simpleBG:FunkinSprite;
 	
 	public var healthBar:Bar;
 	public var iconP1:HealthIcon;
 	public var iconP2:HealthIcon;
 	public var scoreTxt:FlxText;
 	public var debugTxt:FlxText;
-	public var opponentStrumline:Strumline;
-	public var playerStrumline:Strumline;
-	public var uiGroup:FlxSpriteGroup;
-	public var ratingGroup:FlxTypedSpriteGroup<FunkinSprite>;
 	
-	public var scoring:ScoreHandler = new ScoreHandler(EMI);
+	public var playerStrumline:Strumline;
+	public var opponentStrumline:Strumline;
+	public var uiGroup:FunkinSpriteGroup;
+	public var ratingGroup:FunkinTypedSpriteGroup<FunkinSprite>;
+	public var strumlineGroup:FunkinTypedSpriteGroup<Strumline>;
+	
 	public var singAnimations:Array<String> = ['LEFT', 'DOWN', 'UP', 'RIGHT'];
 	public var keybinds:Array<Array<FlxKey>> = [];
 	public var heldKeys:Array<FlxKey> = [];
@@ -44,29 +46,31 @@ class PlayState extends funkin.backend.states.FunkinState {
 	public var camGame:FunkinCamera;
 	public var camOther:FunkinCamera;
 	public var camFocusTarget:FlxObject;
+	public var spotlight:Null<FlxSprite>;
 	
 	public var camZoomRate:Int = -1; // 0: no bop - <0: every measure (always)
 	public var camZoomIntensity:Float = 1;
 	public var hudZoomIntensity:Float = 2;
 	
 	public static var chart:Chart = null;
-	public var events:Array<ChartEvent> = [];
 	public var notes:Array<Note> = [];
 	public var songName:String;
+	public var simple:Bool;
+	
+	public var scoring:ScoreHandler = new ScoreHandler(EMI);
+	@:isVar public var score(get, set):Float = 0;
+	@:isVar public var misses(get, set):Int = 0;
+	@:isVar public var combo(get, set):Int = 0;
+	public var accuracy(get, null):Float = 0;
 	
 	public var maxHealth(default, set):Float = 1;
-	public var health(default, set):Float = .5;
-	public var score:Float = 0;
-	public var misses:Int = 0;
-	public var combo(default, set):Int = 0;
-	public var accuracyMod:Float = 0;
-	public var accuracyDiv:Float = 0;
+	public var health(default, dynamic):Float = .5;
 	public var totalNotes:Int = 0;
 	public var totalHits:Int = 0;
-	public var percent:Float = 0;
 	public var dead:Bool = false;
 	public var gameOver:GameOverSubState;
 	
+	public var genericVocals:FunkinSound;
 	public var music:FunkinSoundGroup;
 	public var hitsound:FunkinSound;
 	
@@ -76,9 +80,18 @@ class PlayState extends funkin.backend.states.FunkinState {
 	
 	public var songFinished:Bool = false;
 	
-	public function new() {
-		chart ??= new Chart('');
-		chart.instLoaded = false;
+	public function new(chart:Chart, simple:Bool = false) {
+		PlayState.chart = chart ?? PlayState.chart ?? new Chart('');
+		PlayState.chart.instLoaded = false;
+		this.simple = simple;
+		scoring.onComboChange.add((newCombo:Int) -> {
+			if (newCombo <= 0) {
+				if (scoring.combo > 0)
+					comboBroken(scoring.combo);
+			} else {
+				popCombo(newCombo);
+			}
+		});
 		super();
 	}
 	
@@ -96,8 +109,31 @@ class PlayState extends funkin.backend.states.FunkinState {
 		music = new FunkinSoundGroup();
 		songName = chart.name;
 		
-		hscripts.loadFromFolder('scripts/global');
-		hscripts.loadFromFolder('scripts/songs/${chart.path}');
+		var genNotes:Array<Note> = chart.generateNotes();
+		
+		if (!simple) {
+			var loadedEvents:Array<String> = [];
+			var noteKinds:Array<String> = [];
+			for (note in genNotes) {
+				var noteKind:String = note.noteKind;
+				if (noteKind.trim() != '' && !noteKinds.contains(noteKind)) {
+					hscripts.loadFromPaths('scripts/notekinds/$noteKind.hx');
+					noteKinds.push(noteKind);
+				}
+			}
+			for (event in chart.events) {
+				var eventName:String = event.name;
+				if (!loadedEvents.contains(eventName)) {
+					loadedEvents.push(eventName);
+					hscripts.loadFromPaths('scripts/events/$eventName.hx');
+				}
+				events.push(event);
+				pushedEvent(event);
+			}
+			
+			hscripts.loadFromFolder('scripts/global');
+			hscripts.loadFromFolder('scripts/songs/${chart.path}');
+		}
 		
 		stepHit.add(stepHitEvent);
 		beatHit.add(beatHitEvent);
@@ -120,17 +156,28 @@ class PlayState extends funkin.backend.states.FunkinState {
 		
 		camGame.zoomFollowLerp = camHUD.zoomFollowLerp = 3;
 		
-		stage = new Stage(chart);
-		stage.setup(chart.stage);
-		camGame.zoomTarget = stage.zoom;
+		if (!simple) {
+			stage = new Stage(chart);
+			stage.setup(chart.stage);
+			add(stage);
+		
+			player1 = stage.getCharacter('bf');
+			player2 = stage.getCharacter('dad');
+			player3 = stage.getCharacter('gf');
+			
+			focusOnCharacter((player3 ?? player1).current);
+		} else {
+			camFocusTarget.setPosition(FlxG.width * .5, FlxG.height * .5);
+			simpleBG = new FunkinSprite().loadTexture('mainmenu/bgGreen');
+			simpleBG.setGraphicSize(simpleBG.width * 1.1);
+			simpleBG.scrollFactor.set();
+			simpleBG.zoomFactor = 0;
+			simpleBG.updateHitbox();
+			simpleBG.screenCenter();
+			add(simpleBG);
+		}
+		camGame.zoomTarget = stage?.zoom ?? 1;
 		camHUD.zoomTarget = 1;
-		add(stage);
-		
-		player1 = stage.getCharacter('bf');
-		player2 = stage.getCharacter('dad');
-		player3 = stage.getCharacter('gf');
-		
-		focusOnCharacter(player3 ?? player1);
 		camGame.snapToTarget();
 		
 		var path:String = 'data/songs/${chart.path}/';
@@ -150,16 +197,22 @@ class PlayState extends funkin.backend.states.FunkinState {
 		}
 		loadVocals(chart.path, chart.audioSuffix);
 		
-		uiGroup = new FlxSpriteGroup();
+		uiGroup = new FunkinSpriteGroup();
 		uiGroup.camera = camHUD;
 		add(uiGroup);
+		strumlineGroup = new FunkinTypedSpriteGroup();
+		strumlineGroup.camera = camHUD;
+		add(strumlineGroup);
 		
 		var scrollDir:Float = (Options.data.downscroll ? 270 : 90);
 		var strumlineBound:Float = (FlxG.width - 300) * .5;
 		var strumlineY:Float = 50;
 		
+		keybinds = Options.data.keybinds['4k'];
+		
 		opponentStrumline = new Strumline(4, scrollDir, chart.scrollSpeed);
 		opponentStrumline.fitToSize(strumlineBound, opponentStrumline.height * .7);
+		opponentStrumline.noteEvent.add(opponentNoteEvent);
 		opponentStrumline.setPosition(50, strumlineY);
 		opponentStrumline.zIndex = 40;
 		opponentStrumline.cpu = true;
@@ -168,82 +221,72 @@ class PlayState extends funkin.backend.states.FunkinState {
 		playerStrumline = new Strumline(4, scrollDir, chart.scrollSpeed * 1.08);
 		playerStrumline.fitToSize(strumlineBound, playerStrumline.height * .7);
 		playerStrumline.setPosition(FlxG.width - playerStrumline.width - 50 - 75, strumlineY);
+		playerStrumline.noteEvent.add(playerNoteEvent);
+		playerStrumline.assignKeybinds(keybinds);
 		playerStrumline.zIndex = 50;
 		
 		if (middlescroll) {
 			playerStrumline.screenCenter(X);
 			opponentStrumline.fitToSize(playerStrumline.leftBound - 50 - opponentStrumline.leftBound, 0, Y);
 		}
-		
-		opponentStrumline.noteEvent.add(opponentNoteEvent);
-		playerStrumline.noteEvent.add(playerNoteEvent);
-		opponentStrumline.visible = false;
-		playerStrumline.visible = false;
-		
-		keybinds = Options.data.keybinds['4k'];
-		playerStrumline.assignKeybinds(keybinds);
-		
-		var noteKinds:Array<String> = [];
-		for (note in chart.generateNotes()) {
-			var noteKind:String = note.noteKind;
-			if (noteKind.trim() != '' && !noteKinds.contains(noteKind)) {
-				noteKinds.push(noteKind);
-				hscripts.loadFromPaths('scripts/notekinds/$noteKind.hx');
-			}
-
+		for (note in genNotes) {
 			var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
 			strumline.queueNote(note);
 			notes.push(note);
 		}
 		
-		ratingGroup = new FlxTypedSpriteGroup<FunkinSprite>();
+		ratingGroup = new FunkinTypedSpriteGroup<FunkinSprite>();
 		ratingGroup.setPosition(player3?.getMidpoint()?.x ?? FlxG.width * .5, player3?.getMidpoint()?.y ?? FlxG.height * .5);
-		ratingGroup.zIndex = (player3?.zIndex ?? 0) + 10;
-		if (stage != null) stage.insertZIndex(ratingGroup);
-		else add(ratingGroup);
+		if (stage != null) {
+			ratingGroup.zIndex = Util.getHighestZIndex(stage.characters, 50) + 5;
+			stage.insertZIndex(ratingGroup);
+		} else {
+			ratingGroup.scrollFactor.set();
+			ratingGroup.zoomFactor = 0;
+			ratingGroup.zIndex = 50;
+			add(ratingGroup);
+		}
 		
+		// TODO: figure out how to display the correct icons in simple mode maybe? they just display the placeholder face
 		healthBar = new Bar(0, FlxG.height - 50, (_) -> health, 'healthBar');
 		healthBar.bounds.max = maxHealth;
 		healthBar.y -= healthBar.height;
 		healthBar.screenCenter(X);
 		healthBar.zIndex = 10;
 		uiGroup.add(healthBar);
-		iconP1 = new HealthIcon(0, 0, player1?.healthIcon, player1?.healthIconData?.isPixel);
+		iconP1 = new HealthIcon(0, 0, player1?.healthIcon, player1?.current?.healthIconData?.isPixel);
+		iconP1.origin.x = 0;
 		iconP1.flipX = true; // fuck you
 		iconP1.zIndex = 15;
 		uiGroup.add(iconP1);
-		iconP2 = new HealthIcon(0, 0, player2?.healthIcon, player2?.healthIconData?.isPixel);
+		iconP2 = new HealthIcon(0, 0, player2?.healthIcon, player2?.current?.healthIconData?.isPixel);
+		iconP2.origin.x = iconP2.frameWidth;
 		iconP2.zIndex = 15;
 		uiGroup.add(iconP2);
+		
+		if (player1 != null) {
+			player1.onCharacterChanged.add((name:String, char:Character) -> matchHealthIcon(iconP1, char));
+			player2.onCharacterChanged.add((name:String, char:Character) -> matchHealthIcon(iconP2, char));
+		}
 		
 		scoreTxt = new FlxText(0, FlxG.height - 25, FlxG.width, 'Score: idk');
 		scoreTxt.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, CENTER, OUTLINE, FlxColor.BLACK);
 		scoreTxt.y -= scoreTxt.height * .5;
 		scoreTxt.borderSize = 1.25;
 		uiGroup.add(scoreTxt);
-		updateRating();
+		updateScoreText();
 		debugTxt = new FlxText(0, 12, FlxG.width, '');
 		debugTxt.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, CENTER, OUTLINE, FlxColor.BLACK);
 		uiGroup.add(debugTxt);
 		
-		uiGroup.add(opponentStrumline);
-		uiGroup.add(playerStrumline);
+		strumlineGroup.add(playerStrumline);
+		strumlineGroup.add(opponentStrumline);
 		
 		if (downscroll) {
-			for (mem in uiGroup)
-				mem.y = FlxG.height - mem.y - mem.height;
+			flipMembers(uiGroup);
+			flipMembers(strumlineGroup);
 		}
 		
-		var loadedEvents:Array<String> = [];
-		for (event in chart.events) {
-			var eventName:String = event.name;
-			if (!loadedEvents.contains(eventName)) {
-				loadedEvents.push(eventName);
-				hscripts.loadFromPaths('scripts/events/$eventName.hx');
-			}
-			events.push(event);
-			pushedEvent(event);
-		}
 		for (i in 0...4) Paths.sound('gameplay/hitsounds/miss$i');
 		Paths.sound('gameplay/hitsounds/hitsoundTail');
 		Paths.sound('gameplay/hitsounds/hitsoundFail');
@@ -258,56 +301,84 @@ class PlayState extends funkin.backend.states.FunkinState {
 		sortZIndex();
 		
 		if (playCountdown) {
+			for (strumline in strumlineGroup)
+				strumline.visible = false;
+			
 			for (snd in ['THREE', 'TWO', 'ONE', 'GO'])
 				Paths.sound('gameplay/countdown/funkin/intro$snd');
 			for (img in ['ready', 'set', 'go'])
 				Paths.image(img);
 		}
-		conductorInUse.metronome.setBeat(playCountdown ? -5 : -1);
+		conductorInUse.beat = (playCountdown ? -5 : -1);
+	}
+	
+	inline function flipMembers(grp:FlxTypedSpriteGroup<Dynamic>) {
+		for (mem in uiGroup)
+			mem.y = FlxG.height - mem.y - mem.height;
 	}
 	
 	public function loadVocals(path:String, audioSuffix:String = '') {
-		for (chara in [player1, player2, player3]) {
-			if (chara == null) continue;
-			chara.loadVocals(path, audioSuffix);
+		var thingArray:Array<Array<Dynamic>> = [[player1, chart.player1], [player2, chart.player2], [player3, chart.player3]];
+		var pushedSounds:Array<openfl.media.Sound> = []; // dont add the same sound twice lol
+		var vocalsSounds:Array<FunkinSound> = [];
+		
+		for (obj in thingArray) {
+			for (item in obj) { // yeah, this is a little convoluted now...
+				if (item == null) continue;
+				
+				if (Std.isOfType(item, CharacterGroup)) {
+					var char:Character = cast(item, CharacterGroup).current;
+					if (char?.loadVocals(chart.path, chart.audioSuffix)) {
+						@:privateAccess var snd:openfl.media.Sound = char.vocals._sound;
+						if (pushedSounds.contains(snd)) continue;
+						vocalsSounds.push(char.vocals);
+						pushedSounds.push(snd);
+						break;
+					}
+				} else {
+					var sound:openfl.media.Sound = Character.getVocals(chart.path, chart.audioSuffix, item);
+					if (sound != null && !pushedSounds.contains(sound)) {
+						vocalsSounds.push(FunkinSound.load(sound));
+						pushedSounds.push(sound);
+						break;
+					}
+				}
+			}
 		}
-		if (player1 != null && !player1.vocalsLoaded && player1.character != chart.player1)
-			player1.loadVocals(path, audioSuffix, chart.player1);
-		if (player2 != null && !player2.vocalsLoaded && player2.character != chart.player2)
-			player2.loadVocals(path, audioSuffix, chart.player2);
-		if ((player1 == null || !player1.vocalsLoaded) && (player2 == null || !player2.vocalsLoaded)) {
-			player1.loadVocals(path, audioSuffix, '');
-			if (!player1.vocalsLoaded)
+		if (vocalsSounds.length == 0) {
+			var sound:openfl.media.Sound = Character.getVocals(chart.path, chart.audioSuffix, '');
+			if (sound != null) {
+				genericVocals = FunkinSound.load(sound);
+				vocalsSounds.push(genericVocals);
+			} else {
 				Log.warning('song vocals not found...');
+			}
 		}
-		for (chara in [player1, player2, player3]) {
-			if (chara == null) continue;
-			if (chara.vocalsLoaded)
-				music.add(chara.vocals);
+		for (sound in vocalsSounds) {
+			sound.volume = 0;
+			sound.play().stop();
+			sound.volume = 1;
+			music.add(sound);
 		}
 	}
 
 	override public function update(elapsed:Float) {
-		hscripts.run('updatePre', [elapsed, paused, dead]);
-
 		if (FlxG.keys.justPressed.ESCAPE) {
-			FlxG.switchState(new FreeplayState());
+			FlxG.switchState(FreeplayState.new);
+			return;
+		} else if (FlxG.keys.justPressed.SEVEN) {
+			FlxG.switchState(() -> new CharterState(chart));
 			return;
 		}
 		
-		if (FlxG.keys.justPressed.SEVEN) {
-			CharterState.chart = chart;
-			FlxG.switchState(new CharterState());
-			return;
-		}
 		if (FlxG.keys.pressed.SHIFT) {
 			if (FlxG.keys.justPressed.R) {
-				opponentStrumline.fadeIn();
-				playerStrumline.fadeIn();
+				for (strumline in strumlineGroup) {
+					strumline.visible = false;
+					strumline.resetLanes();
+				}
 				
-				opponentStrumline.resetLanes();
-				playerStrumline.resetLanes();
-				events = [];
+				events.resize(0);
 				for (note in notes) {
 					var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
 					strumline.queueNote(note);
@@ -316,7 +387,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 				music.pause();
 				music.time = 0;
 				resetConductor();
-				conductorInUse.metronome.setBeat(-5);
+				conductorInUse.beat = -5;
 				resetScore();
 			}
 			if (FlxG.keys.justPressed.B) {
@@ -339,10 +410,11 @@ class PlayState extends funkin.backend.states.FunkinState {
 				downscroll = !downscroll;
 				Options.data.downscroll = !Options.data.downscroll;
 				if (Options.data.downscroll) strumlineY = FlxG.height - opponentStrumline.receptorHeight - strumlineY;
-				for (strumline in [opponentStrumline, playerStrumline]) {
+				for (strumline in strumlineGroup) {
 					strumline.direction += 180;
 					strumline.y = strumlineY;
 				}
+				flipMembers(uiGroup);
 			}
 		} else if (!dead) {
 			if (FlxG.keys.justPressed.ENTER) {
@@ -362,41 +434,35 @@ class PlayState extends funkin.backend.states.FunkinState {
 				die();
 		}
 		
-		DiscordRPC.update();
-		super.update(elapsed);
 		hscripts.run('update', [elapsed, paused, false]); // last argument is for Game over screen
-
+		
 		if (paused) {
 			hscripts.run('updatePost', [elapsed, true, false]);
 			return;
 		}
 		
-		iconP1.updateBop(elapsed);
-		iconP2.updateBop(elapsed);
-		iconP1.y = healthBar.barCenter.y - iconP1.frameHeight * .5;
-		iconP2.y = healthBar.barCenter.y - iconP2.frameHeight * .5;
-		iconP1.x = healthBar.barCenter.x + 60 + (iconP1.frameWidth * iconP1.scale.x - iconP1.defaultSize - iconP1.frameWidth) * .5;
-		iconP2.x = healthBar.barCenter.x - 60 - (iconP2.frameWidth * iconP2.scale.x - iconP2.defaultSize + iconP2.frameWidth) * .5;
+		iconP1.offset.x = 0;
+		iconP2.offset.x = iconP2.frameWidth;
+		iconP2.setPosition(healthBar.barCenter.x - 60 + iconP2.width * .5, healthBar.barCenter.y - iconP2.height * .5);
+		iconP1.setPosition(healthBar.barCenter.x + 60 + iconP1.width * .5, healthBar.barCenter.y - iconP1.height * .5);
+		super.update(elapsed);
 		
 		syncMusic();
 		
-		var limit:Int = 50; //avoid lags
-		while (events.length > 0 && conductorInUse.songPosition >= events[0].msTime && limit > 0) {
-			var event:ChartEvent = events.shift();
-			triggerEvent(event);
-			limit --;
-		}
-		
 		hscripts.run('updatePost', [elapsed, false, false]);
 		
-		if (!chart.instLoaded && !songFinished && conductorInUse.songPosition >= chart.songLength && !conductorInUse.paused) {
+		if (!chart.instLoaded && !songFinished && conductorInUse.songPosition >= chart.songLength && !conductorInUse.paused)
 			finishSong();
-		}
+	}
+	override public function draw() {
+		hscripts.run('draw');
+		super.draw();
+		hscripts.run('drawPost');
 	}
 
 	public function finishSong() {
 		songFinished = true;
-		if (hscripts.run('finishSong') == HScript.STOP) {
+		if (HScript.stopped(hscripts.run('finishSong'))) {
 			conductorInUse.paused = true;
 			return;
 		}
@@ -416,10 +482,10 @@ class PlayState extends funkin.backend.states.FunkinState {
 	}
 
 	public function pushedEvent(event:ChartEvent) {
-		var params:Map<String, Dynamic> = event.params;
+		var params:Map<String, Dynamic> = event.params; // todo: move this outside of playstate?
 		switch (event.name) {
 			case 'PlayAnimation':
-				var focusChara:Null<Character> = null;
+				var focusChara:Null<CharacterGroup> = null;
 				switch (params['target']) {
 					case 'girlfriend', 'gf': focusChara = player3;
 					case 'boyfriend', 'bf': focusChara = player1;
@@ -428,13 +494,13 @@ class PlayState extends funkin.backend.states.FunkinState {
 		}
 		hscripts.run('eventPushed', [event]);
 	}
-	
 	public function triggerEvent(event:ChartEvent) {
-		var params:Map<String, Dynamic> = event.params;
+		var params:Map<String, Dynamic> = event.params; // todo: also move this outside of playstate
 		switch (event.name) {
 			case 'FocusCamera':
+				if (simple) return;
 				var focusCharaInt:Int;
-				var focusChara:Null<Character> = null;
+				var focusChara:Null<CharacterGroup> = null;
 				if (params.exists('char')) focusCharaInt = Util.parseInt(params['char']);
 				else focusCharaInt = Util.parseInt(params['value']);
 				switch (focusCharaInt) {
@@ -447,10 +513,11 @@ class PlayState extends funkin.backend.states.FunkinState {
 				}
 
 				if (focusChara != null) {
-					focusOnCharacter(focusChara);
+					focusOnCharacter(focusChara.current);
 				} else {
 					camFocusTarget.x = 0;
 					camFocusTarget.y = 0;
+					spotlight = null;
 				}
 				if (params.exists('x')) camFocusTarget.x += Util.parseFloat(params['x']);
 				if (params.exists('y')) camFocusTarget.y += Util.parseFloat(params['y']);
@@ -479,6 +546,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 						}
 				}
 			case 'ZoomCamera':
+				if (simple) return;
 				var targetZoom:Float = Util.parseFloat(params['zoom'], 1);
 				var direct:Bool = (params['mode'] ?? 'direct' == 'direct');
 				targetZoom *= (direct ? FlxCamera.defaultZoom : (stage?.zoom ?? 1));
@@ -512,9 +580,10 @@ class PlayState extends funkin.backend.states.FunkinState {
 				camZoomIntensity = targetIntensity;
 				camZoomRate = targetRate;
 			case 'PlayAnimation':
+				if (simple) return;
 				var anim:String = params['anim'];
 				var target:String = params['target'];
-				var focus:Null<FunkinSprite> = null;
+				var focus:FlxSprite = null;
 				
 				switch (target) {
 					case 'dad' | 'opponent': focus = player2;
@@ -523,14 +592,21 @@ class PlayState extends funkin.backend.states.FunkinState {
 					default: focus = stage.getProp(target);
 				}
 				
-				if (focus != null && focus.animationExists(anim)) {
+				if (focus != null) {
 					var forced:Bool = params['force'];
-					focus.playAnimation(anim, forced);
 					
-					if (Std.isOfType(focus, Character)) {
-						var chara:Character = cast focus;
-						chara.specialAnim = forced;
-						chara.animReset = 8;
+					if (Std.isOfType(focus, CharacterGroup)) {
+						var chara:CharacterGroup = cast focus;
+						if (chara.animationExists(anim)) {
+							chara.playAnimation(anim, forced);
+							chara.specialAnim = forced;
+							chara.animReset = 8;
+						}
+					} else if (Std.isOfType(focus, FunkinSprite)) {
+						var funk:FunkinSprite = cast focus;
+						if (funk.animationExists(anim)) {
+							funk.playAnimation(anim, forced);
+						}
 					}
 				}
 		}
@@ -540,27 +616,29 @@ class PlayState extends funkin.backend.states.FunkinState {
 		if (chara != null) {
 			camFocusTarget.x = chara.getMidpoint().x + chara.cameraOffset.x + (center ? 0 : chara.stageCameraOffset.x);
 			camFocusTarget.y = chara.getMidpoint().y + chara.cameraOffset.y + (center ? 0 : chara.stageCameraOffset.y);
+			spotlight = chara;
+		}
+	}
+	public function matchHealthIcon(icon:HealthIcon, ?chara:Character) {
+		if (chara != null) {
+			icon.icon = chara.healthIcon;
+			icon.isPixel = chara?.healthIconData?.isPixel;
 		}
 	}
 	
 	public function stepHitEvent(step:Int) {
 		syncMusic(true);
+		
 		hscripts.run('stepHit', [step]);
 	}
 	public function beatHitEvent(beat:Int) {
-		try {
-			iconP1.bop();
-			iconP2.bop();
-			stage.beatHit(beat);
-		} catch (e:Dynamic) {}
-
 		if (playCountdown) {
 			var folder:String = 'funkin';
 			switch (beat) {
 				case -4:
 					FunkinSound.playOnce(Paths.sound('gameplay/countdown/$folder/introTHREE'));
-					opponentStrumline.fadeIn();
-					playerStrumline.fadeIn();
+					for (strumline in strumlineGroup)
+						strumline.fadeIn();
 				case -3:
 					popCountdown('ready');
 					FunkinSound.playOnce(Paths.sound('gameplay/countdown/$folder/introTWO'));
@@ -578,6 +656,12 @@ class PlayState extends funkin.backend.states.FunkinState {
 		}
 		if (camZoomRate > 0 && beat % camZoomRate == 0)
 			bopCamera();
+		
+		iconP1.bop();
+		iconP2.bop();
+		if (stage != null)
+			stage.beatHit(beat);
+		
 		hscripts.run('beatHit', [beat]);
 	}
 	public function popCountdown(image:String) {
@@ -594,6 +678,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 	public function barHitEvent(bar:Int) {
 		if (camZoomRate < 0)
 			bopCamera();
+		
 		hscripts.run('barHit', [bar]);
 	}
 	public function bopCamera() {
@@ -609,8 +694,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 		if (justPressed)
 			heldKeys.push(key);
 		
-		hscripts.run('keyPressed', [key, justPressed]);
-		if (inputDisabled || paused) return;
+		if (HScript.stopped(hscripts.run('keyPressed', [key, justPressed])) || inputDisabled || paused) return;
 		if (justPressed) {
 			var keybind:Int = Controls.keybindFromArray(keybinds, key);
 			var oldTime:Float = conductorInUse.songPosition;
@@ -619,8 +703,10 @@ class PlayState extends funkin.backend.states.FunkinState {
 				conductorInUse.songPosition = newTimeMaybe; // too rigged? (Math.abs(newTimeMaybe) < Math.abs(oldTime) ? newTimeMaybe : oldTime);
 			
 			if (keybind >= 0) {
-				hscripts.run('keybindPressed', [keybind, key]);
-				playerStrumline.fireInput(key, true);
+				if (!HScript.stopped(hscripts.run('keybindPressed', [keybind, key]))) {
+					for (strumline in strumlineGroup)
+						strumline.fireInput(key, true);
+				}
 			}
 			
 			conductorInUse.songPosition = oldTime;
@@ -630,13 +716,13 @@ class PlayState extends funkin.backend.states.FunkinState {
 		var key:FlxKey = event.keyCode;
 		heldKeys.remove(key);
 		
-		hscripts.run('keyReleased', [key]);
-		if (inputDisabled || paused) return;
+		if (HScript.stopped(hscripts.run('keyReleased', [key])) || inputDisabled || paused) return;
 		var keybind:Int = Controls.keybindFromArray(keybinds, key);
 
 		if (keybind >= 0) {
-			hscripts.run('keybindReleased', [keybind, key]);
-			playerStrumline.fireInput(key, false);
+			var result:Dynamic = hscripts.run('keybindReleased', [keybind, key]);
+			for (strumline in strumlineGroup)
+				strumline.fireInput(key, false);
 		}
 	}
 
@@ -669,11 +755,6 @@ class PlayState extends funkin.backend.states.FunkinState {
 		catch (e:haxe.Exception) Log.error('error dispatching note event -> ${e.message}');
 		hscripts.run('opponentNoteEvent', [e]);
 	}
-	public dynamic function comboBroken(oldCombo:Int) {
-		popCombo(0);
-		var result:Dynamic = hscripts.run('comboBroken');
-		if (result != HScript.STOP && oldCombo >= 10 && player3 != null) player3.playAnimationSteps('sad', true, 8);
-	}
 	public function popCombo(combo:Int) {
 		var tempCombo:Int = combo;
 		var nums:Array<Int> = [];
@@ -696,7 +777,7 @@ class PlayState extends funkin.backend.states.FunkinState {
 		var rating:FunkinSprite = new FunkinSprite(0, 0);
 		rating.loadTexture(ratingString);
 		rating.scale.set(scale, scale);
-		rating.setOffset(rating.frameWidth * .5, rating.frameHeight * .5);
+		rating.offset.set(rating.frameWidth * .5, rating.frameHeight * .5);
 
 		ratingGroup.add(rating);
 		FlxTween.tween(rating, {alpha: 0}, .2, {onComplete: (tween:FlxTween) -> {
@@ -707,37 +788,36 @@ class PlayState extends funkin.backend.states.FunkinState {
 	}
 	
 	public function set_maxHealth(newHealth:Float) {
-		health = Math.min(health, newHealth);
 		healthBar.bounds.max = newHealth;
 		healthBar.updateBars();
+		health = health;
 		return maxHealth = newHealth;
 	}
-	public function set_health(newHealth:Float) {
+	public dynamic function set_health(newHealth:Float) {
 		newHealth = FlxMath.bound(newHealth, 0, maxHealth);
-		if (newHealth >= healthBar.bounds.max - .15) {
-			if (iconP1.animation.name != 'winning') iconP1.playAnimation('winning');
-			if (iconP2.animation.name != 'losing') iconP2.playAnimation('losing');
-		} else if (newHealth <= healthBar.bounds.min + .15) {
-			if (iconP1.animation.name != 'losing') iconP1.playAnimation('losing');
-			if (iconP2.animation.name != 'winning') iconP2.playAnimation('winning');
-		} else {
-			if (iconP1.animation.name != 'neutral') iconP1.playAnimation('neutral');
-			if (iconP2.animation.name != 'neutral') iconP2.playAnimation('neutral');
+		switch (newHealth) {
+			case (_ <= .15) => true:
+				iconP1.state = LOSING;
+				iconP2.state = WINNING;
+			case (_ >= maxHealth - .15) => true:
+				iconP1.state = WINNING;
+				iconP2.state = LOSING;
+			default:
+				iconP1.state = iconP2.state = NEUTRAL;
 		}
 		if (newHealth <= 0 && !godmode && !dead)
 			die(false);
 		return health = newHealth;
 	}
 	public function die(instant:Bool = true) {
-		var result:Dynamic = hscripts.run('deathPre', [instant]);
-		if (result == HScript.STOP)
+		if (HScript.stopped(hscripts.run('deathPre', [instant])))
 			return;
 		
 		conductorInUse.paused = true;
-		focusOnCharacter(player1);
 		inputDisabled = true;
 		dead = true;
 		if (player1 != null) {
+			focusOnCharacter(player1.current);
 			player1.bop = false;
 		}
 		FlxTween.cancelTweensOf(camGame.scroll);
@@ -747,14 +827,13 @@ class PlayState extends funkin.backend.states.FunkinState {
 		gameOver = new GameOverSubState(instant);
 		function actuallyDie() {
 			music.stop();
-			camGame.zoomTarget = gameOver.cameraZoom * stage.zoom;
+			camGame.zoomTarget = gameOver.cameraZoom * (stage?.zoom ?? 1);
 			camGame.zoomFollowLerp = camGame.followLerp = 3;
 			camGame.pauseZoomLerp = false;
 			openSubState(gameOver);
 		}
 		
 		if (instant) {
-			focusOnCharacter(player1, true);
 			actuallyDie();
 		} else {
 			camGame.followLerp = 10;
@@ -766,31 +845,66 @@ class PlayState extends funkin.backend.states.FunkinState {
 			FlxTween.tween(camGame, {zoom: camGame.zoom + .3}, deathDuration, {ease: FlxEase.elasticOut, onComplete: (_) -> { actuallyDie(); }});
 		}
 	}
-	public function resetScore() {
-		score = accuracyMod = accuracyDiv = misses = totalHits = totalNotes = combo = 0;
-		health = .5;
-		updateRating();
+	
+	function get_accuracy():Float { return scoring?.accuracy ?? 0; }
+	function get_misses():Int { return scoring?.misses ?? 0; }
+	function get_score():Float { return scoring?.score ?? 0; }
+	function get_combo():Int { return scoring?.combo ?? 0; }
+	
+	function set_misses(newMisses:Int):Int {
+		if (scoring != null)
+			return scoring.misses = newMisses;
+		return 0;
 	}
-	public function updateRating() {
-		percent = (accuracyMod / Math.max(1, accuracyDiv)) * 100;
+	function set_score(newScore:Float):Float {
+		if (scoring != null)
+			return scoring.score = newScore;
+		return 0;
+	}
+	function set_combo(newCombo:Int):Int {
+		if (scoring != null)
+			return scoring.combo = newCombo;
+		return 0;
+	}
+	
+	public function resetScore() {
+		totalHits = totalNotes = 0;
+		scoring?.reset();
+		health = .5;
 		updateScoreText();
 	}
 	public function updateScoreText() {
-		var scoreStr:String = Util.thousandSep(Std.int(score));
-		if (Options.data.xtendScore) {
-			var accuracyString:String = 'NA';
-			if (totalNotes > 0) accuracyString = Util.padDecimals(percent, 2);
-			if (playerStrumline.cpu) accuracyString = 'BOT';
-			scoreTxt.text = '$accuracyString% | Misses: $misses | Score: $scoreStr';
+		if (HScript.stopped(hscripts.run('updateScoreText')))
+			return;
+		
+		if (scoring != null) {
+			var floorScore:Int = Std.int(scoring.score);
+			var scoreStr:String = Util.thousandSep(floorScore);
+			
+			if (Options.data.xtendScore) {
+				var accuracyString:String;
+				
+				if (playerStrumline.cpu) {
+					accuracyString = 'BOT';
+				} else {
+					accuracyString = 'NA';
+					if (totalNotes > 0)
+						accuracyString = Util.padDecimals(accuracy, 2);
+				}
+				
+				scoreTxt.text = '$accuracyString% | Misses: ${scoring.misses} | Score: $scoreStr';
+			} else {
+				scoreTxt.text = 'Score: $scoreStr';
+				if (playerStrumline.cpu)
+					scoreTxt.text = 'BOT ${scoreTxt.text}';
+			}
 		} else {
-			scoreTxt.text = 'Score: $scoreStr';
-			if (playerStrumline.cpu) scoreTxt.text = 'BOT ${scoreTxt.text}';
+			scoreTxt.text = '';
 		}
-		hscripts.run('updateScoreText');
 	}
-	public function set_combo(newCombo:Int) {
-		if (combo > 0 && newCombo == 0) comboBroken(combo);
-		return combo = newCombo;
+	public dynamic function comboBroken(oldCombo:Int) {
+		player3?.playAnimationSteps('sad', true, 8);
+		popCombo(0);
 	}
 	
 	override public function destroy() {

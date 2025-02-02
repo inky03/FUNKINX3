@@ -54,7 +54,8 @@
 	<!-- ________________________________ Macros ________________________________ -->
 	
 	<haxeflag name="-dce no" />
-	<haxeflag name="--macro" value="addMetadata('@:build(funkin.macros.FlixelMacros.buildZIndex())', 'flixel.FlxBasic')" />
+	<haxeflag name="--macro" value="addMetadata('@:build(funkin.macros.FunkinMacro.buildFlxBasic())', 'flixel.FlxBasic')" />
+	<haxeflag name="--macro" value="addMetadata('@:build(funkin.macros.HScriptMacro.buildInterp())', 'crowplexus.hscript.Interp')" />
 	<haxeflag name="--macro" value="include('flixel', true, ['flixel.addons.nape', 'flixel.addons.editors.spine', 'flixel.system.macros'])" if="USE_HSCRIPT" />
 	
 	<!-- ______________________________ Haxedefines _____________________________ -->

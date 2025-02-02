@@ -5,7 +5,7 @@ import funkin.backend.play.Chart;
 
 using Lambda;
 
-class FreeplayState extends funkin.backend.states.FunkinState {
+class FreeplayState extends FunkinState {
 	public var target:FlxObject;
 	public var diffText:FlxText;
 	public var items:Array<SongItem> = [];
@@ -20,7 +20,7 @@ class FreeplayState extends funkin.backend.states.FunkinState {
 		super.create();
 		
 		playMusic(MainMenuState.menuMusic);
-		var bg:FunkinSprite = new FunkinSprite().loadTexture('menuBGBlue');
+		var bg:FunkinSprite = new FunkinSprite().loadTexture('mainmenu/bgBlue');
 		bg.setGraphicSize(bg.width * 1.1);
 		bg.scrollFactor.set();
 		bg.updateHitbox();
@@ -61,7 +61,6 @@ class FreeplayState extends funkin.backend.states.FunkinState {
 	
 	override public function update(elapsed:Float) {
 		super.update(elapsed);
-		DiscordRPC.update();
 		if (!inputEnabled) return;
 		
 		if (FlxG.keys.justPressed.LEFT) selectDifficulty(-1);
@@ -69,21 +68,23 @@ class FreeplayState extends funkin.backend.states.FunkinState {
 		if (FlxG.keys.justPressed.UP) select(-1);
 		if (FlxG.keys.justPressed.DOWN) select(1);
 		if (FlxG.keys.justPressed.ENTER) {
-			FlxG.sound.playMusic(Paths.music('titleShoot'), 1, false);
-			FlxG.sound.play(Paths.sound('confirmMenu'), .8);
+			// FlxG.sound.playMusic(Paths.music('titleShoot'), 1, false);
+			FunkinSound.playOnce(Paths.sound('confirmMenu'), .8);
 			Main.showWatermark = false;
+			FlxG.sound.music.stop();
 			inputEnabled = false;
 			
 			new FlxTimer().start(2, (timer:FlxTimer) -> {
-				var selectedItem:SongItem = displayItems.members[selection];
+				var shifted:Bool = FlxG.keys.pressed.SHIFT;
 				var variation:Variation = findVariation(currentVariation);
+				var selectedItem:SongItem = displayItems.members[selection];
+				var chart:Chart = Chart.loadChart(selectedItem.songPath, variation.difficulties[selectedDifficulty], variation.suffix);
 				Mods.currentMod = selectedItem.mod;
-				PlayState.chart = Chart.loadChart(selectedItem.songPath, variation.difficulties[selectedDifficulty], variation.suffix);
-				FlxG.switchState(() -> new PlayState());
+				FlxG.switchState(() -> new PlayState(chart, shifted));
 			});
 		}
 		if (FlxG.keys.justPressed.ESCAPE) {
-			FlxG.switchState(() -> new MainMenuState());
+			FlxG.switchState(MainMenuState.new);
 		}
 	}
 	
@@ -117,7 +118,7 @@ class FreeplayState extends funkin.backend.states.FunkinState {
 	}
 	public function select(mod:Int = 0) {
 		if (items.length == 0) return;
-		if (mod != 0) FlxG.sound.play(Paths.sound('scrollMenu'), .8);
+		if (mod != 0) FunkinSound.playOnce(Paths.sound('scrollMenu'), .8);
 		
 		displayItems.members[selection]?.highlight(false);
 		
@@ -213,12 +214,11 @@ class SongItem extends FlxSpriteGroup {
 		this.icon = new HealthIcon(0, 0, icon);
 		text = new Alphabet(150, 0, name);
 		
-		this.icon.y = (text.height - this.icon.height) * .5;
+		this.text.y = (this.icon.height - text.height) * .5;
 		add(this.icon);
 		add(text);
 		
 		highlight(false);
-		updateHitbox();
 	}
 	public function highlight(on:Bool = true) {
 		if (on) {

@@ -7,10 +7,10 @@ import flixel.util.FlxAxes;
 import flixel.input.keyboard.FlxKey;
 import flixel.util.FlxSignal.FlxTypedSignal;
 
-class Strumline extends FlxSpriteGroup {
+class Strumline extends FunkinSpriteGroup {
 	public var noteEvent:FlxTypedSignal<NoteEvent -> Void> = new FlxTypedSignal();
 	public var laneSpacing(default, set):Float = 160;
-	public var lanes:FlxTypedSpriteGroup<Lane>;
+	public var lanes:FunkinTypedSpriteGroup<Lane>;
 	
 	public var strumlineHeight(get, never):Float;
 	public var strumlineWidth(get, never):Float;
@@ -114,7 +114,7 @@ class Strumline extends FlxSpriteGroup {
 	
 	public function new(laneCount:Int = 4, direction:Float = 90, scrollSpeed:Float = 1) {
 		super();
-		this.lanes = new FlxTypedSpriteGroup<Lane>();
+		this.lanes = new FunkinTypedSpriteGroup();
 		this.add(lanes);
 		this.allowInput = true;
 		this.laneCount = laneCount;
@@ -183,10 +183,8 @@ class Strumline extends FlxSpriteGroup {
 				lane.receptor.scale.y *= ratio;
 				lane.receptor.updateHitbox();
 				lane.receptor.spriteOffset.set(0, 0);
-				lane.updateHitbox();
 			}
 			laneSpacing *= ratio;
-			updateHitbox();
 		}
 	}
 	public function center(axes:FlxAxes = XY) { //do Not inline that.

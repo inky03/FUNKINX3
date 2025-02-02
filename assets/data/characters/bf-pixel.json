@@ -2,8 +2,8 @@
   "version": "1.0.1",
   "name": "Boyfriend (Pixel)",
   "assetPath": "characters/bfPixel",
-  "flipX": true,
   "renderType": "multisparrow",
+  "side": "right",
   "singTime": 8.0,
   "isPixel": true,
   "healthIcon": {

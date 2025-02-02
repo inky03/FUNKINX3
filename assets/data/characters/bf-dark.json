@@ -3,11 +3,11 @@
   "name": "Boyfriend (Dark)",
   "renderType": "sparrow",
   "assetPath": "characters/bf_dark",
-  "flipX": true,
   "healthIcon": {
     "id": "bf",
     "flipX": false
   },
+  "side": "right",
   "singTime": 8.0,
   "animations": [
     {

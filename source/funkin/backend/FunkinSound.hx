@@ -68,9 +68,9 @@ class FunkinSound extends FlxSound { // most code adapted from base game's Funki
 		
 		return sound;
 	}
-	static function get_onVolumeChanged():FlxTypedSignal<Float->Void> {
+	static function get_onVolumeChanged():FlxTypedSignal<Float -> Void> {
 		if (_onVolumeChanged == null) {
-			_onVolumeChanged = new FlxTypedSignal<Float->Void>();
+			_onVolumeChanged = new FlxTypedSignal<Float -> Void>();
 			#if (flixel >= "5.9.0")
 			FlxG.sound.onVolumeChange.add((vol:Float) -> _onVolumeChanged.dispatch(vol));
 			#else
@@ -83,7 +83,7 @@ class FunkinSound extends FlxSound { // most code adapted from base game's Funki
 	public function new() {
 		super();
 	}
-	public override function update(elapsed:Float) {
+	public override function update(elapsed:Float):Void {
 		if (!playing && !_scheduled) return;
 		
 		if (_time < 0) {
@@ -94,7 +94,7 @@ class FunkinSound extends FlxSound { // most code adapted from base game's Funki
 			super.update(elapsed);
 		}
 	}
-	public override function play(forceRestart:Bool = false, startTime:Float = 0, ?endTime:Float) {
+	public override function play(forceRestart:Bool = false, startTime:Float = 0, ?endTime:Float):FunkinSound {
 		if (!exists) return this;
 		
 		if (forceRestart) {

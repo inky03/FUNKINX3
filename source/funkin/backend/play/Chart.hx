@@ -1,7 +1,9 @@
 package funkin.backend.play;
 
 import funkin.objects.play.Note;
+import funkin.states.PlayState;
 import funkin.states.CharterState;
+import funkin.backend.rhythm.Event;
 import funkin.backend.rhythm.Conductor;
 import funkin.backend.rhythm.Metronome;
 import funkin.backend.rhythm.TempoChange;
@@ -572,7 +574,7 @@ class Chart {
 		try {
 			var time:Float = Sys.time();
 			var ogg:openfl.media.Sound = Paths.ogg(instPath);
-			if (ogg != null) {
+			if (ogg.length > 0) {
 				inst.loadEmbedded(ogg);
 				songLength = inst.length;
 				instLoaded = true;
@@ -590,7 +592,7 @@ class Chart {
 		return false;
 	}
 	
-	public static function sortByTime(a:TimedEvent, b:TimedEvent) {
+	public static function sortByTime(a:ITimeSortable, b:ITimeSortable) {
 		return Std.int(a.msTime - b.msTime);
 	}
 	public function sort() {
@@ -610,20 +612,26 @@ enum ChartFormat {
 	UNKNOWN;
 }
 
-interface TimedEvent {
-	public var msTime:Float;
-}
-@:structInit class ChartNote implements TimedEvent {
+@:structInit class ChartNote implements ITimeSortable {
 	public var laneIndex:Int;
 	public var msTime:Float = 0;
 	public var kind:String = '';
 	public var msLength:Float = 0;
 	public var player:Bool = true;
 }
-@:structInit class ChartEvent implements TimedEvent {
+@:structInit class ChartEvent implements ITimedEvent<ChartEvent> {
 	public var name:String;
-	public var msTime:Float;
+	public var msTime:Float = 0;
 	public var params:Map<String, Any>;
+	public var func:ChartEvent -> Void = genericFunction;
+	
+	public static function genericFunction(e:ChartEvent) {
+		var chartEvent:ChartEvent = cast e;
+		if (Std.isOfType(FlxG.state, PlayState)) {
+			var game:PlayState = cast FlxG.state;
+			game.triggerEvent(chartEvent);
+		}
+	}
 }
 
 typedef LegacyChartSection = {

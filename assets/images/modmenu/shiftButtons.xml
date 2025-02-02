@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas imagePath="shiftButtons.png">
+	<!-- by emi3 exported in Adobe Flash CS6 (v12.0.0.481) -->
+	<SubTexture name="shift button down0000" x="1" y="92" width="43" height="42" frameX="0" frameY="-1" frameWidth="43" frameHeight="43" rotated="false"/>
+	<SubTexture name="shift button down0001" x="1" y="92" width="43" height="42" frameX="0" frameY="-1" frameWidth="43" frameHeight="43" rotated="false"/>
+	<SubTexture name="shift button down0002" x="1" y="136" width="43" height="42" frameX="0" frameY="-1" frameWidth="43" frameHeight="43" rotated="false"/>
+	<SubTexture name="shift button down0003" x="49" y="91" width="43" height="43"/>
+	<SubTexture name="shift button down0004" x="49" y="91" width="43" height="43"/>
+	<SubTexture name="shift button down0005" x="46" y="136" width="43" height="42" frameX="0" frameY="-1" frameWidth="43" frameHeight="43" rotated="false"/>
+	<SubTexture name="shift button up0000" x="49" y="1" width="46" height="43" frameX="0" frameY="-1" frameWidth="46" frameHeight="44" rotated="false"/>
+	<SubTexture name="shift button up0001" x="49" y="1" width="46" height="43" frameX="0" frameY="-1" frameWidth="46" frameHeight="44" rotated="false"/>
+	<SubTexture name="shift button up0002" x="49" y="46" width="46" height="43" frameX="0" frameY="-1" frameWidth="46" frameHeight="44" rotated="false"/>
+	<SubTexture name="shift button up0003" x="1" y="1" width="46" height="44"/>
+	<SubTexture name="shift button up0004" x="1" y="1" width="46" height="44"/>
+	<SubTexture name="shift button up0005" x="1" y="47" width="46" height="43" frameX="0" frameY="-1" frameWidth="46" frameHeight="44" rotated="false"/>
+</TextureAtlas>

@@ -2,7 +2,7 @@ package funkin.states;
 
 import funkin.objects.Alphabet;
 
-class OptionsState extends funkin.backend.states.FunkinState {
+class OptionsState extends FunkinState {
 	public var target:FlxObject;
 	public var items:FlxTypedGroup<SettingItem>;
 	public var inputEnabled:Bool = true;
@@ -18,7 +18,7 @@ class OptionsState extends funkin.backend.states.FunkinState {
 		super.create();
 		
 		playMusic(MainMenuState.menuMusic);
-		var bg:FunkinSprite = new FunkinSprite().loadTexture('menuBGMagenta');
+		var bg:FunkinSprite = new FunkinSprite().loadTexture('mainmenu/bgMagenta');
 		bg.setGraphicSize(bg.width * 1.1);
 		bg.scrollFactor.set();
 		bg.updateHitbox();
@@ -44,7 +44,6 @@ class OptionsState extends funkin.backend.states.FunkinState {
 	
 	override public function update(elapsed:Float) {
 		super.update(elapsed);
-		DiscordRPC.update();
 		if (!inputEnabled) return;
 		
 		if (FlxG.keys.justPressed.UP) select(-1);
@@ -56,13 +55,13 @@ class OptionsState extends funkin.backend.states.FunkinState {
 			}
 		}
 		if (FlxG.keys.justPressed.ESCAPE) {
-			FlxG.switchState(() -> new MainMenuState());
+			FlxG.switchState(MainMenuState.new);
 		}
 	}
 	
 	public function select(mod:Int = 0) {
 		if (items.length == 0) return;
-		if (mod != 0) FlxG.sound.play(Paths.sound('scrollMenu'), .8);
+		if (mod != 0) FunkinSound.playOnce(Paths.sound('scrollMenu'), .8);
 		
 		items.members[selection].highlight(false);
 		
@@ -88,7 +87,6 @@ class SettingItem extends FlxSpriteGroup {
 		text = new Alphabet(100, 0, name);
 		text.scaleTo(.75, .75);
 		add(text);
-		updateHitbox();
 		
 		this.type = type;
 		switch (type) {

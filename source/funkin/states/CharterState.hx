@@ -1,5 +1,6 @@
 package funkin.states;
 
+import funkin.objects.Character;
 import funkin.objects.play.*;
 import funkin.shaders.RGBSwap;
 import funkin.backend.play.Chart;
@@ -16,7 +17,7 @@ import flixel.util.FlxStringUtil;
 import flixel.input.keyboard.FlxKey;
 import flixel.addons.display.FlxBackdrop;
 
-class CharterState extends funkin.backend.states.FunkinState {
+class CharterState extends FunkinState {
 	public static var genericRGB:RGBSwap;
 	
 	public static var instance:CharterState;
@@ -45,6 +46,9 @@ class CharterState extends funkin.backend.states.FunkinState {
 	var pickedBeat:Float = 0;
 	
 	public var keybinds:Array<Array<FlxKey>> = [];
+	
+	var vocalsSounds:Array<FunkinSound> = [];
+	public var music:FunkinSoundGroup;
 	public var tickSound:FlxSound;
 	public var hitsound:FlxSound;
 	
@@ -68,6 +72,11 @@ class CharterState extends funkin.backend.states.FunkinState {
 	var undoActions:Array<UndoAction> = [];
 	var redoActions:Array<UndoAction> = [];
 	
+	public function new(?chart:Chart) {
+		super();
+		CharterState.chart = chart ?? CharterState.chart ?? Chart.loadChart('test');
+	}
+	
 	override public function create() {
 		super.create();
 		Main.watermark.visible = false;
@@ -76,8 +85,12 @@ class CharterState extends funkin.backend.states.FunkinState {
 		beatHit.add(beatHitEvent);
 		barHit.add(barHitEvent);
 		
+		music = new FunkinSoundGroup();
+		tickSound = FunkinSound.load(Paths.sound('beatTick'));
+		hitsound = FunkinSound.load(Paths.sound('hitsound'));
+		hitsound.volume = .7;
+		
 		genericRGB ??= new RGBSwap(0xb3a9b8, FlxColor.WHITE, 0x333333);
-		chart ??= Chart.loadChart('test');
 		inEditor = true;
 		instance = this;
 		
@@ -159,21 +172,27 @@ class CharterState extends funkin.backend.states.FunkinState {
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
 		FlxG.stage.addEventListener(MouseEvent.MOUSE_MOVE, mouseMoveEvent);
 		
-		if (chart != null) {
-			setWindowTitle();
-			chart.instLoaded = false;
-			var songPaths:Array<String> = ['data/songs/${chart.path}/', 'songs/${chart.path}/'];
-			for (path in songPaths) chart.loadMusic(path, false);
-			if (chart.instLoaded)
-				chart.inst.onComplete = finishChart;
-			
-			scrollSpeed = chart.scrollSpeed;
-			conductorInUse.metronome.tempoChanges = chart.tempoChanges;
-			conductorInUse.syncTracker = chart.instLoaded ? chart.inst : null;
-			
-			for (note in chart.generateNotes(true))
-				queueNote(note);
+		setWindowTitle();
+		
+		chart.instLoaded = false;
+		chart.loadMusic('data/songs/${chart.path}/', false);
+		if (chart.instLoaded) {
+			music.add(chart.inst);
+			music.syncBase = chart.inst;
+			music.onSoundFinished.add((snd:FunkinSound) -> {
+				if (snd == music.syncBase)
+					finishSong();
+			});
+			conductorInUse.syncTracker = chart.inst;
 		}
+		loadVocals(chart.path, chart.audioSuffix);
+		
+		scrollSpeed = chart.scrollSpeed;
+		conductorInUse.metronome.tempoChanges = chart.tempoChanges;
+		
+		for (note in chart.generateNotes(true))
+			queueNote(note);
+		
 		songPaused = true;
 		recalculateNoteCount();
 		charterDisplay.songLength = findSongLength();
@@ -201,23 +220,49 @@ class CharterState extends funkin.backend.states.FunkinState {
 		
 		add(strumlineHighlight);
 		
-		for (i in 0...Math.ceil(findSongLength() / conductorInUse.crochet / 4)) { // todo: actually make this fucking good :sob:
-			var test:MeasureLine = new MeasureLine(strumlines.x - bgPadding, strumlines.y, i, i * 4, 4, strumlines.width + bgPadding * 2, Note.msToDistance(conductorInUse.crochet, visualScrollSpeed));
-			measureLines.add(test);
+		var measureBeats:Array<Float> = conductorInUse.getMeasureBeats(findSongLength());
+		var beatLength:Float = Math.ceil(conductorInUse.convertMeasure(findSongLength(), MS, BEAT));
+		for (measure => beat in measureBeats) {
+			conductorInUse.beat = beat; // todo: fix mid-bar bpm changes...hehe
+			var beatLength:Int = Std.int((measureBeats[measure + 1] ?? beatLength) - beat);
+			var spacing:Float = Note.msToDistance(conductorInUse.crochet, visualScrollSpeed);
+			var line:MeasureLine = new MeasureLine(strumlines.x - bgPadding, strumlines.y, measure, beat, beatLength, strumlines.width + bgPadding * 2, spacing);
+			measureLines.add(line);
 		}
 		
-		tickSound = FunkinSound.load(Paths.sound('beatTick'));
-		hitsound = FunkinSound.load(Paths.sound('hitsound'));
-		hitsound.volume = .7;
+		conductorInUse.songPosition = 0;
+	}
+	
+	public function loadVocals(path:String, audioSuffix:String = '') {
+		vocalsSounds.resize(0);
+		
+		for (chara in [chart.player1, chart.player2, chart.player3]) {
+			var sound:openfl.media.Sound = Character.getVocals(chart.path, chart.audioSuffix, chara);
+			if (sound != null)
+				vocalsSounds.push(FunkinSound.load(sound));
+		}
+		if (vocalsSounds.length == 0) {
+			var sound:openfl.media.Sound = Character.getVocals(chart.path, chart.audioSuffix, '');
+			if (sound != null) {
+				vocalsSounds.push(FunkinSound.load(sound));
+			} else {
+				Log.warning('song vocals not found...');
+			}
+		}
+		for (sound in vocalsSounds) {
+			sound.volume = 0;
+			sound.play().stop();
+			sound.volume = 1;
+			music.add(sound);
+		}
 	}
 	
 	override public function update(elapsed:Float) {
 		if (FlxG.keys.justPressed.ENTER) {
-			chart ??= new Chart('unnamed');
+			var shifted:Bool = FlxG.keys.pressed.SHIFT;
 			chart.tempoChanges = conductorInUse.metronome.tempoChanges;
 			saveToChart(chart);
-			PlayState.chart = chart;
-			FlxG.switchState(new PlayState());
+			FlxG.switchState(() -> new PlayState(chart, shifted));
 			return;
 		}
 		
@@ -360,14 +405,13 @@ class CharterState extends funkin.backend.states.FunkinState {
 			conductorInUse.songPosition += elapsed * msPerSec;
 			restrictConductor();
 			
-			if (chart != null && chart.instLoaded) {
-				if (conductorInUse.songPosition <= 0 && msPerSec < 0) {
-					chart.inst.stop();
-				} else if (msPerSec != 1000 || !scrolling || !chart.inst.playing) {
-					if (!chart.inst.playing)
-						chart.inst.play(true, conductorInUse.songPosition);
-					else
-						chart.inst.time = conductorInUse.songPosition;
+			if (conductorInUse.songPosition <= 0 && msPerSec < 0) {
+				music.stop();
+			} else if (msPerSec != 1000 || !scrolling || !music.playing) {
+				if (!music.playing) {
+					music.play(true, conductorInUse.songPosition);
+				} else {
+					music.time = conductorInUse.songPosition;
 				}
 			}
 			
@@ -423,7 +467,14 @@ class CharterState extends funkin.backend.states.FunkinState {
 		
 		readjustScrollCam();
 		for (line in measureLines) {
-			line.y = strumlines.y + strumlines.height * .5 + Note.msToDistance(conductorInUse.metronome.convertMeasure(line.startTime, BEAT, MS) - conductorInUse.songPosition, visualScrollSpeed);
+			// line.ySpacing = Note.msToDistance(conductorInUse.crochet, visualScrollSpeed);
+			if (Math.abs(line.startTime - conductorInUse.beat) > 16) {
+				if (line.alive) line.kill();
+				continue;
+			}
+			
+			if (!line.alive) line.revive();
+			line.y = strumlines.y + strumlines.height * .5 + Note.msToDistance(conductorInUse.convertMeasure(line.startTime, BEAT, MS) - conductorInUse.songPosition, visualScrollSpeed);
 		}
 		
 		if (!paused)
@@ -440,9 +491,9 @@ class CharterState extends funkin.backend.states.FunkinState {
 
 		conductorInUse.update(elapsed * 1000);
 		
-		curStep = Math.floor(conductorInUse.metronome.step);
-		curBeat = Math.floor(conductorInUse.metronome.beat);
-		curBar = Math.floor(conductorInUse.metronome.bar);
+		curStep = Math.floor(conductorInUse.step);
+		curBeat = Math.floor(conductorInUse.beat);
+		curBar = Math.floor(conductorInUse.bar);
 		
 		if (!songPaused) {
 			if (prevBar != curBar) barHit.dispatch(curBar);
@@ -474,9 +525,9 @@ class CharterState extends funkin.backend.states.FunkinState {
 		}
 		lastMouseY = event.stageY;
 	}
-	public function finishChart() {
+	public function finishSong() {
 		songPaused = true;
-		conductorInUse.songPosition = chart.inst.length;
+		conductorInUse.songPosition = (music.syncBase?.length ?? 0);
 	}
 	public function forEachNote(func:Note -> Void, includeQueued:Bool = false) {
 		for (strumline in strumlines)
@@ -627,15 +678,14 @@ class CharterState extends funkin.backend.states.FunkinState {
 		return scrollSpeed / .7;
 	}
 	public function set_songPaused(isPaused:Bool) {
-		if (chart != null && chart.instLoaded) {
-			if (isPaused) {
-				chart.inst.stop();
-			} else {
-				if (conductorInUse.songPosition >= chart.inst.length)
-					return songPaused = true;
-				chart.inst.play(true, conductorInUse.songPosition);
-			}
+		if (isPaused) {
+			music.stop();
+		} else {
+			if (conductorInUse.songPosition >= (music.syncBase?.length ?? 0))
+				return songPaused = true;
+			music.play(true, conductorInUse.songPosition);
 		}
+		
 		for (strumline in strumlines) {
 			FlxTween.cancelTweensOf(strumline, ['receptorAlpha']);
 			FlxTween.tween(strumline, {receptorAlpha: (isPaused ? .75 : 1)}, .25, {ease: FlxEase.circOut});
@@ -659,7 +709,7 @@ class CharterState extends funkin.backend.states.FunkinState {
 		var noteControlMode:Bool = FlxG.keys.pressed.CONTROL;
 		var scrollMod:Int = 1;
 		var leniency:Float = 1 / 256;
-		var prevBeat:Float = conductorInUse.metronome.beat;
+		var prevBeat:Float = conductorInUse.beat;
 		var quantMultiplier:Float = (quant * .25);
 		var pauseChart:Bool = false;
 		if (noteControlMode) {
@@ -691,23 +741,23 @@ class CharterState extends funkin.backend.states.FunkinState {
 					pauseChart = true;
 					var targetBeat:Float = prevBeat + scrollMod / quantMultiplier;
 					if (Math.abs(prevBeat - Math.round(prevBeat * quantMultiplier) / quantMultiplier) < leniency * 2)
-						conductorInUse.metronome.setBeat(Math.round(targetBeat * quantMultiplier) / quantMultiplier);
+						conductorInUse.beat = Math.round(targetBeat * quantMultiplier) / quantMultiplier;
 					else
-						conductorInUse.metronome.setBeat((scrollMod > 0 ? Math.floor : Math.ceil)(targetBeat * quantMultiplier) / quantMultiplier);
+						conductorInUse.beat = (scrollMod > 0 ? Math.floor : Math.ceil)(targetBeat * quantMultiplier) / quantMultiplier;
 				}
 			case FlxKey.PAGEUP | FlxKey.PAGEDOWN:
 				placeNotes();
 				pauseChart = true;
 				if (key == FlxKey.PAGEUP) scrollMod *= -1;
-				if (Math.abs(conductorInUse.metronome.bar - Std.int(conductorInUse.metronome.bar)) < (1 / quant - .0006))
-					conductorInUse.metronome.setBar(Math.max(0, conductorInUse.metronome.bar + scrollMod));
-				conductorInUse.metronome.setBar((scrollMod < 0 ? Math.floor : Math.ceil)(conductorInUse.metronome.bar));
+				if (Math.abs(conductorInUse.bar - Std.int(conductorInUse.bar)) < (1 / quant - .0006))
+					conductorInUse.bar = Math.max(0, conductorInUse.bar + scrollMod);
+				conductorInUse.bar = (scrollMod < 0 ? Math.floor : Math.ceil)(conductorInUse.bar);
 			case FlxKey.HOME:
 				pauseChart = true;
-				conductorInUse.metronome.setMS(0);
+				conductorInUse.songPosition = 0;
 			case FlxKey.END:
 				pauseChart = true;
-				conductorInUse.metronome.setMS(findSongLength());
+				conductorInUse.songPosition = findSongLength();
 			default:
 		}
 		
@@ -837,7 +887,7 @@ class CharterState extends funkin.backend.states.FunkinState {
 						charterNote.selected = true;
 					}
 					var quantMult:Float = quant / 4;
-					var beatDiff:Float = (Math.round(conductorInUse.metronome.beat * quantMult) / quantMult - generatedNotes[0].beatTime);
+					var beatDiff:Float = (Math.round(conductorInUse.beat * quantMult) / quantMult - generatedNotes[0].beatTime);
 					for (note in generatedNotes) {
 						note.beatTime += beatDiff;
 						queueNote(note);
@@ -878,9 +928,9 @@ class CharterState extends funkin.backend.states.FunkinState {
 		}
 	}
 	public function restrictConductor() {
-		var limitTime:Float = Math.max(conductorInUse.metronome.ms, 0);
-		if (chart != null && chart.instLoaded)
-			limitTime = Math.min(limitTime, chart.inst.length);
+		var limitTime:Float = Math.max(conductorInUse.songPosition, 0);
+		limitTime = Math.min(limitTime, music.syncBase?.length ?? 0);
+		
 		conductorInUse.songPosition = limitTime;
 	}
 	public function placeNotes() {
@@ -928,7 +978,7 @@ class CharterState extends funkin.backend.states.FunkinState {
 		var matchingNote:Null<CharterNote> = null;
 		for (note in lane.notes) {
 			if (note.isHoldPiece) continue;
-			if (Math.abs(note.beatTime - conductorInUse.metronome.beat) < 1 / quantMultiplier - .0012) {
+			if (Math.abs(note.beatTime - conductorInUse.beat) < 1 / quantMultiplier - .0012) {
 				matchingNote = cast note;
 				break;
 			}
@@ -936,7 +986,7 @@ class CharterState extends funkin.backend.states.FunkinState {
 		if (matchingNote == null) {
 			hitsound.play(true);
 			var isPlayer:Bool = (strumlineId == 0);
-			var snappedBeat:Float = Math.round(conductorInUse.metronome.beat * quantMultiplier) / quantMultiplier;
+			var snappedBeat:Float = Math.round(conductorInUse.beat * quantMultiplier) / quantMultiplier;
 			var note:CharterNote = new CharterNote(isPlayer, 0, data);
 			heldNotes[keybind] = note;
 			note.beatTime = snappedBeat;
@@ -983,7 +1033,7 @@ class CharterState extends funkin.backend.states.FunkinState {
 	}
 	public function updateHolds() {
 		var quantMultiplier:Float = (quant * .25);
-		var snappedBeat:Float = Math.round(conductorInUse.metronome.beat * quantMultiplier) / quantMultiplier;
+		var snappedBeat:Float = Math.round(conductorInUse.beat * quantMultiplier) / quantMultiplier;
 		for (note in heldNotes) {
 			if (note == null) continue;
 			
@@ -1140,6 +1190,7 @@ class MeasureLine extends FlxSpriteGroup {
 	
 	public function set_measureBeats(newBeats:Int) {
 		if (measureBeats == newBeats) return newBeats;
+		
 		while (lines.length > 0 && lines.length >= newBeats) {
 			var line = lines.members[0];
 			lines.remove(line, true);
@@ -1154,8 +1205,9 @@ class MeasureLine extends FlxSpriteGroup {
 				line.spriteOffset.y = .5;
 				line.active = false;
 				lines.add(line);
-			} else
-				line = cast lines.members[i];
+			} else {
+				line = lines.members[i];
+			}
 			line.y = i * ySpacing;
 			line.setGraphicSize(width, isBar ? 12 : 6);
 			line.alpha = (isBar ? .8 : .5);
@@ -1167,15 +1219,15 @@ class MeasureLine extends FlxSpriteGroup {
 	}
 	public function set_ySpacing(newSpacing:Float) {
 		if (ySpacing == newSpacing) return newSpacing;
+		
 		var i:Int = 0;
-		for (line in lines) {
-			line.y = i * newSpacing;
-			i ++;
-		}
+		for (line in lines)
+			line.y = (i ++) * newSpacing;
 		return ySpacing = newSpacing;
 	}
 	public function set_lineWidth(newWidth:Float) {
 		if (lineWidth == newWidth) return newWidth;
+		
 		for (line in lines) {
 			line.setGraphicSize(newWidth, line.height);
 			line.updateHitbox();
@@ -1227,10 +1279,11 @@ class CharterPopUp extends Sprite {
 	}
 }
 class CharterDisplay extends Sprite {
-	public var metronomeText:TextField;
+	public var funnyQuarterNote:Bitmap;
+	public var conductorText:TextField;
 	public var noteInfoText:TextField;
 	public var songPosText:TextField;
-	public var bpmInfoText:TextField;
+	public var metronomeText:TextField;
 	public var background:Bitmap;
 	
 	public var conductor:Conductor;
@@ -1251,18 +1304,21 @@ class CharterDisplay extends Sprite {
 		background.alpha = .6;
 		addChild(background);
 		
-		metronomeText = new TextField();
-		metronomeText.defaultTextFormat = metronomeTf;
+		funnyQuarterNote = new Bitmap(Paths.bmd('charter/quarterNote'), null, true);
+		funnyQuarterNote.x = 13;
+		addChild(funnyQuarterNote);
+		conductorText = new TextField();
+		conductorText.defaultTextFormat = metronomeTf;
 		noteInfoText = new TextField();
 		noteInfoText.defaultTextFormat = new TextFormat(Paths.ttf('vcr'), 11, -1);
 		noteInfoText.defaultTextFormat.letterSpacing = -1;
 		noteInfoText.alpha = .75;
 		songPosText = new TextField();
 		songPosText.defaultTextFormat = new TextFormat(Paths.ttf('vcr'), 12, -1);
-		bpmInfoText = new TextField();
-		bpmInfoText.defaultTextFormat = new TextFormat(Paths.ttf('vcr'), 18, -1);
+		metronomeText = new TextField();
+		metronomeText.defaultTextFormat = new TextFormat(Paths.ttf('vcr'), 18, -1);
 		
-		for (text in [metronomeText, songPosText, noteInfoText, bpmInfoText]) {
+		for (text in [conductorText, songPosText, noteInfoText, metronomeText]) {
 			text.x = 10;
 			text.autoSize = LEFT;
 			text.multiline = true;
@@ -1317,18 +1373,17 @@ class CharterDisplay extends Sprite {
 		}
 	}
 	public function updateMetronomeInfo() {
-		var metronome:Metronome = conductor.metronome;
 		var charter:CharterState = CharterState.instance;
 		
-		var bpmInfoTextT:String = '${metronome.bpm} bpm\n${metronome.timeSignature.toString()}';
-		var songPosTextT:String = FlxStringUtil.formatTime(metronome.ms * .001, true) + ' / ' + FlxStringUtil.formatTime(songLength * .001, true);
-		var metronomeTextT:String = 'Measure: ${Math.floor(metronome.bar)}\nBeat: ${Math.floor(metronome.beat)}\nStep: ${Math.floor(metronome.step)}';
+		var metronomeTextT:String = '  = ${conductor.bpm}\n${conductor.timeSignature.toString()}';
+		var songPosTextT:String = FlxStringUtil.formatTime(conductor.songPosition * .001, true) + ' / ' + FlxStringUtil.formatTime(songLength * .001, true);
+		var conductorTextT:String = 'Measure: ${Math.floor(conductor.bar)}\nBeat: ${Math.floor(conductor.beat)}\nStep: ${Math.floor(conductor.step)}';
 		var noteInfoTextT:String = '${charter.hitNoteCount} notes (${charter.fullNoteCount} obj)';
 		
 		if (metronomeText.text != metronomeTextT) metronomeText.text = metronomeTextT;
+		if (conductorText.text != conductorTextT) conductorText.text = conductorTextT;
 		if (noteInfoText.text != noteInfoTextT) noteInfoText.text = noteInfoTextT;
 		if (songPosText.text != songPosTextT) songPosText.text = songPosTextT;
-		if (bpmInfoText.text != bpmInfoTextT) bpmInfoText.text = bpmInfoTextT;
 	}
 	
 	override function __enterFrame(deltaTime:Float) {
@@ -1339,12 +1394,12 @@ class CharterDisplay extends Sprite {
 		var h:Float = FlxG.stage.window.height;
 		songPosText.y = h - songPosText.textHeight - 12;
 		noteInfoText.y = h - noteInfoText.textHeight - 12;
-		metronomeText.y = h - metronomeText.textHeight - 32;
-		var infoHeight:Float = songPosText.textHeight + metronomeText.textHeight + 32;
+		conductorText.y = h - conductorText.textHeight - 32;
+		var infoHeight:Float = songPosText.textHeight + conductorText.textHeight + 32;
 		
-		bpmInfoText.y = h - infoHeight - bpmInfoText.textHeight;
-		background.scaleX = Math.max(Math.max(songPosText.textWidth, metronomeText.textWidth) + 24, 120);
-		background.scaleY = infoHeight + bpmInfoText.textHeight + 10;
+		funnyQuarterNote.y = metronomeText.y = h - infoHeight - metronomeText.textHeight;
+		background.scaleX = Math.max(Math.max(songPosText.textWidth, conductorText.textWidth) + 24, 120);
+		background.scaleY = infoHeight + metronomeText.textHeight + 10;
 		background.y = h - background.scaleY;
 	}
 }

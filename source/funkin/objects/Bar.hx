@@ -1,16 +1,20 @@
 package funkin.objects;
 
+typedef BarBounds = {
+	var min:Float;
+	var max:Float;
+}
 class Bar extends FlxSpriteGroup {
 	public var overlay:FunkinSprite;
 	public var leftBar:FunkinSprite;
 	public var rightBar:FunkinSprite;
 	
-	public var targetPercent:Float;
+	public var targetPercent:Float = 100;
 	public var percent(default, set):Float;
 	public var percentLerp:Float = .15 * 60;
 	public var valueFunc:Bar -> Float = null;
 	
-	public var bounds:Dynamic = {min: 0, max: 1};
+	public var bounds:BarBounds = {min: 0, max: 1};
 	public var barRect:FlxRect = new FlxRect(4, 4);
 	public var barCenter:FlxPoint = new FlxPoint();
 	
@@ -21,18 +25,17 @@ class Bar extends FlxSpriteGroup {
 		overlay = new FunkinSprite().loadTexture(overlayImage);
 		leftBar = new FunkinSprite().makeGraphic(Std.int(overlay.width), Std.int(overlay.height), -1);
 		rightBar = new FunkinSprite().makeGraphic(Std.int(overlay.width), Std.int(overlay.height), -1);
+		rightBar.clipRect = new FlxRect();
+		leftBar.clipRect = new FlxRect();
 		add(overlay);
 		add(leftBar);
 		add(rightBar);
-		updateHitbox();
 		valueFunc = valueFunction;
 		
 		barRect.width = leftBar.width - barRect.x * 2;
 		barRect.height = leftBar.height - barRect.y * 2;
-		leftBar.clipRect = new FlxRect().copyFrom(barRect);
-		rightBar.clipRect = new FlxRect().copyFrom(barRect);
-		targetPercent = 50;
-		percent = targetPercent;
+		percent = updateTargetPercent();
+		updateBars();
 		setColors();
 	}
 	public function loadTexture(overlayImage:String = 'healthBar'):Bar {
@@ -59,9 +62,9 @@ class Bar extends FlxSpriteGroup {
 	
 	public override function update(elapsed:Float) {
 		super.update(elapsed);
-		if (valueFunc != null) targetPercent = FlxMath.remapToRange(valueFunc(this), bounds.min, bounds.max, 0, 100);
+		updateTargetPercent();
 		percent = Util.smoothLerp(percent, targetPercent, percentLerp * elapsed);
-		barCenter.set(leftBar.x + leftBar.clipRect.x + leftBar.clipRect.width, y + height * .5);
+		updateBarCenter();
 	}
 	
 	function set_percent(newPercent:Float) {
@@ -76,7 +79,15 @@ class Bar extends FlxSpriteGroup {
 		rightBar.setGraphicSize(overlay.width, overlay.height);
 		leftBar.updateHitbox();
 		rightBar.updateHitbox();
+		
+		barRect.width = leftBar.width - barRect.x * 2;
+		barRect.height = leftBar.height - barRect.y * 2;
 		updateBars();
+	}
+	function updateTargetPercent():Float {
+		if (valueFunc != null)
+			return targetPercent = FlxMath.remapToRange(valueFunc(this), bounds.min, bounds.max, 0, 100);
+		return targetPercent;
 	}
 	public function updateBars() {
 		var fPercent:Float = (leftToRight ? 100 - percent : percent) * .01;
@@ -90,7 +101,13 @@ class Bar extends FlxSpriteGroup {
 		rightBar.clipRect.x = barRect.x + leftWidth;
 		rightBar.clipRect.width = barRect.width - leftWidth;
 		
-		leftBar.clipRect = leftBar.clipRect;
+		rightBar.clipRect.height = leftBar.clipRect.height = barRect.height;
 		rightBar.clipRect = rightBar.clipRect;
+		leftBar.clipRect = leftBar.clipRect;
+		
+		updateBarCenter();
+	}
+	inline function updateBarCenter() {
+		barCenter.set(leftBar.x + leftBar.clipRect.x + leftBar.clipRect.width, leftBar.y + leftBar.height * .5);
 	}
 }

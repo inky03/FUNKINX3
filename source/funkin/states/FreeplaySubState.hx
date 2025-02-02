@@ -8,7 +8,7 @@ import flixel.util.FlxSpriteUtil;
 import flixel.util.FlxSignal;
 import flixel.util.FlxSort;
 
-class FreeplaySubState extends funkin.backend.states.FunkinSubState {
+class FreeplaySubState extends FunkinState {
 	public var inputEnabled:Bool = false;
 	public static var selection:Int = 0;
 
@@ -139,7 +139,7 @@ class FreeplaySubState extends funkin.backend.states.FunkinSubState {
 	}
 }
 
-class BackingCard extends FlxSpriteGroup {
+class BackingCard extends FunkinSpriteGroup {
 	public var back:FunkinSprite;
 	public var glow:FunkinSprite;
 	public var orangeBack:FunkinSprite;
@@ -161,7 +161,6 @@ class BackingCard extends FlxSpriteGroup {
 		glow = new FunkinSprite(-30, -30).loadTexture('freeplay/cardGlow');
 		glow.blend = BlendMode.ADD;
 		glow.visible = false;
-		updateHitbox();
 
 		var screaming:String = 'BOYFRIEND';
 		scrollingTexts.push(new BGScrollingText(0, 220, screaming, FlxG.width * .5, false, 60)); // this is so dumbass
@@ -181,7 +180,7 @@ class BackingCard extends FlxSpriteGroup {
 		scrollingTexts[4].color = 0xfff383;
 		scrollingTexts[4].speed = 6.8;
 		scrollingTexts[5].speed = 3.5;
-
+		
 		for (text in scrollingTexts) {
 			text.visible = false;
 			add(text);
