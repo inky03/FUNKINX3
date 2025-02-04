@@ -10,6 +10,7 @@ import funkin.backend.play.Scoring;
 import funkin.backend.play.Chart;
 import funkin.objects.CharacterGroup;
 import funkin.objects.Character;
+import funkin.objects.play.Note;
 import funkin.objects.play.*;
 import funkin.objects.*;
 
@@ -53,7 +54,7 @@ class PlayState extends FunkinState {
 	public var hudZoomIntensity:Float = 2;
 	
 	public static var chart:Chart = null;
-	public var notes:Array<Note> = [];
+	public var notes:Array<ChartNote> = [];
 	public var songName:String;
 	public var simple:Bool;
 	
@@ -109,13 +110,13 @@ class PlayState extends FunkinState {
 		music = new FunkinSoundGroup();
 		songName = chart.name;
 		
-		var genNotes:Array<Note> = chart.generateNotes();
+		// var genNotes:Array<Note> = chart.generateNotes();
 		
 		if (!simple) {
 			var loadedEvents:Array<String> = [];
 			var noteKinds:Array<String> = [];
-			for (note in genNotes) {
-				var noteKind:String = note.noteKind;
+			for (note in chart.notes) {
+				var noteKind:String = note.kind;
 				if (noteKind.trim() != '' && !noteKinds.contains(noteKind)) {
 					hscripts.loadFromPaths('scripts/notekinds/$noteKind.hx');
 					noteKinds.push(noteKind);
@@ -229,7 +230,7 @@ class PlayState extends FunkinState {
 			playerStrumline.screenCenter(X);
 			opponentStrumline.fitToSize(playerStrumline.leftBound - 50 - opponentStrumline.leftBound, 0, Y);
 		}
-		for (note in genNotes) {
+		for (note in chart.notes) {
 			var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
 			strumline.queueNote(note);
 			notes.push(note);
@@ -310,6 +311,7 @@ class PlayState extends FunkinState {
 				Paths.image(img);
 		}
 		conductorInUse.beat = (playCountdown ? -5 : -1);
+		update(0);
 	}
 	
 	inline function flipMembers(grp:FlxTypedSpriteGroup<Dynamic>) {
@@ -367,7 +369,7 @@ class PlayState extends FunkinState {
 			FlxG.switchState(FreeplayState.new);
 			return;
 		} else if (FlxG.keys.justPressed.SEVEN) {
-			FlxG.switchState(() -> new CharterState(chart));
+			// FlxG.switchState(() -> new CharterState(chart));
 			return;
 		}
 		
@@ -441,10 +443,14 @@ class PlayState extends FunkinState {
 			return;
 		}
 		
-		iconP1.offset.x = 0;
-		iconP2.offset.x = iconP2.frameWidth;
-		iconP2.setPosition(healthBar.barCenter.x - 60 + iconP2.width * .5, healthBar.barCenter.y - iconP2.height * .5);
-		iconP1.setPosition(healthBar.barCenter.x + 60 - iconP1.width * .5, healthBar.barCenter.y - iconP1.height * .5);
+		if (iconP1.autoUpdatePosition) {
+			iconP1.offset.x = 0;
+			iconP1.setPosition(healthBar.barCenter.x + 60 - iconP1.width * .5, healthBar.barCenter.y - iconP1.height * .5);
+		}
+		if (iconP2.autoUpdatePosition) {
+			iconP2.offset.x = iconP2.frameWidth;
+			iconP2.setPosition(healthBar.barCenter.x - 60 + iconP2.width * .5, healthBar.barCenter.y - iconP2.height * .5);
+		}
 		super.update(elapsed);
 		
 		syncMusic();
@@ -794,16 +800,17 @@ class PlayState extends FunkinState {
 		return maxHealth = newHealth;
 	}
 	public dynamic function set_health(newHealth:Float) {
-		newHealth = FlxMath.bound(newHealth, 0, maxHealth);
+		newHealth = Util.clamp(newHealth, 0, maxHealth);
 		switch (newHealth) {
 			case (_ <= .15) => true:
-				iconP1.state = LOSING;
-				iconP2.state = WINNING;
+				if (iconP1.autoUpdateState) iconP1.state = LOSING;
+				if (iconP2.autoUpdateState) iconP2.state = WINNING;
 			case (_ >= maxHealth - .15) => true:
-				iconP1.state = WINNING;
-				iconP2.state = LOSING;
+				if (iconP1.autoUpdateState) iconP1.state = WINNING;
+				if (iconP2.autoUpdateState) iconP2.state = LOSING;
 			default:
-				iconP1.state = iconP2.state = NEUTRAL;
+				if (iconP1.autoUpdateState) iconP1.state = NEUTRAL;
+				if (iconP2.autoUpdateState) iconP2.state = NEUTRAL;
 		}
 		if (newHealth <= 0 && !godmode && !dead)
 			die(false);

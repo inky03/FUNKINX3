@@ -1,6 +1,7 @@
 package funkin.objects.play;
 
 import funkin.shaders.RGBSwap;
+import funkin.objects.play.Note;
 import funkin.backend.play.Scoring;
 import funkin.backend.play.NoteEvent;
 import funkin.backend.rhythm.Conductor;
@@ -39,7 +40,7 @@ class Lane extends FunkinSpriteGroup {
 	public var notes:FunkinTypedSpriteGroup<Note>;
 	public var noteSparks:FunkinTypedSpriteGroup<NoteSpark>;
 	public var noteSplashes:FunkinTypedSpriteGroup<NoteSplash>;
-	public var queue:Array<Note> = [];
+	public var queue:Array<ChartNote> = [];
 
 	public var selfDraw:Bool = false;
 	public var topMembers:Array<FlxSprite> = [];
@@ -63,7 +64,7 @@ class Lane extends FunkinSpriteGroup {
 	}
 	public function new(x:Float, y:Float, data:Int) {
 		super(x, y);
-
+		
 		inputFilter = (note:Note) -> {
 			var time:Float = note.msTime - conductorInUse.songPosition;
 			return (time <= note.hitWindow + extraWindow) && (time >= -note.hitWindow);
@@ -72,7 +73,7 @@ class Lane extends FunkinSpriteGroup {
 		var splashColors:Array<FlxColor> = NoteSplash.makeSplashColors(Note.directionColors[data][0]);
 		rgbShader = new RGBSwap(Note.directionColors[data][0], FlxColor.WHITE, Note.directionColors[data][1]);
 		splashRGB = new RGBSwap(splashColors[0], FlxColor.WHITE, splashColors[1]);
-
+		
 		noteCover = new NoteCover(data);
 		receptor = new Receptor(0, 0, data);
 		notes = new FunkinTypedSpriteGroup();
@@ -98,14 +99,14 @@ class Lane extends FunkinSpriteGroup {
 		var early:Bool;
 		var limit:Int = 50;
 		while (i < queue.length) {
-			var note:Note = queue[i];
+			var note:ChartNote = queue[i];
 			if (note == null) {
 				Log.warning('note was null in lane $noteData!!');
 				queue.remove(note);
 				continue;
 			}
 			early = (note.msTime - conductorInUse.songPosition > spawnRadius);
-			if (!early && (oneWay || (note.endMs - conductorInUse.songPosition) >= -spawnRadius)) {
+			if (!early && (oneWay || (note.msTime + note.msLength - conductorInUse.songPosition) >= -spawnRadius)) {
 				queue.remove(note);
 				insertNote(note);
 				limit --;
@@ -126,7 +127,7 @@ class Lane extends FunkinSpriteGroup {
 		while (i > 0) {
 			i --;
 			var note:Note = notes.members[i];
-			if (note == null) continue;
+			if (note == null || !note.alive) continue;
 			updateNote(note);
 		}
 	}
@@ -147,13 +148,15 @@ class Lane extends FunkinSpriteGroup {
 			FlxCamera._defaultCameras = oldDefaultCameras;
 		}
 	}
-	public function forEachNote(func:Note -> Void, includeQueued:Bool = false) {
+	public function forEachNote(func:ChartNote -> Void, includeQueued:Bool = false) {
 		if (includeQueued) {
 			for (note in queue)
 				func(note);
 		}
-		for (note in notes)
-			func(note);
+		for (note in notes) {
+			if (note.alive && note.chartNote != null)
+				func(note.chartNote);
+		}
 	}
 	
 	public function fireInput(key:FlxKey, pressed:Bool):Bool {
@@ -169,9 +172,9 @@ class Lane extends FunkinSpriteGroup {
 			held = false;
 			receptor.playAnimation('static', true);
 			if (heldNote != null) {
-				killSustainsOf(heldNote);
-				heldNote.consumed = true;
-				heldNote = null;
+				var note:Note = heldNote;
+				_noteEvent(basicEvent(RELEASED, note));
+				killNote(note);
 			}
 		}
 		return true;
@@ -187,18 +190,26 @@ class Lane extends FunkinSpriteGroup {
 	public function getHighestNote(?filter:Note -> Bool) {
 		var highNote:Null<Note> = null;
 		for (note in notes) {
+			if (!note.alive) continue;
+			
 			var valid:Bool = (filter == null ? true : filter(note));
-			var canHit:Bool = (note.canHit && !note.isHoldPiece && valid);
+			var canHit:Bool = (note.canHit && !note.goodHit && valid);
 			if (!canHit) continue;
-			if (highNote == null || (note.hitPriority >= highNote.hitPriority || (note.hitPriority == highNote.hitPriority && note.msTime < highNote.msTime)))
+			if (highNote == null || (note.hitPriority > highNote.hitPriority || (note.hitPriority == highNote.hitPriority && note.msTime < highNote.msTime)))
 				highNote = note;
 		}
 		return highNote;
 	}
 	public function getAllNotes() {
-		var notes:Array<Note> = [];
-		for (note in this.notes) notes.push(note);
-		for (note in this.queue) notes.push(note);
+		var notes:Array<ChartNote> = [];
+		
+		for (note in this.queue)
+			notes.push(note);
+		for (note in this.notes) {
+			if (note.alive && note.chartNote != null)
+				notes.push(note.chartNote);
+		}
+		
 		return notes;
 	}
 	public function resetLane() {
@@ -230,7 +241,7 @@ class Lane extends FunkinSpriteGroup {
 		return spark;
 	}
 	
-	public function queueNote(note:Note, sorted:Bool = false):Note {
+	public function queueNote(note:ChartNote, sorted:Bool = false):ChartNote {
 		if (!queue.contains(note)) {
 			if (sorted) {
 				for (i => otherNote in queue) {
@@ -240,12 +251,11 @@ class Lane extends FunkinSpriteGroup {
 					}
 				}
 			}
-			note.lane = this;
 			queue.push(note);
 		}
 		return note;
 	}
-	public function dequeueNote(note:Note) {
+	public function dequeueNote(note:ChartNote) {
 		queue.remove(note);
 	}
 	public function clearNotes() {
@@ -256,57 +266,58 @@ class Lane extends FunkinSpriteGroup {
 	}
 	public function updateNote(note:Note) {
 		note.followLane(this, scrollSpeed);
-		if (note.ignore) return;
-		if ((cpu || (held && note.isHoldPiece)) && conductorInUse.songPosition >= note.msTime && !note.lost && note.canHit) {
+		
+		if (note.ignore)
+			return;
+		
+		var killingNote:Bool = false;
+		var songPos:Float = conductorInUse.songPosition;
+		if ((cpu || (held && note.goodHit)) && songPos >= note.msTime && !note.lost && note.canHit) {
 			if (!note.goodHit)
 				hitNote(note, false);
-			var canKillNote:Bool = (conductorInUse.songPosition >= note.endMs);
-			if (note.isHoldPiece) {
-				var holdEvent:NoteEvent = basicEvent(canKillNote ? RELEASED : HELD, note);
-				_noteEvent(holdEvent);
-			}
-			if (canKillNote) {
+			
+			if (songPos >= note.endMs)
+				note.consumed = killingNote = true;
+			
+			_noteEvent(basicEvent(HELD, note));
+			
+			if (killingNote) {
+				_noteEvent(basicEvent(RELEASED, note));
 				killNote(note);
 				return;
 			}
 		}
+		
 		var canDespawn:Bool = !note.preventDespawn;
-		if (note.lost || note.goodHit || note.isHoldPiece) {
-			if (canDespawn && (note.endMs - conductorInUse.songPosition) < -spawnRadius) {
-				if (!oneWay) // bye bye note
-					queue.push(note);
-				killNote(note);
-			}
+		if (note.lost || note.goodHit) {
+			if (canDespawn && (note.endMs - conductorInUse.songPosition) < -spawnRadius)
+				killNote(note, !oneWay);
 		} else {
 			if (conductorInUse.songPosition - hitWindow > note.msTime) {
 				note.lost = true;
 				_noteEvent(basicEvent(LOST, note));
 			}
 		}
-		if (!oneWay && (note.msTime - conductorInUse.songPosition) > spawnRadius) {
-			queue.push(note);
-			killNote(note);
-		}
-	}
-	public function insertNote(note:Note, pos:Int = -1) {
-		if (notes.members.contains(note)) return;
-		if (note.parent != null && note.parent.consumed) return;
 		
-		note.shader ??= rgbShader.shader;
-		note.hitWindow = hitWindow;
+		if (!oneWay && (note.msTime - conductorInUse.songPosition) > spawnRadius)
+			killNote(note, true);
+	}
+	public function generateNote(songNote:ChartNote):Note {
+		return new Note(songNote, conductorInUse);
+	}
+	public function insertNote(songNote:ChartNote, pos:Int = 0) {
+		var note:Note = notes.recycle(Note, () -> generateNote(songNote));
+		
 		note.lane = this;
-
+		note.chartNote = songNote;
+		note.hitWindow = hitWindow;
+		
+		note.reload();
+		note.shader = rgbShader.shader;
 		note.scale.copyFrom(receptor.scale);
 		note.updateHitbox();
-		note.revive();
 		updateNote(note);
-		if (pos < 0) {
-			pos = 0;
-			for (note in notes) {
-				if (note.isHoldPiece) pos ++;
-				else break;
-			}
-		}
+		
 		notes.insert(pos, note);
 		_noteEvent(basicEvent(SPAWNED, note));
 	}
@@ -316,23 +327,15 @@ class Lane extends FunkinSpriteGroup {
 		var event:NoteEvent = basicEvent(HIT, note);
 		_noteEvent(event);
 		
-		if (kill && !note.ignore && !event.cancelled)
+		if (kill && !note.isHoldNote && !note.ignore && !event.cancelled)
 			killNote(note);
 	}
-	public function killNote(note:Note) {
+	public function killNote(note:Note, requeue:Bool = false) {
+		if (requeue)
+			queue.push(note.chartNote);
+		
 		note.kill();
-		notes.remove(note, true);
 		_noteEvent(basicEvent(DESPAWNED, note));
-	}
-	public function killSustainsOf(note:Note) {
-		for (child in note.children) {
-			if (!child.alive)
-				continue;
-			child.lost = true;
-			child.canHit = false;
-			_noteEvent(basicEvent(RELEASED, child));
-			killNote(child);
-		}
 	}
 	
 	public override function get_width()
