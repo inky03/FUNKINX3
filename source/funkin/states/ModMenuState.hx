@@ -74,6 +74,9 @@ class ModMenuState extends FunkinState {
 			capsule.updateSelected(true);
 		}
 		shiftCapsules();
+
+		DiscordRPC.presence.details = 'In the mod menu';
+		DiscordRPC.dirty = true;
 	}
 	
 	public function stepHitEvent(step:Int) {
@@ -295,6 +298,7 @@ class ModPane extends FunkinSpriteGroup {
 	public var portrait:FunkinSprite;
 	public var optionBox:FunkinSprite;
 	
+	public var capsule:ModCapsule;
 	public var globalTip:ModPaneTip;
 	
 	public function new(x:Float = 0, y:Float = 0) {
@@ -327,7 +331,9 @@ class ModPane extends FunkinSpriteGroup {
 		add(descText);
 	}
 	public function updateWithCapsule(capsule:ModCapsule) {
-		if (capsule == null) return;
+		var capsuleMatch:Bool = (this.capsule == capsule);
+		this.capsule = capsule;
+		if (capsule == null || capsuleMatch) return;
 		
 		portrait.loadGraphicFromSprite(capsule.portrait);
 		portrait.setGraphicSize(105);
@@ -341,7 +347,7 @@ class ModPane extends FunkinSpriteGroup {
 			
 			var info:ModInfo = capsule.mod.info;
 			if (info != null) {
-				descText.text = info.description;
+				descText.text = info.description ?? '';
 			}
 		} else {
 			modText.text = 'Unnamed';
@@ -352,12 +358,13 @@ class ModPane extends FunkinSpriteGroup {
 		
 		// portrait.alpha = 0;
 		// portrait.x = pane.x + 28;
+		var targetColor:FlxColor = capsule.capsuleColor;
 		FlxTween.cancelTweensOf(pane);
 		FlxTween.cancelTweensOf(portrait);
 		FlxTween.cancelTweensOf(optionBox);
 		FlxTween.shake(portrait, .04, .13);
-		FlxTween.color(pane, .15, pane.color, capsule.capsuleColor);
-		FlxTween.color(optionBox, .15, pane.color, capsule.capsuleColor);
+		FlxTween.color(pane, .15, pane.color, targetColor);
+		FlxTween.color(optionBox, .15, pane.color, targetColor);
 		// FlxTween.tween(portrait, {x: pane.x + 38, alpha: 1}, .3, {ease: FlxEase.circOut});
 	}
 }
@@ -484,14 +491,17 @@ class ModCapsule extends FunkinSpriteGroup {
 			loadModPortrait(newMod.directory);
 			
 			var color:Array<Int> = newMod.info?.color;
-			if (color != null)
-				capsule.color = FlxColor.fromRGB(color[0], color[1], color[2]);
+			if (color != null) {
+				capsuleColor = FlxColor.fromRGB(color[0], color[1], color[2]);
+			} else {
+				capsuleColor = FlxColor.WHITE;
+			}
 		} else {
 			loadModPortrait();
 			updateModText('Unknown');
-			capsule.color = FlxColor.WHITE;
+			capsuleColor = FlxColor.WHITE;
 		}
-		capsuleColor = capsule.color;
+		capsule.color = capsuleColor;
 		return mod = newMod;
 	}
 	function get_enabled():Bool {

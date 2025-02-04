@@ -156,7 +156,11 @@ class Paths {
 		var bmd:BitmapData = null;
 		#if !SOFT_ASSETS
 		if (assetKey == sharedPath(bmdKey, library) && OFLAssets.exists(assetKey, IMAGE)) {
-			return OFLAssets.getBitmapData(assetKey);
+			try {
+				return OFLAssets.getBitmapData(assetKey);
+			} catch (e:haxe.Exception) {
+				return null;
+			}
 		} else
 		#end
 		{
@@ -177,7 +181,11 @@ class Paths {
 
 		#if !SOFT_ASSETS
 		if (assetKey == sharedPath(sndKey, library) && OFLAssets.exists(assetKey, SOUND)) {
-			return (isMusic ? OFLAssets.getMusic : OFLAssets.getSound)(assetKey);
+			try {
+				return (isMusic ? OFLAssets.getMusic : OFLAssets.getSound)(assetKey);
+			} catch (e:haxe.Exception) {
+				assetKey = null;
+			}
 		} else
 		#end
 		if (assetKey == null) {

@@ -12,6 +12,7 @@ class CrashState extends FlxState {
 	public static var stack:Array<StackItem>;
 	public static var errorMessage:String;
 	static var caughtError:Bool = false;
+	static var inState:Bool = false;
 	
 	public var reportPath:String;
 	public var windowText:FlxText;
@@ -22,6 +23,8 @@ class CrashState extends FlxState {
 	}
 	
 	public override function create() {
+		inState = true;
+
 		Paths.trackedAssets.resize(0);
 		Paths.clean(); // CLEAR CACHE
 		
@@ -34,7 +37,7 @@ class CrashState extends FlxState {
 		function loadCrashAsset(sprite:FunkinSprite, ?stack:Array<StackItem>) {
 			var culprit:String = 'haxe';
 			
-			if (stack != null) {
+			if (stack != null && stack[0] != null) {
 				switch (stack[0]) {
 					case FilePos(s, file, _, _):
 						switch (s) {
@@ -108,10 +111,7 @@ class CrashState extends FlxState {
 		bigText.alignment = CENTER;
 		add(bigText);
 		
-		FlxG.stage.addEventListener(MouseEvent.MOUSE_WHEEL, mouseScrollEvent);
-		
 		FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/miss${FlxG.random.int(1, 3)}'));
-		FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/'));
 	}
 	function quickText(x:Float, y:Float, w:Float, str:String, size:Int = 24, color:FlxColor = FlxColor.BLACK):FlxText {
 		var text:FlxText = new FlxText(x, y, w, str);
@@ -121,6 +121,8 @@ class CrashState extends FlxState {
 	}
 	
 	override public function update(elapsed:Float) {
+		mouseScrollEvent(FlxG.mouse.wheel);
+
 		if (FlxG.keys.justPressed.ENTER) {
 			/*#if hl
 			@:privateAccess final exePath:String = Sys.makePath(Sys.sys_exe_path());
@@ -140,11 +142,11 @@ class CrashState extends FlxState {
 		super.update(elapsed);
 	}
 	
-	public function mouseScrollEvent(e:MouseEvent) {
-		if (!FlxG.mouse.overlaps(windowText)) return;
+	public function mouseScrollEvent(delta:Int = 0) {
+		if (delta == 0 || !FlxG.mouse.overlaps(windowText)) return;
 		
 		var max:Float;
-		var movement:Float = e.delta * -15;
+		var movement:Float = delta * -15;
 		if (Util.keyMod.shiftKey) {
 			max = windowText.graphic.width - windowText.clipRect.width;
 			windowText.offset.x = Util.clamp(windowText.offset.x + movement, 0, Math.max(max, 0));
@@ -170,9 +172,13 @@ class CrashState extends FlxState {
 			b.add('Uncaught Exception');
 		}
 		b.add('\nStack Traceback:');
-		for (item in stack) {
-			b.add('\n');
-			b.add(itemToString(item));
+		if (stack.length > 0) {
+			for (item in stack) {
+				b.add('\n');
+				b.add(itemToString(item));
+			}
+		} else {
+			b.add('\n- (empty)');
 		}
 		
 		return b.toString();
@@ -210,16 +216,19 @@ $message';
 	}
 	
 	public static function handleUncaughtError(e:UncaughtErrorEvent) {
+		if (inState) {
+			error = e;
+			stack = CallStack.exceptionStack(true);
+			errorMessage = errorToString(stack, error);
+
+			Log.error('YOUR CRASH HANDLER CRASHED IDIOT\n$errorMessage');
+			Sys.exit(0);
+		}
+
 		e.preventDefault();
 		e.stopImmediatePropagation();
 		
 		if (caughtError) return;
-		
-		if (Std.isOfType(FlxG.state, CrashState)) {
-			Sys.println('YOUR CRASH HANDLER CRASHED IDIOT');
-			Sys.exit(0);
-			return;
-		}
 		
 		var date:Date = Date.now();
 		error = e;
@@ -240,13 +249,13 @@ $message';
 	}
 	
 	override public function destroy() {
-		FlxG.stage.removeEventListener(MouseEvent.MOUSE_WHEEL, mouseScrollEvent);
 		Main.instance.addChild(Main.debugDisplay);
 		Main.watermark.visible = true;
 		super.destroy();
 		
 		error = null;
 		stack = null;
+		inState = false;
 		errorMessage = '';
 		caughtError = false;
 	}

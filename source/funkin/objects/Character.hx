@@ -149,6 +149,7 @@ class Character extends FunkinSprite implements ICharacter {
 			vocalsLoaded = true;
 			vocals.volume = 0;
 			vocals.play().stop();
+			vocals.looped = false;
 			vocals.volume = volume;
 			return true;
 		} else {
