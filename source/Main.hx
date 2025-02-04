@@ -75,7 +75,7 @@ class Main extends openfl.display.Sprite {
 		FlxG.plugins.addPlugin(watermark);
 		showWatermark = true;
 		
-		DiscordRPC.presence.largeImageText = 'funkinmess $engineVersion';
+		DiscordRPC.presence.largeImageText = 'FUNKINX3 $engineVersion';
 		openfl.Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(openfl.events.UncaughtErrorEvent.UNCAUGHT_ERROR, CrashState.handleUncaughtError);
 	}
 	

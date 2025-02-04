@@ -7,9 +7,31 @@ import sys.thread.Thread;
 #end
 
 class DiscordRPC {
+	public static var supported(default, never):Bool = #if hxdiscord_rpc true #else false #end;
+
 	public static var dirty:Bool = false;
 	public static var initialized:Bool = false;
 	public static var clientID(default, set):String = '1285413579893506118';
+
+	public static var details(default, set):String = '';
+	public static var state(default, set):String = '';
+
+	static function set_details(newDetails:String):String {
+		if (details == newDetails) return newDetails;
+
+		presence.details = newDetails;
+		dirty = true;
+
+		return details = newDetails;
+	}
+	static function set_state(newState:String):String {
+		if (state == newState) return newState;
+
+		presence.state = newState;
+		dirty = true;
+
+		return state = newState;
+	}
 	
 	#if hxdiscord_rpc
 	public static var presence:DiscordRichPresence = new DiscordRichPresence();
@@ -55,7 +77,7 @@ class DiscordRPC {
 		}
 	}
 	
-	private static function set_clientID(newID:String) {
+	static function set_clientID(newID:String) {
 		if (clientID != newID) {
 			clientID = newID;
 			shutdown();

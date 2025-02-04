@@ -42,6 +42,7 @@ class PlayState extends FunkinState {
 	public var heldKeys:Array<FlxKey> = [];
 	public var inputDisabled:Bool = false;
 	public var playCountdown:Bool = true;
+	public var autoUpdateRPC:Bool = true;
 	
 	public var camHUD:FunkinCamera;
 	public var camGame:FunkinCamera;
@@ -295,8 +296,7 @@ class PlayState extends FunkinState {
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
 		
-		DiscordRPC.presence.details = '${chart.name} [${chart.difficulty.toUpperCase()}]';
-		DiscordRPC.dirty = true;
+		refreshRPCTitle();
 		
 		hscripts.run('createPost');
 		sortZIndex();
@@ -391,6 +391,9 @@ class PlayState extends FunkinState {
 				resetConductor();
 				conductorInUse.beat = -5;
 				resetScore();
+				
+				refreshRPCTitle();
+				refreshRPCTime();
 			}
 			if (FlxG.keys.justPressed.B) {
 				playerStrumline.allowInput = !playerStrumline.allowInput;
@@ -430,6 +433,9 @@ class PlayState extends FunkinState {
 				}
 				FlxTimer.globalManager.forEach((timer:FlxTimer) -> { if (!timer.finished) timer.active = !paused; });
 				FlxTween.globalManager.forEach((tween:FlxTween) -> { if (!tween.finished) tween.active = !paused; });
+
+				refreshRPCTitle();
+				refreshRPCTime();
 			}
 			
 			if (FlxG.keys.justPressed.R && !paused)
@@ -483,6 +489,7 @@ class PlayState extends FunkinState {
 			if (forceTrackTime) {
 				if (Math.abs(music.getDisparity(syncBase.time)) > 75)
 					music.syncToBase();
+				refreshRPCTime();
 			}
 		}
 	}
@@ -631,6 +638,63 @@ class PlayState extends FunkinState {
 			icon.isPixel = chara?.healthIconData?.isPixel;
 		}
 	}
+
+	// TODO: ok, maybe these could be in a single function
+	public function refreshRPCTime() {
+		if (!autoUpdateRPC)
+			return;
+		
+		if (music.playing) {
+			var beginTime:Float = Date.now().getTime() - music.time;
+			var endTime:Float = beginTime + chart.songLength;
+			DiscordRPC.presence.endTimestamp = Std.int(endTime * .001);
+			DiscordRPC.presence.startTimestamp = Std.int(beginTime * .001);
+			// trace('PLAYING SONG FROM ' + Std.int(beginTime * .001) + ' to ' + Std.int(endTime * .001));
+		} else {
+			DiscordRPC.presence.startTimestamp = DiscordRPC.presence.endTimestamp = 0;
+		}
+		DiscordRPC.dirty = true;
+	}
+	public function refreshRPCTitle() {
+		if (!autoUpdateRPC)
+			return;
+		
+		var detailsText:String = '${chart.name} on ${chart.difficulty.toUpperCase()}';
+		if (paused)
+			detailsText += ' (Paused)';
+		DiscordRPC.details = detailsText;
+		refreshRPCDetails();
+	}
+	public function refreshRPCDetails() {
+		if (!autoUpdateRPC)
+			return;
+		
+		var detailsString:String;
+		if (dead) {
+			detailsString = 'Dead!';
+		} else if (scoring != null) {
+			var scoreStr:String = Std.string(Std.int(scoring.score));
+			scoreStr = scoreStr.lpad('0', 6);
+			
+			if (playerStrumline.cpu) {
+				detailsString = 'Botplay';
+			} else {
+				var accuracyString:String = '';
+				var missString:String = '';
+				if (totalNotes > 0)
+					accuracyString = ' (${Util.padDecimals(accuracy, 2)}%)';
+				if (scoring.misses > 0)
+					missString = ' ${scoring.misses} ${scoring.misses == 1 ? 'miss' : 'misses'}';
+
+				detailsString = '$scoreStr$accuracyString$missString';
+			}
+			
+		} else {
+			detailsString = '';
+		}
+		
+		DiscordRPC.state = detailsString;
+	}
 	
 	public function stepHitEvent(step:Int) {
 		syncMusic(true);
@@ -659,6 +723,9 @@ class PlayState extends FunkinState {
 					syncMusic(true, true);
 				default:
 			}
+		}
+		if (music.playing && DiscordRPC.presence.endTimestamp.toInt() == 0) {
+			refreshRPCTime();
 		}
 		if (camZoomRate > 0 && beat % camZoomRate == 0)
 			bopCamera();
@@ -830,6 +897,7 @@ class PlayState extends FunkinState {
 		FlxTween.cancelTweensOf(camGame.scroll);
 		FlxTween.cancelTweensOf(camGame);
 		camGame.pauseFollowLerp = false;
+		refreshRPCDetails();
 		
 		gameOver = new GameOverSubState(instant);
 		function actuallyDie() {
@@ -884,6 +952,7 @@ class PlayState extends FunkinState {
 		if (HScript.stopped(hscripts.run('updateScoreText')))
 			return;
 		
+		refreshRPCDetails();
 		if (scoring != null) {
 			var floorScore:Int = Std.int(scoring.score);
 			var scoreStr:String = Util.thousandSep(floorScore);
@@ -915,6 +984,8 @@ class PlayState extends FunkinState {
 	}
 	
 	override public function destroy() {
+		DiscordRPC.details = DiscordRPC.state = '';
+		DiscordRPC.presence.startTimestamp = DiscordRPC.presence.endTimestamp = 0;
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
 		Main.watermark.visible = true;

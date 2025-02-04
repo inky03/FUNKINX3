@@ -121,6 +121,9 @@ class TitleState extends FunkinState {
 		} else {
 			showTitleScreen(true);
 		}
+		
+		DiscordRPC.presence.details = 'In the title screen';
+		DiscordRPC.dirty = true;
 	}
 	
 	public function beatHitEvent(beat:Int) {

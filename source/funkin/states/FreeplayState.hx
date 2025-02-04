@@ -55,7 +55,7 @@ class FreeplayState extends FunkinState {
 		
 		Main.showWatermark = true;
 		
-		DiscordRPC.presence.details = 'Navigating freeplay!';
+		DiscordRPC.presence.details = 'Navigating freeplay';
 		DiscordRPC.dirty = true;
 	}
 	

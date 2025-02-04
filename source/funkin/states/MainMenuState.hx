@@ -43,7 +43,7 @@ class MainMenuState extends FunkinState {
 		select();
 		FlxG.camera.snapToTarget();
 		
-		DiscordRPC.presence.details = 'In the main menu!';
+		DiscordRPC.presence.details = 'In the main menu';
 		DiscordRPC.dirty = true;
 
 		Paths.clean();
