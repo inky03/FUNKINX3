@@ -324,7 +324,10 @@ class FunkinSprite extends FlxSprite implements IFunkinSpriteAnim {
 			return offsets[name] = FlxPoint.get(x, y);
 		}
 	}
-	public function addAnimation(name:String, ?prefix:String, fps:Float = 24, loop:Bool = false, ?frameIndices:Array<Int>, ?assetPath:String, flipX:Bool = false, flipY:Bool = false) {
+	public function addAnimation(name:String, ?prefix:String, fps:Float = 24, loop:Bool = false, ?frameIndices:Array<Int>, ?assetPath:String, flipX:Bool = false, flipY:Bool = false, overwrite:Bool = false) {
+		if (!overwrite && animationExists(name))
+			return;
+		
 		if (isAnimate) {
 			if (animate == null || animate.funkAnim == null) return;
 			var anim:FunkinAnimateAnim = animate.funkAnim;
@@ -491,10 +494,10 @@ interface IFunkinSpriteAnim { // the essentials, anyway
 	public var onAnimationFrame:FlxTypedSignal<Int -> Void>;
 }
 
-enum SpriteRenderType {
-	PACKER;
-	SPARROW;
-	ANIMATEATLAS;
+enum abstract SpriteRenderType(String) to String {
+	var PACKER = 'packer';
+	var SPARROW = 'sparrow';
+	var ANIMATEATLAS = 'spritemap';
 }
 
 typedef AnimationInfo = {

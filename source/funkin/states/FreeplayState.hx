@@ -78,8 +78,8 @@ class FreeplayState extends FunkinState {
 				var shifted:Bool = FlxG.keys.pressed.SHIFT;
 				var variation:Variation = findVariation(currentVariation);
 				var selectedItem:SongItem = displayItems.members[selection];
+				Mods.currentMod = selectedItem.mod ?? '';
 				var chart:Chart = Chart.loadChart(selectedItem.songPath, variation.difficulties[selectedDifficulty], variation.suffix);
-				Mods.currentMod = selectedItem.mod;
 				FlxG.switchState(() -> new PlayState(chart, shifted));
 			});
 		}
@@ -161,10 +161,10 @@ class FreeplayState extends FunkinState {
 					if (variation != null)
 						item.variations.push(variation);
 				}
-
+				
 				var songPath:String = 'data/songs/${song.songPath}';
 				var modSongPath:String = Paths.modPath(songPath, mod);
-				if (!FileSystem.exists(modSongPath) && (mod != '' || !Paths.exists(songPath)))
+				if (!FileSystem.exists(modSongPath) && (mod != null || !Paths.exists(songPath)))
 					item.itsBad();
 			}
 			Log.info('level @ "$path" added! (${levels.songList.length} songs)');

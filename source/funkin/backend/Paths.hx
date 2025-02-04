@@ -6,6 +6,7 @@ import flxanimate.data.AnimationData;
 import flixel.graphics.FlxGraphic;
 import openfl.display.BitmapData;
 import flixel.graphics.frames.*;
+import flixel.system.FlxAssets;
 import openfl.utils.AssetType;
 import openfl.media.Sound;
 import openfl.Assets;
@@ -64,6 +65,9 @@ class Paths {
 
 	public static function getPath(key:String, allowMods:Bool = true, ?library:String) {
 		if (allowMods) {
+			if (FileSystem.exists(globalModPath(key)))
+				return globalModPath(key);
+			
 			for (mod in Mods.getLocal()) {
 				var path:String = modPath(key, mod.directory, library);
 				if (FileSystem.exists(path)) return path;
@@ -72,9 +76,6 @@ class Paths {
 					if (FileSystem.exists(path)) return path;
 				}
 			}
-			
-			if (FileSystem.exists(globalModPath(key)))
-				return globalModPath(key);
 		}
 		if (FileSystem.exists(sharedPath(key, library))) return sharedPath(key, library);
 		if (FileSystem.exists(key)) return key;
@@ -83,19 +84,19 @@ class Paths {
 	}
 	public static function getPaths(key:String, allowMods:Bool = true, allMods:Bool = false, ?library:String):Array<PathsFile> {
 		var files:Array<PathsFile> = [];
-
+		
 		if (FileSystem.exists(key))
 			files.push({path: key, type: ABSOLUTE});
 		if (FileSystem.exists(sharedPath(key, library)))
 			files.push({path: sharedPath(key, library), type: SHARED});
 		if (allowMods) {
-			for (mod in Mods.getLocal(allMods)) {
-				var path:String = modPath(key, mod.directory, library);
-				if (FileSystem.exists(path)) files.push({mod: mod.directory, path: path});
-			}
-			
 			if (FileSystem.exists(globalModPath(key)))
 				files.push({path: globalModPath(key), type: GLOBAL});
+			
+			for (mod in Mods.getLocal(allMods)) {
+				var path:String = modPath(key, mod.directory, library);
+				if (FileSystem.exists(path)) files.push({mod: mod.directory, path: path, type: MOD});
+			}
 		}
 		
 		return files;
@@ -211,8 +212,13 @@ class Paths {
 		return dynamicCache[key] = dataFunc();
 	}
 
-	inline public static function font(key:String, ?library:String)
-		return (getPath('fonts/$key', library) ?? 'Nokia Cellphone FC');
+	inline public static function font(?key:String, ?library:String) {
+		if (font == null) {
+			return FlxAssets.FONT_DEFAULT;
+		} else {
+			return (getPath('fonts/$key', library) ?? FlxAssets.FONT_DEFAULT);
+		}
+	}
 	inline public static function ttf(key:String, ?library:String)
 		return font('$key.ttf', library);
 	inline public static function otf(key:String, ?library:String)
@@ -235,15 +241,15 @@ class Paths {
 	}
 }
 
-@:structInit class PathsFile {
-	public var path:String;
-	public var mod:String = '';
-	public var type:PathsType = MOD;
+typedef PathsFile = {
+	var ?mod:String;
+	var path:String;
+	var type:PathsType;
 }
 
-enum PathsType {
-	ABSOLUTE;
-	SHARED;
-	GLOBAL;
-	MOD;
+enum abstract PathsType(String) to String {
+	var ABSOLUTE = 'absolute';
+	var SHARED = 'shared';
+	var GLOBAL = 'global';
+	var MOD = 'mod';
 }

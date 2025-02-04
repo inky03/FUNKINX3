@@ -46,7 +46,8 @@ class TJSONParser{
 		currentLine = 1;
         lastSymbolQuoted = false;
 		pos = 0;
-		floatRegex = ~/^-?[0-9]*\.[0-9]+$/;
+		floatRegex = ~/^(-?[0-9]*\.?[0-9]+)|((\.[0-9])?[eE][-+]?[0-9]+)$/;
+		// TODO: maybe its a better option to match the string via code than to try matching against regular expression
 		intRegex = ~/^-?[0-9]+$/;	
 		strProcessor = (stringProcessor==null? defaultStringProcessor : stringProcessor);
 		cache = new Array();
@@ -150,12 +151,6 @@ class TJSONParser{
 			}
 			return symbol; //just a normal string so return it
 		}
-		if(looksLikeFloat(symbol)){
-			return Std.parseFloat(symbol);
-		}
-		if(looksLikeInt(symbol)){
-			return Std.parseInt(symbol);
-		}
 		if(symbol.toLowerCase() == "true"){
 			return true;
 		}
@@ -164,6 +159,12 @@ class TJSONParser{
 		}
 		if(symbol.toLowerCase() == "null"){
 			return null;
+		}
+		if(looksLikeFloat(symbol)){
+			return Std.parseFloat(symbol);
+		}
+		if(looksLikeInt(symbol)){
+			return Std.parseInt(symbol);
 		}
 		
 		return symbol;

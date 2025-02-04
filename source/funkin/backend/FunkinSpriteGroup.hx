@@ -17,6 +17,23 @@ class FunkinTypedSpriteGroup<T:FlxSprite> extends FlxTypedSpriteGroup<T> {
 			sprite.updateHitbox();
 		}
 	}
+	public function insertZIndex(obj:T) {
+		if (members.contains(obj)) remove(obj);
+		var low:Float = Math.POSITIVE_INFINITY;
+		for (pos => mem in members) {
+			low = Math.min(mem.zIndex, low);
+			if (obj.zIndex < mem.zIndex) {
+				insert(pos, obj);
+				return obj;
+			}
+		}
+		if (obj.zIndex < low) {
+			insert(0, obj);
+		} else {
+			add(obj);
+		}
+		return obj;
+	}
 	override function preAdd(sprite:T):Void {
 		super.preAdd(sprite);
 		var funk:FunkinSprite = getFunk(sprite);

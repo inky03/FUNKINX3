@@ -9,7 +9,7 @@ class Metronome {
 	public var bar:Float;
 	public var ms:Float;
 	
-	public var bpm:Float; // QUARTER notes per min
+	public var bpm:Float; // QUARTER notes per min.
 	public var timeSignature:TimeSignature;
 	
 	inline public function getCrochet(bpm:Float, denominator:Int = 4) return (60000 / bpm / denominator * 4);
@@ -167,9 +167,9 @@ class Metronome {
 	}
 }
 
-enum Measure {
-	STEP;
-	BEAT;
-	BAR;
-	MS;
+enum abstract Measure(String) to String {
+	var STEP = 'step';
+	var BEAT = 'beat';
+	var BAR = 'bar';
+	var MS = 'ms';
 }

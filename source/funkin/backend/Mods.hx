@@ -5,6 +5,7 @@ using Lambda;
 class Mods {
 	public static var currentMod:String = '';
 	private static var list:Array<Mod> = [];
+	static var tempList:Array<Mod> = [];
 
 	inline public static function get() {
 		return list;
@@ -16,22 +17,24 @@ class Mods {
 		return (modByDirectory(dir) != null);
 	}
 	public static function getLocal(allMods:Bool = false, keepPriority:Bool = false):Array<Mod> {
-		var localList:Array<Mod> = [];
+		tempList.resize(0);
 		
 		var priorize:Bool = (!allMods || keepPriority);
 		
-		if (currentMod != '' && priorize) { // current mod is always high priority
+		if (currentMod == '') {
+			allMods = true;
+		} else if (priorize) { // current mod is always high priority
 			var curMod:Mod = modByDirectory(currentMod);
 			if (curMod.doLoad)
-				localList.push(curMod);
+				tempList.push(curMod);
 		}
 		
 		for (mod in list) {
 			if (!mod.doLoad || !mod.enabled || (!allMods && !mod.global) || (priorize && mod.directory == currentMod))
 				continue;
-			localList.push(mod);
+			tempList.push(mod);
 		}
-		return localList;
+		return tempList;
 	}
 	public static function refresh() {
 		#if MODS_ALLOWED
@@ -95,8 +98,11 @@ class Mod {
 		return directory = newDir;
 	}
 	
+	public function getTitle():String {
+		return '$name by $author';
+	}
 	public function toString():String {
-		return 'Mod($name by $author)';
+		return 'Mod($directory)';
 	}
 }
 

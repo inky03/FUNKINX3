@@ -196,8 +196,8 @@ class Stage extends FlxSpriteGroup {
 		loadCharactersGeneric();
 	}
 	function loadCharactersGeneric() {
-		var player1:CharacterGroup = new CharacterGroup(250, 750, chart?.player1 ?? 'bf', RIGHT, 'bf');
-		var player2:CharacterGroup = new CharacterGroup(-250, 750, chart?.player2 ?? 'dad', LEFT, 'dad');
+		var player1:CharacterGroup = new CharacterGroup(400, 750, chart?.player1 ?? 'bf', RIGHT, 'bf');
+		var player2:CharacterGroup = new CharacterGroup(-400, 750, chart?.player2 ?? 'dad', LEFT, 'dad');
 		var player3:CharacterGroup = new CharacterGroup(0, 680, chart?.player3 ?? 'gf', IDGAF, 'gf');
 		player1.zIndex = 300;
 		player2.zIndex = 200;
