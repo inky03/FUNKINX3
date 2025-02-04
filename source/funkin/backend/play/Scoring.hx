@@ -95,7 +95,7 @@ class Scoring {
 	}
 }
 
-@:structInit class Score {
+@:structInit class Score { // TODO: move to typedef?
 	public var hitWindow:HitWindow = null;
 	public var accuracyMod:Float = 0;
 	public var healthMod:Float = 1;

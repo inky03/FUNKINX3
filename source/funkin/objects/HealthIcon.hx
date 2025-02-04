@@ -1,6 +1,10 @@
 package funkin.objects;
 
 class HealthIcon extends FunkinSprite {
+	public var autoUpdateBop:Bool = true;
+	public var autoUpdateState:Bool = true;
+	public var autoUpdatePosition:Bool = true;
+	
 	public var isPixel(default, set):Bool = false;
 	public var state(default, set):IconState;
 	public var icon(default, set):String;
@@ -31,10 +35,10 @@ class HealthIcon extends FunkinSprite {
 	}
 	public override function update(elapsed:Float) {
 		super.update(elapsed);
-		if (!canBop)
-			return;
-		var target:Float = Util.smoothLerp(scale.x, defaultSize / frameWidth, bopSpeed * elapsed * 15);
-		scale.set(target, target);
+		if (autoUpdateBop) {
+			var target:Float = Util.smoothLerp(scale.x, defaultSize / frameWidth, bopSpeed * elapsed * 15);
+			scale.set(target, target);
+		}
 	}
 	
 	function set_state(newState:IconState):IconState {
@@ -46,7 +50,8 @@ class HealthIcon extends FunkinSprite {
 			case LOSING: 'losing';
 		});
 		if (currentAnimation != nextAnim)
-			playAnimation(currentAnimation);
+			playAnimation(nextAnim);
+		
 		return state = newState;
 	}
 	function set_icon(newIcon:String) {
@@ -56,12 +61,14 @@ class HealthIcon extends FunkinSprite {
 		if (graphic == null) loadTexture('icons/icon-$newIcon');
 		var wFrameRatio:Int = Math.round(width / height);
 		loadGraphic(graphic ?? Paths.image('icons/face'), true, Std.int(width / wFrameRatio), Std.int(height));
-		animation.add('neutral', [0]);
-		animation.add('winning', [animation.numFrames > 2 ? 2 : 0]);
-		animation.add('losing', [1]);
+		
+		addAnimation('winning', [animation.numFrames > 2 ? 2 : 0]);
+		addAnimation('neutral', [0]);
+		addAnimation('losing', [1]);
 		playAnimation('neutral');
 		snapToTargetScale();
 		origin.set(frameWidth * .5, frameHeight * .5);
+		
 		return icon = newIcon;
 	}
 	function set_isPixel(butIsIt:Bool) {

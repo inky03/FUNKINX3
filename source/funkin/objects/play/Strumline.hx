@@ -1,5 +1,6 @@
 package funkin.objects.play;
 
+import funkin.objects.play.Note;
 import funkin.backend.play.Scoring;
 import funkin.backend.play.NoteEvent;
 
@@ -149,12 +150,12 @@ class Strumline extends FunkinSpriteGroup {
 		for (lane in lanes)
 			func(lane);
 	}
-	public function forEachNote(func:Note -> Void, includeQueued:Bool = false) {
+	public function forEachNote(func:ChartNote -> Void, includeQueued:Bool = false) {
 		for (lane in lanes)
 			lane.forEachNote(func, includeQueued);
 	}
 	public function getAllNotes() {
-		var notes:Array<Note> = [];
+		var notes:Array<ChartNote> = [];
 		for (lane in lanes) {
 			for (note in lane.getAllNotes())
 				notes.push(note);
@@ -210,12 +211,15 @@ class Strumline extends FunkinSpriteGroup {
 		}
 	}
 	
-	public function queueNote(note:Note, ?laneIndex:Int) {
-		laneIndex ??= note.noteData;
+	public function queueNote(note:ChartNote, ?laneIndex:Int):ChartNote {
+		laneIndex ??= note.laneIndex;
 		laneIndex = FlxMath.wrap(laneIndex, 0, lanes.length - 1);
 		var lane:Lane = getLane(laneIndex);
-		if (lane != null)
+		if (lane != null) {
 			lane.queueNote(note);
+			return note;
+		}
+		return null;
 	}
 	public function clearAllNotes() {
 		for (lane in lanes)

@@ -14,9 +14,9 @@ class FunkinSprite extends FlxSprite implements IFunkinSpriteAnim {
 	public var onAnimationFrame:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
 	public var currentAnimation(get, never):Null<String>;
 
-	public var extraData:Map<String, Dynamic> = new Map<String, Dynamic>();
-	public var offsets:Map<String, FlxPoint> = new Map<String, FlxPoint>();
-	public var animationList:Map<String, AnimationInfo> = [];
+	public var animationList:Map<String, AnimationInfo> = new Map();
+	public var extraData:Map<String, Dynamic> = new Map();
+	public var offsets:Map<String, FlxPoint> = new Map();
 	public var smooth(default, set):Bool = true;
 	public var spriteOffset:FlxPoint;
 	public var animOffset:FlxPoint;
@@ -33,6 +33,16 @@ class FunkinSprite extends FlxSprite implements IFunkinSpriteAnim {
 	
 	var _loadedAtlases:Array<String> = [];
 	var _transPoint:FlxPoint;
+	
+	public function setVar(k:String, v:Dynamic):Dynamic {
+		if (extraData == null) extraData = new Map();
+		extraData.set(k, v);
+		return v;
+	}
+	public function getVar(k:String):Dynamic {
+		if (extraData == null) return null;
+		return extraData.get(k);
+	}
 	
 	public function new(x:Float = 0, y:Float = 0, isSmooth:Bool = true) {
 		super(x, y);
