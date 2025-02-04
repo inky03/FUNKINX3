@@ -15,6 +15,17 @@ import flixel.graphics.frames.FlxFramesCollection;
 	public var msTime:Float = 0;
 	public var msLength:Float = 0;
 	public var player:Bool = true;
+	public var extraData:Map<String, Dynamic> = null;
+	
+	public function setVar(k:String, v:Dynamic):Dynamic {
+		if (extraData == null) extraData = new Map();
+		extraData.set(k, v);
+		return v;
+	}
+	public function getVar(k:String):Dynamic {
+		if (extraData == null) return null;
+		return extraData.get(k);
+	}
 }
 
 class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affect society
@@ -98,6 +109,12 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 			this.noteKind = songNote.kind;
 			this.msLength = songNote.msLength;
 			this.noteData = songNote.laneIndex;
+			
+			this.extraData.clear();
+			if (songNote.extraData != null) {
+				for (k => v in songNote.extraData)
+					setVar(k, v);
+			}
 		}
 		this.msLength = Math.max(this.msLength, 0);
 		
@@ -105,7 +122,8 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	}
 	
 	public function reload() {
-		lost = goodHit = held = consumed = false;
+		lost = goodHit = held = consumed = preventDespawn = ignore = false;
+		followAngle = canHit = true;
 		holdTime = hitTime = -1;
 		clipDistance = 0;
 		if (noteOffset == null) {

@@ -170,11 +170,13 @@ class Lane extends FunkinSpriteGroup {
 			}
 		} else {
 			held = false;
-			receptor.playAnimation('static', true);
-			if (heldNote != null) {
-				var note:Note = heldNote;
+			var note:Note = heldNote;
+			if (note != null) {
+				note.held = false;
 				_noteEvent(basicEvent(RELEASED, note));
 				killNote(note);
+			} else {
+				receptor.playAnimation('static');
 			}
 		}
 		return true;

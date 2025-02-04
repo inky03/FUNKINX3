@@ -584,6 +584,7 @@ class Chart {
 				inst.play();
 				inst.stop();
 				inst.volume = 1;
+				inst.looped = false;
 				Log.info('instrumental loaded!! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 				return true;
 			}

@@ -136,7 +136,8 @@ import funkin.objects.play.Strumline;
 					game.health += scoring.healthMod * note.healthGainPerSecond;
 					game.updateScoreText();
 					
-					note.held = true;
+					if (!released)
+						note.held = true;
 					note.holdTime = nextHitTime;
 				}
 				
@@ -149,19 +150,19 @@ import funkin.objects.play.Strumline;
 				
 				if (released && note.isHoldNote) {
 					note.consumed = true;
-					note.held = false;
 					
 					if (lane.heldNote == note) {
 						lane.held = false;
 						lane.heldNote = null;
 						if (animateReceptor) {
-							if (lane.cpu) {
+							if (lane.cpu || !note.held) {
 								lane.receptor.playAnimation('static');
 							} else {
 								lane.receptor.playAnimation('press');
 							}
 						}
 					}
+					
 					if (perfectRelease) {
 						if (doSpark)
 							spark = lane.spark();
@@ -171,6 +172,8 @@ import funkin.objects.play.Strumline;
 						if (playSound)
 							FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/hitsoundFail'), .7);
 					}
+					
+					note.held = false;
 				}
 			case GHOST:
 				if (animateReceptor)
