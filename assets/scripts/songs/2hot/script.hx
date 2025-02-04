@@ -1,6 +1,5 @@
 import flixel.group.FlxTypedSpriteGroup;
 import flixel.effects.FlxFlicker;
-import Type;
 
 var explosiveCans:Bool = false;
 function opponentNoteEventPre(e:NoteEvent) {
@@ -63,7 +62,7 @@ function playerNoteEventPre(e:NoteEvent) {
 		case NoteEventType.LOST:
 			if (e.note.noteKind == 'weekend-1-firegun') {
 				e.playAnimation = false;
-				switch (PlayState.song.difficulty) {
+				switch (PlayState.chart.difficulty) {
 					case 'hard':
 						e.note.healthLoss = .45;
 					case 'normal':
@@ -98,6 +97,7 @@ function playerNoteEvent(e:NoteEvent) {
 					pico.playAnimation('shoot', true);
 					pico.specialAnim = true;
 					shootNextCan(pico);
+					gunCocked = false;
 				default:
 			}
 		case NoteEventType.LOST:
@@ -124,6 +124,7 @@ Paths.sparrowAtlas('spraypaintExplosionEZ', 'weekend1');
 FunkinAnimate.cacheAnimate('spraycanAtlas', 'weekend1');
 var scheduledSounds:Array<Dynamic> = [];
 
+var picoFlicker:FlxFlicker = null;
 var picoFade:FlxSprite = new FlxSprite();
 var sprayCans:FlxTypedGroup = new FlxSpriteGroup();
 var casingGroup:FlxSpriteGroup = new FlxSpriteGroup();
@@ -148,7 +149,7 @@ function setupStage(stageId:String, stage:Stage) {
 	stage.add(picoFade);
 }
 function createPost() {
-	switch (PlayState.song.difficulty) {
+	switch (PlayState.chart.difficulty) {
 		case 'hard', 'normal':
 			explosiveCans = true;
 		default:
