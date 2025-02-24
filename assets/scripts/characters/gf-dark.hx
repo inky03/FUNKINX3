@@ -1,9 +1,11 @@
 var lightChara:Character = new Character(x, y, 'gf', side, fallbackCharacter);
 
 function update(elapsed:Float) {
+	super.update(elapsed);
 	lightChara.update(elapsed);
 }
 function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
+	super.playAnimation(anim, forced, reversed, frame);
 	lightChara.playAnimation(flipAnim(anim), forced, reversed, frame);
 }
 function draw() {
@@ -17,4 +19,5 @@ function draw() {
 		lightChara.draw();
 	}
 	alpha = 1 - getVar('light');
+	super.draw();
 }
