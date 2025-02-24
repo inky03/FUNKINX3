@@ -43,6 +43,7 @@ class HScript extends Iris {
 		'FunkinSound' => funkin.backend.FunkinSound,
 		'FunkinSprite' => funkin.backend.FunkinSprite,
 		'FunkinAnimate' => funkin.backend.FunkinAnimate,
+		'FunkinSpriteGroup' => funkin.backend.FunkinSpriteGroup,
 		
 		'Util' => funkin.util.Util,
 		'Lane' => funkin.objects.play.Lane,
@@ -59,7 +60,6 @@ class HScript extends Iris {
 		'Conductor' => funkin.backend.rhythm.Conductor,
 		'Metronome' => funkin.backend.rhythm.Metronome,
 		'CharacterGroup' => funkin.objects.CharacterGroup,
-		'RuntimeShader' => HScriptRuntimeShader,
 		
 		'Measure' => funkin.backend.rhythm.Metronome.Measure,
 		'NoteEventType' => funkin.backend.play.NoteEvent.NoteEventType,
@@ -69,14 +69,19 @@ class HScript extends Iris {
 		'STOPALL' => STOPALL,
 		'FlxAxes' => HScriptFlxAxes,
 		'FlxColor' => HScriptFlxColor,
-		'BlendMode' => HScriptBlendMode
+		'BlendMode' => HScriptBlendMode,
+		'RuntimeShader' => HScriptRuntimeShader
 	];
+	
+	public var interceptArray:Array<Dynamic> = null;
+	public var defaultVars:Map<String, Dynamic> = null;
 	
 	public var scriptString(default, set):String = '';
 	public var scriptPath:Null<String> = null;
 	public var scriptName:String = '';
 	public var compiled:Bool = false;
 	public var active:Bool = true;
+	var executed:Bool = false;
 	var modInterp:ModInterp;
 	
 	public static function init() {
@@ -85,14 +90,18 @@ class HScript extends Iris {
 	public static function stopped(result:Dynamic) {
 		return (result == STOP || result == STOPALL);
 	}
-	public function new(name:String, code:String) {
+	public function new(name:String, code:String, ?interceptArray:Array<Dynamic>, ?defaultVars:Map<String, Dynamic>) {
 		super('', new IrisConfig(name, false, false, []));
-		scriptString = code;
-		scriptName = name;
 		
 		interp = modInterp = new ModInterp();
 		modInterp.hscript = this;
 		preset();
+		
+		this.interceptArray = interceptArray;
+		this.defaultVars = defaultVars;
+		
+		this.scriptName = name;
+		this.scriptString = code;
 	}
 	
 	public function errorCaught(e:IrisError, ?extra:String) {
@@ -130,6 +139,9 @@ class HScript extends Iris {
 		if (!compiled || !active) return null;
 		try {
 			if (func != null) {
+				if (!executed) execute();
+				executed = true;
+				
 				if (safe && !exists(func)) return null;
 				var result:IrisCall = call(func, args);
 				return result?.returnValue ?? null;
@@ -151,12 +163,8 @@ class HScript extends Iris {
 		for (field => val in defaultVariables)
 			set(field, val);
 		
+		set('script', this);
 		set('game', FlxG.state);
-		set('state', FlxG.state);
-		set('add', FlxG.state.add);
-		set('remove', FlxG.state.remove);
-		set('insert', FlxG.state.insert);
-		ModInterp.intercept = [FlxG.state/*, getClass(FlxG.state)*/];
 		if (Std.isOfType(FlxG.state, FunkinState)) {
 			var state:FunkinState = cast FlxG.state;
 			set('conductor', state.conductorInUse);
@@ -173,12 +181,15 @@ class HScript extends Iris {
 		}));
 		#end
 	}
-	public function set_scriptString(newCode:String) {
+	
+	function set_scriptString(newCode:String):String {
 		if (newCode == scriptString) return scriptString;
+		
 		scriptCode = newCode;
 		try {
 			parse(true);
 			compiled = true;
+			executed = false;
 		} catch (e:IrisError) {
 			compiled = false;
 			errorCaught(e);

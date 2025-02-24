@@ -13,14 +13,15 @@ class Scoring {
 			new HitWindow('shit', 	50, 	1.1,  	0) // HORRIBLE (key mashing)
 		];
 		windows[0].splash = true;
-		windows[2].breaksCombo = true;
-		windows[3].breaksCombo = true;
-		windows[4].breaksCombo = true;
 		
 		return windows;
 	}
 	public static function emiDefault() {
 		var windows:Array<HitWindow> = legacyDefault();
+		windows[2].breaksCombo = true;
+		windows[3].breaksCombo = true;
+		windows[4].breaksCombo = true;
+		
 		windows[0].threshold = .3;
 		windows[1].threshold = .6;
 
@@ -47,6 +48,7 @@ class Scoring {
 		];
 		windows[0].splash = true;
 		windows[1].splash = true;
+		
 		windows[3].breaksCombo = true;
 		windows[4].breaksCombo = true;
 		windows[5].breaksCombo = true;
@@ -103,10 +105,10 @@ class Scoring {
 	public var score:Float = 0;
 }
 
-enum abstract ScoringSystem(String) {
-	var LEGACY; // rating
-	var WEEK7;
-	var EMI;
+enum abstract ScoringSystem(String) to String {
+	var LEGACY = 'legacy'; // rating
+	var WEEK7 = 'week7';
+	var EMI = 'emis';
 
-	var PBOT1; // timing
+	var PBOT1 = 'pbot1'; // timing
 }

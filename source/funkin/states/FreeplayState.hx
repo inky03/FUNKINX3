@@ -17,6 +17,7 @@ class FreeplayState extends FunkinState {
 	public static var currentVariation:String = 'default';
 	
 	override public function create() {
+		Mods.currentMod = null;
 		super.create();
 		
 		playMusic(MainMenuState.menuMusic);
@@ -211,7 +212,7 @@ class SongItem extends FlxSpriteGroup {
 
 	public function new(x:Float = 0, y:Float = 0, name:String = 'unknown', icon:String = 'face') {
 		super(x, y);
-		this.icon = new HealthIcon(0, 0, icon);
+		this.icon = new HealthIcon(0, 0, {id: icon});
 		text = new Alphabet(150, 0, name);
 		
 		this.text.y = (this.icon.height - text.height) * .5;

@@ -63,8 +63,8 @@ class ScoreHandler {
 		return hitWindows.find((win:HitWindow) -> win.rating == rating);
 	public function getRatingCount(rating:String)
 		return ratingCount.get(rating) ?? 0;
-	public function countRating(rating:String)
-		ratingCount.set(rating, getRatingCount(rating) + 1);
+	public function countRating(rating:String, mod:Int = 1)
+		ratingCount.set(rating, getRatingCount(rating) + mod);
 	public function addMod(mod:Float = 0, div:Float = 1) {
 		accuracyMod += mod;
 		accuracyDiv += div;

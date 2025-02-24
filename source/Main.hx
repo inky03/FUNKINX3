@@ -8,8 +8,8 @@ import funkin.backend.scripting.HScript;
 class Main extends openfl.display.Sprite {
 	public static var instance:Main;
 	
-	public static var engineVersion(default, never):String = '0.0.7';
-	public static var apiVersion(default, never):String = '0.0.1';
+	public static var engineVersion(default, never):String = '0.0.8';
+	public static var apiVersion(default, never):String = '0.0.2';
 	
 	public static var compiledTo(get, never):String;
 	public static var compiledWith(get, never):String;
@@ -77,6 +77,9 @@ class Main extends openfl.display.Sprite {
 		
 		DiscordRPC.presence.largeImageText = 'FUNKINX3 $engineVersion';
 		openfl.Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(openfl.events.UncaughtErrorEvent.UNCAUGHT_ERROR, CrashState.handleUncaughtError);
+		#if cpp
+		untyped __global__.__hxcpp_set_critical_error_handler((error) -> throw error);
+		#end
 	}
 	
 	public static function get_soundTray() {

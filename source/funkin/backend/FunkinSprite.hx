@@ -9,22 +9,22 @@ import flixel.graphics.frames.FlxAtlasFrames;
 import flixel.graphics.frames.FlxFramesCollection;
 import funkin.backend.FunkinAnimate;
 
-class FunkinSprite extends FlxSprite implements IFunkinSpriteAnim {
+class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFactor implements IFunkinSpriteAnim {
 	public var onAnimationComplete:FlxTypedSignal<String -> Void> = new FlxTypedSignal();
 	public var onAnimationFrame:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
 	public var currentAnimation(get, never):Null<String>;
 
-	public var extraData:Map<String, Dynamic> = new Map<String, Dynamic>();
-	public var offsets:Map<String, FlxPoint> = new Map<String, FlxPoint>();
-	public var animationList:Map<String, AnimationInfo> = [];
+	public var animationList:Map<String, AnimationInfo> = new Map();
+	public var extraData:Map<String, Dynamic> = new Map();
+	public var offsets:Map<String, FlxPoint> = new Map();
 	public var smooth(default, set):Bool = true;
 	public var spriteOffset:FlxPoint;
 	public var animOffset:FlxPoint;
 	public var rotateOffsets:Bool = false;
 	public var scaleOffsets:Bool = true;
 	
-	public var zoomFactor:Float = 1;
-	public var initialZoom:Float = 1;
+	public var zoomFactor(default, set):Float = 1;
+	public var initialZoom(default, set):Float = 1;
 
 	var renderType:SpriteRenderType = SPARROW;
 	public var isAnimate(get, never):Bool;
@@ -33,6 +33,24 @@ class FunkinSprite extends FlxSprite implements IFunkinSpriteAnim {
 	
 	var _loadedAtlases:Array<String> = [];
 	var _transPoint:FlxPoint;
+	
+	public function setVar(k:String, v:Dynamic):Dynamic {
+		if (extraData == null) extraData = new Map();
+		extraData.set(k, v);
+		return v;
+	}
+	public function getVar(k:String):Dynamic {
+		if (extraData == null) return null;
+		return extraData.get(k);
+	}
+	public function hasVar(k:String):Bool {
+		if (extraData == null) return false;
+		return extraData.exists(k);
+	}
+	public function removeVar(k:String):Bool {
+		if (extraData == null) return false;
+		return extraData.remove(k);
+	}
 	
 	public function new(x:Float = 0, y:Float = 0, isSmooth:Bool = true) {
 		super(x, y);
@@ -68,7 +86,7 @@ class FunkinSprite extends FlxSprite implements IFunkinSpriteAnim {
 			animate.setPosition(x, y);
 			animate.cameras = cameras;
 			animate.shader = shader;
-			animate.offset.set(_transPoint.x, _transPoint.y);
+			animate.offset.set(_transPoint.x + offset.x, _transPoint.y + offset.y);
 			animate.origin = origin;
 			animate.scale = scale;
 			animate.alpha = alpha;
@@ -325,7 +343,7 @@ class FunkinSprite extends FlxSprite implements IFunkinSpriteAnim {
 		}
 	}
 	public function addAnimation(name:String, ?prefix:String, fps:Float = 24, loop:Bool = false, ?frameIndices:Array<Int>, ?assetPath:String, flipX:Bool = false, flipY:Bool = false, overwrite:Bool = false) {
-		if (!overwrite && animationExists(name))
+		if (!overwrite && animationExists(name, false))
 			return;
 		
 		if (isAnimate) {
@@ -357,6 +375,9 @@ class FunkinSprite extends FlxSprite implements IFunkinSpriteAnim {
 			}
 		} else {
 			if (assetPath == null) { // wait for the asset to be loaded
+				if (overwrite)
+					animation.remove(name);
+				
 				if (frameIndices == null || frameIndices.length == 0) {
 					animation.addByPrefix(name, prefix, fps, loop, flipX, flipY);
 				} else {
@@ -367,10 +388,9 @@ class FunkinSprite extends FlxSprite implements IFunkinSpriteAnim {
 				}
 			}
 		}
-		animationList[name] = {prefix: prefix, fps: fps, loop: loop, assetPath: assetPath, frameIndices: frameIndices};
+		animationList[name] = {prefix: prefix, fps: fps, loop: loop, assetPath: assetPath, frameIndices: frameIndices, flipX: flipX, flipY: flipY};
 	}
 	public function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
-		preloadAnimAsset(anim);
 		var animExists:Bool = false;
 		if (isAnimate) {
 			if (animate == null) return;
@@ -402,13 +422,13 @@ class FunkinSprite extends FlxSprite implements IFunkinSpriteAnim {
 		var animData:AnimationInfo = animationList[anim];
 		if (animData != null && animData.assetPath != null) {
 			addAtlas(animData.assetPath, false, null, renderType);
-			if (!animation.exists(anim))
-				addAnimation(anim, animData.prefix, animData.fps, animData.loop, animData.frameIndices);
+			addAnimation(anim, animData.prefix, animData.fps, animData.loop, animData.frameIndices, null, animData.flipX, animData.flipY);
 		}
 	}
-	public function animationExists(anim:String, preload:Bool = false):Bool {
+	public function animationExists(anim:String, preload:Bool = true):Bool {
 		if (preload)
 			preloadAnimAsset(anim);
+		
 		if (isAnimate) {
 			return animate.funkAnim.exists(anim);
 		} else {
@@ -455,10 +475,16 @@ class FunkinSprite extends FlxSprite implements IFunkinSpriteAnim {
 	function _onAnimationFrame(frameNumber:Int) {
 		onAnimationFrame.dispatch(frameNumber);
 	}
-
-	public function set_smooth(newSmooth:Bool) {
+	
+	function set_smooth(newSmooth:Bool):Bool {
 		antialiasing = (newSmooth && Options.data.antialiasing);
 		return (smooth = newSmooth);
+	}
+	function set_zoomFactor(value:Float):Float {
+		return zoomFactor = value;
+	}
+	function set_initialZoom(value:Float):Float {
+		return initialZoom = value;
 	}
 
 	override function get_width() {
@@ -480,13 +506,25 @@ class FunkinSprite extends FlxSprite implements IFunkinSpriteAnim {
 		else return animation.name;
 	}
 }
+interface ISpriteVars {
+	public var extraData:Map<String, Dynamic>;
+	
+	public function setVar(k:String, v:Dynamic):Dynamic;
+	public function getVar(k:String):Dynamic;
+	public function hasVar(k:String):Bool;
+	public function removeVar(k:String):Bool;
+}
+interface IZoomFactor {
+	public var zoomFactor(default, set):Float;
+	public var initialZoom(default, set):Float;
+}
 interface IFunkinSpriteAnim { // the essentials, anyway
 	public var currentAnimation(get, never):Null<String>;
 	
 	public function preloadAnimAsset(anim:String):Void;
 	public function setOffset(x:Float = 0, y:Float = 0):Void;
 	public function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0):Void;
-	public function animationExists(anim:String, preload:Bool = false):Bool;
+	public function animationExists(anim:String, preload:Bool = true):Bool;
 	public function isAnimationFinished():Bool;
 	public function finishAnimation():Void;
 	
@@ -504,8 +542,9 @@ typedef AnimationInfo = {
 	var prefix:String;
 	var fps:Float;
 	var loop:Bool;
-	@:optional var flipX:Bool;
-	@:optional var flipY:Bool;
-	@:optional var assetPath:String;
-	@:optional var frameIndices:Array<Int>;
+	
+	var ?flipX:Bool;
+	var ?flipY:Bool;
+	var ?assetPath:String;
+	var ?frameIndices:Array<Int>;
 }

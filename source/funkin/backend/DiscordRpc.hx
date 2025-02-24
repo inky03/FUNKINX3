@@ -11,7 +11,7 @@ class DiscordRPC {
 
 	public static var dirty:Bool = false;
 	public static var initialized:Bool = false;
-	public static var clientID(default, set):String = '1285413579893506118';
+	public static var clientID(default, set):String = '1337207752870854757';
 
 	public static var details(default, set):String = '';
 	public static var state(default, set):String = '';
@@ -82,7 +82,7 @@ class DiscordRPC {
 			clientID = newID;
 			shutdown();
 			initialize();
-			update();
+			refresh();
 		}
 		return newID;
 	}
@@ -92,13 +92,19 @@ class DiscordRPC {
 		final globalName:String = request[0].username;
 		final discriminator:Int = Std.parseInt(request[0].discriminator);
 		
-		if (discriminator != 0)
-			Log.info('Discord: connected to user $username#$discriminator ($globalName)');
-		else
-			Log.info('Discord: connected to user @$username ($globalName)');
+		if (discriminator != 0) {
+			Log.info('Discord: connected to user $username#$discriminator ($globalName)!');
+		} else {
+			Log.info('Discord: connected to user @$username ($globalName)!');
+		}
+		
+		var gitButton:DiscordButton = new DiscordButton();
+		gitButton.url = 'https://github.com/inky03/FUNKINX3';
+		gitButton.label = 'On GitHub';
+		presence.buttons[0] = gitButton;
 		
 		presence.largeImageKey = 'banner';
-		update();
+		refresh();
 	}
 	private static function onDisconnected(errorCode:Int, message:cpp.ConstCharStar):Void {
 		Log.error('Discord: disconnected ($errorCode:$message)');

@@ -10,6 +10,7 @@ class FunkinCamera extends FlxCamera {
 	public var pauseFollowLerp:Bool = false;
 	public var zoomTarget:Null<Float> = null;
 	public var zoomFollowLerp:Float = -1;
+	public var zoomOffset:Float = 0;
 	var time:Float = -1;
 
 	override public function update(elapsed:Float):Void {
@@ -166,9 +167,9 @@ class FunkinCamera extends FlxCamera {
 	public function updateZoomFollow(elapsed:Float) {
 		if (pauseZoomLerp) return;
 		if (zoomFollowLerp < 0) {
-			zoom = zoomTarget;
+			zoom = zoomTarget + zoomOffset;
 		} else if (zoomFollowLerp > 0) {
-			zoom = Util.smoothLerp(zoom, zoomTarget, zoomFollowLerp * elapsed);
+			zoom = Util.smoothLerp(zoom, zoomTarget + zoomOffset, zoomFollowLerp * elapsed);
 		}
 	}
 

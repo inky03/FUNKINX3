@@ -16,9 +16,14 @@ import flixel.input.keyboard.FlxKey;
 			[D, RIGHT, L]
 		]
 	];
+	
+	var canMod:Bool = false;
+	public function new(mod:Bool = false) {
+		canMod = mod;
+	}
 }
 
 class Options {
-	public static var defaultData:OptionsData = {};
-	public static var data:OptionsData = {};
+	public static var defaultData:OptionsData = new OptionsData();
+	public static var data:OptionsData = new OptionsData(true);
 }

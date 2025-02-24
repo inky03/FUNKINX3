@@ -2,6 +2,7 @@ package funkin.objects;
 
 import flixel.util.FlxSignal;
 import funkin.objects.Character;
+import funkin.objects.HealthIcon;
 
 using Lambda;
 
@@ -28,6 +29,7 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 	public var current(default, set):Character = null;
 	
 	@:isVar public var healthIcon(get, never):String;
+	@:isVar public var healthIconData(get, never):ModernCharacterHealthIconData;
 	@:isVar public var currentAnimation(get, never):String;
 	
 	public var fallbackCharacter:Null<String>;
@@ -81,6 +83,9 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 	function get_healthIcon():String {
 		return current?.healthIcon;
 	}
+	function get_healthIconData():ModernCharacterHealthIconData {
+		return current?.healthIconData;
+	}
 	function get_character():String {
 		return current?.character;
 	}
@@ -89,13 +94,19 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 		return character = current?.character;
 	}
 	function set_current(newChara:Character):Character {
-		if (current != null) {
-			current.shader = null;
-			current.alpha = invisible;
-		}
 		newChara ??= initialChara;
-		if (newChara != null)
-			newChara.alpha = alpha;
+		if (current != newChara) {
+			if (current != null) {
+				current.shader = null;
+				current.alpha = invisible;
+				current.swap(false);
+			}
+			
+			if (newChara != null) {
+				newChara.alpha = alpha;
+				newChara.swap(true);
+			}
+		}
 		onCharacterChanged.dispatch(newChara.character, newChara);
 		return current = newChara;
 	}
@@ -198,11 +209,12 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 		if (char != null)
 			return char;
 		
-		var newChara:Character = new Character(0, 0, name, side, fallbackChara);
+		var newChara:Character = new Character(0, 0, name, side, fallbackChara, false);
 		if (hasCharacter(newChara.character)) {
 			newChara.destroy();
 			return null;
 		}
+		@:privateAccess newChara.characterGroup = this;
 		var off:FlxPoint = FlxPoint.get(stageCameraOffset?.x ?? 0, stageCameraOffset?.y ?? 0);
 		newChara.scale.set(scale.x * newChara.scaleMultiplier, scale.y * newChara.scaleMultiplier);
 		newChara.updateHitbox();
@@ -213,6 +225,7 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 		newChara.conductorInUse = conductorInUse;
 		newChara.bop = bop;
 		off.put();
+		newChara.startScripts();
 		
 		newChara.alpha = invisible;
 		return add(newChara);
@@ -296,6 +309,18 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 			chara.playAnimationSteps(anim, forced, steps, reversed, frame);
 		}
 	}
+	public function playComboAnimation(combo:Int) {
+		for (chara in members) {
+			if (chara == null) continue;
+			chara.playComboAnimation(combo);
+		}
+	}
+	public function playComboDropAnimation(combo:Int) {
+		for (chara in members) {
+			if (chara == null) continue;
+			chara.playComboDropAnimation(combo);
+		}
+	}
 	public function preloadAnimAsset(anim:String) { // preloads animation with a different spritesheet path
 		for (chara in members) {
 			if (chara == null) continue;
@@ -309,6 +334,7 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 		}
 		return true;
 	}
+	
 	public function flip():CharacterGroup {
 		if (side != IDGAF)
 			side = (side == RIGHT ? LEFT : RIGHT);

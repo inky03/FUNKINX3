@@ -11,10 +11,11 @@ class Stage extends FlxSpriteGroup {
 	var chart:Chart;
 	public var name:String;
 	public var json:Dynamic;
+	public var library:String = '';
 	public var hasContent:Bool = false;
 	public var stageValid:Bool = false;
 	public var format:StageFormat = NONE;
-	public var props:Map<String, StageProp> = new Map();
+	public var props:Map<String, FunkinSprite> = new Map();
 	public var characters:Map<String, CharacterGroup> = new Map();
 
 	public var zoom:Float = 1;
@@ -71,8 +72,6 @@ class Stage extends FlxSpriteGroup {
 			Log.warning('no stage content (json or script): loading fallback stage');
 			loadFallback();
 		}
-		
-		sortZIndex();
 	}
 	
 	public function sortZIndex() {
@@ -98,11 +97,13 @@ class Stage extends FlxSpriteGroup {
 	
 	public function beatHit(beat:Int) {
 		for (prop in props) {
-			if (prop.alive && prop.exists)
-				prop.dance(beat);
+			if (prop != null && prop.alive && prop.exists && Std.isOfType(prop, IBopper)) {
+				var bopper:IBopper = cast prop;
+				bopper.dance(beat);
+			}
 		}
 		for (chara in characters) {
-			if (chara.alive && chara.exists)
+			if (chara != null && chara.alive && chara.exists)
 				chara.dance(beat);
 		}
 	}
@@ -110,15 +111,14 @@ class Stage extends FlxSpriteGroup {
 		for (prop in props) prop.destroy();
 	}
 	
-	public function getProp(name:String):StageProp {
+	public function getProp(name:String):FunkinSprite {
 		return props[name];
 	}
 	public function getCharacter(name:String):CharacterGroup {
 		return characters[name];
 	}
 	public function loadModernStageData(data:ModernStageData) {
-		var library:Null<String> = data.library;
-		var charas:Dynamic = data.characters;
+		library = data.directory ?? data.library ?? '';
 
 		zoom = data.cameraZoom;
 		for (prop in data.props) {
@@ -142,8 +142,12 @@ class Stage extends FlxSpriteGroup {
 					propSprite.addAnimation(animation.name, animation.prefix, animation.frameRate ?? 24, animation.looped ?? false, animation.frameIndices, animation.flipX, animation.flipY);
 					if (animation.offsets != null) propSprite.setAnimationOffset(animation.name, animation.offsets[0], animation.offsets[1]);
 				}
-				if (prop.startingAnimation != null)
+				if (prop.danceEvery != null)
+					propSprite.bopFrequency = prop.danceEvery;
+				if (prop.startingAnimation != null) {
 					propSprite.playAnimation(prop.startingAnimation);
+					propSprite.startingAnimation = prop.startingAnimation;
+				}
 			} else {
 				if (prop.assetPath.startsWith('#'))
 					propSprite.makeGraphic(1, 1, FlxColor.fromString(prop.assetPath));
@@ -158,6 +162,8 @@ class Stage extends FlxSpriteGroup {
 			
 			this.props[assetName] = propSprite;
 		}
+		
+		var charas:Dynamic = data.characters;
 		for (name in Reflect.fields(charas)) {
 			var chara:ModernStageChar = Reflect.field(charas, name);
 			var char:Null<String> = null;
@@ -186,7 +192,8 @@ class Stage extends FlxSpriteGroup {
 		}
 	}
 	public function loadFallback() {
-		var basicBG:StageProp = props['basicBG'] = new StageProp();
+		var basicBG:StageProp = new StageProp();
+		props['basicBG'] = basicBG;
 		basicBG.loadTexture('bg');
 		basicBG.setPosition(-basicBG.width * .5, (FlxG.height - basicBG.height) * .5 + 75);
 		basicBG.scrollFactor.set(.95, .95);
@@ -211,27 +218,32 @@ class Stage extends FlxSpriteGroup {
 	}
 }
 
-class StageProp extends FunkinSprite { // maybe unify character with props?
-	public var bop:Bool = true;
+class StageProp extends FunkinSprite implements IBopper { // maybe unify character with props?
+	public var bop(default, set):Bool = true;
+	public var idleSuffix(default, set):String = '';
+	
 	public var sway:Bool = false;
 	public var bopFrequency:Int = 0;
 	public var animated:Bool = false;
-	public var idleSuffix:String = '';
 	public var startingAnimation:Null<String> = null;
 
 	public function new(x:Float = 0, y:Float = 0) {
 		super(x, y);
 	}
-	public function dance(beat:Int = 0) {
+	public function dance(beat:Int = 0, forced:Bool = false) {
 		if (bopFrequency <= 0 || !animated || !bop) return false;
+		
 		if (sway) {
 			playAnimation(beat % 2 == 0 ? 'danceLeft$idleSuffix' : 'danceRight$idleSuffix');
 		} else {
 			if (beat % bopFrequency == 0)
-				playAnimation(startingAnimation ?? 'idle$idleSuffix');
+				playAnimation(startingAnimation ?? 'idle$idleSuffix', forced);
 		}
 		return true;
 	}
+	
+	function set_bop(value:Bool):Bool { return bop = value; }
+	function set_idleSuffix(value:String):String { return idleSuffix = value; }
 }
 
 enum StageFormat {
@@ -245,14 +257,17 @@ typedef ModernStageData = {
 	var cameraZoom:Float;
 	var characters:Dynamic;
 	var props:Array<ModernStageProp>;
-	@:optional var library:String;
-	@:optional var version:String;
+	
+	var ?directory:String;
+	var ?library:String;
+	var ?version:String;
 }
 typedef ModernStageChar = {
 	var zIndex:Int;
 	var position:Array<Float>;
 	var cameraOffsets:Array<Float>;
-	@:optional var scale:Float;
+	
+	var ?scale:Float;
 }
 typedef ModernStageProp = {
 	var zIndex:Int;
@@ -260,11 +275,12 @@ typedef ModernStageProp = {
 	var assetPath:String;
 	var position:Array<Float>;
 	var animations:Array<Character.ModernCharacterAnim>;
-	@:optional var alpha:Float;
-	@:optional var isPixel:Bool;
-	@:optional var danceEvery:Int;
-	@:optional var animType:String;
-	@:optional var scale:Array<Float>;
-	@:optional var scroll:Array<Float>;
-	@:optional var startingAnimation:String;
+	
+	var ?alpha:Float;
+	var ?isPixel:Bool;
+	var ?danceEvery:Int;
+	var ?animType:String;
+	var ?scale:Array<Float>;
+	var ?scroll:Array<Float>;
+	var ?startingAnimation:String;
 }

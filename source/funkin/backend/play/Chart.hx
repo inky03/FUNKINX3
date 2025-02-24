@@ -184,16 +184,45 @@ class Chart {
 		
 		var time = Sys.time();
 		try {
+			var songEventBlobs:Array<Dynamic> = [];
+			function readPsychEvents(data:Array<Dynamic>) {
+				if (data == null)
+					return;
+				
+				if (data[0]?.sectionNotes != null) { // super legacy
+					var count:Int = 0;
+					for (eventBlob in data) {
+						var sectionNotes:Array<Dynamic> = eventBlob.sectionNotes;
+						for (dataNote in sectionNotes) {
+							if (dataNote[1] >= 0)
+								continue;
+							
+							var newBlob:Array<Dynamic> = [dataNote[0], [[dataNote[2], dataNote[3], dataNote[4]]]];
+							songEventBlobs.push(newBlob);
+							count ++;
+						}
+					}
+					Log.minor('legacy psych events detected! (loaded $count events)');
+					return;
+				}
+				
+				for (eventBlob in data)
+					songEventBlobs.push(eventBlob);
+			}
+		
 			var eventsPath:String = 'data/songs/$path/events.json';
 			var eventContent:Null<String> = Paths.text(eventsPath);
 			if (eventContent != null) {
 				Log.minor('loading events from "$eventsPath"');
 				var eventJson:Dynamic = TJSON.parse(eventContent);
-				if (eventJson.song != null && !Std.isOfType(eventJson.song, String)) eventJson = eventJson.song;
-				if (song.json.events == null) song.json.events = [];
-				var eventBlobs:Array<Array<Dynamic>> = eventJson.events;
-				var songEventBlobs:Array<Array<Dynamic>> = song.json.events;
-				for (eventBlob in eventBlobs) songEventBlobs.push(eventBlob);
+				if (eventJson.song != null && !Std.isOfType(eventJson.song, String))
+					eventJson = eventJson.song;
+				
+				if (eventJson.events != null) {
+					readPsychEvents(eventJson.events);
+				} else if (eventJson.notes != null) {
+					readPsychEvents(eventJson.notes);
+				}
 			}
 			
 			var songSpeed:Float;
@@ -225,17 +254,19 @@ class Chart {
 			} else {
 				sections = song.json.notes;
 			}
-			if (song.json.events != null) {
-				var eventBlobs:Array<Array<Dynamic>> = song.json.events;
-				for (eventBlob in eventBlobs) {
-					var eventTime:Float = eventBlob[0];
-					var events:Array<Array<String>> = eventBlob[1];
-					for (event in events) {
-						var songEvent:ChartEvent = {name: event[0], msTime: eventTime, params: ['value1' => event[1], 'value2' => event[2]]};
-						song.events.push(songEvent);
-					}
+			
+			if (song.json.events != null)
+				readPsychEvents(song.json.events);
+			
+			for (eventBlob in songEventBlobs) {
+				var eventTime:Float = eventBlob[0];
+				var events:Array<Array<String>> = eventBlob[1];
+				for (event in events) {
+					var songEvent:ChartEvent = {name: event[0], msTime: eventTime, params: ['value1' => event[1], 'value2' => event[2]]};
+					song.events.push(songEvent);
 				}
 			}
+			
 			var tempMetronome:Metronome = new Metronome();
 			tempMetronome.tempoChanges = song.tempoChanges;
 			for (section in sections) {
@@ -629,7 +660,7 @@ enum ChartFormat {
 		var chartEvent:ChartEvent = cast e;
 		if (Std.isOfType(FlxG.state, PlayState)) {
 			var game:PlayState = cast FlxG.state;
-			game.triggerEvent(chartEvent);
+			game.dispatchSongEvent({type: TRIGGER_EVENT, chartEvent: chartEvent});
 		}
 	}
 }

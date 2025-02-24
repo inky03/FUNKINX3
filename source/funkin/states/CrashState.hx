@@ -216,24 +216,21 @@ $message';
 	}
 	
 	public static function handleUncaughtError(e:UncaughtErrorEvent) {
+		error = e;
+		stack = CallStack.exceptionStack(true);
+		errorMessage = errorToString(stack, error);
+		
 		if (inState) {
-			error = e;
-			stack = CallStack.exceptionStack(true);
-			errorMessage = errorToString(stack, error);
-
 			Log.error('YOUR CRASH HANDLER CRASHED IDIOT\n$errorMessage');
 			Sys.exit(0);
 		}
-
+		
 		e.preventDefault();
 		e.stopImmediatePropagation();
 		
 		if (caughtError) return;
 		
 		var date:Date = Date.now();
-		error = e;
-		stack = CallStack.exceptionStack(true);
-		errorMessage = errorToString(stack, error);
 		var crashLog:String = generateReportString(errorMessage, date);
 		
 		if (!FileSystem.exists('logs'))

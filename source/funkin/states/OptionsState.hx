@@ -29,7 +29,7 @@ class OptionsState extends FunkinState {
 		add(items);
 		
 		for (i => setting in settingList)
-			items.add(new SettingItem(30 * i, 75 * i, setting.save, setting.display, setting.type));
+			items.add(new SettingItem(12.5 * i, 75 * i, setting.save, setting.display, setting.type));
 		
 		FlxG.camera.target = target = new FlxObject();
 		FlxG.camera.followLerp = 9 / 60;
@@ -38,7 +38,7 @@ class OptionsState extends FunkinState {
 		
 		Main.showWatermark = true;
 		
-		DiscordRPC.presence.details = 'Navigating options!';
+		DiscordRPC.presence.details = 'Navigating options';
 		DiscordRPC.dirty = true;
 	}
 	
@@ -69,7 +69,7 @@ class OptionsState extends FunkinState {
 		var selectedItem:SettingItem = items.members[selection];
 		selectedItem.highlight();
 		
-		target.setPosition(selectedItem.x + 400, selectedItem.y + selectedItem.height * .5);
+		target.setPosition(selectedItem.x + 400, selectedItem.getMidpoint().y);
 	}
 }
 
@@ -80,6 +80,7 @@ class SettingItem extends FlxSpriteGroup {
 	public var settingSave:Null<String> = null;
 	public var settingValue(get, default):Dynamic;
 	public var enabled(default, set):Bool = false;
+	
 	public function new(x:Float = 0, y:Float = 0, ?save:String, name:String = 'Unknown', type:SettingType = BOOLEAN) {
 		super(x, y);
 		
@@ -94,14 +95,17 @@ class SettingItem extends FlxSpriteGroup {
 			case STRING:
 			case BOOLEAN:
 				checkbox = new FunkinSprite(0, -30);
-				checkbox.loadAtlas('options/checkbox');
-				checkbox.animation.addByPrefix('select', 'checkbox select', 24, false);
-				checkbox.animation.addByPrefix('unselect', 'checkbox unselect', 24, false);
-				checkbox.offsets.set('select', FlxPoint.get(12, 40));
 				checkbox.scale.set(.5, .5);
-				enabled = settingValue;
-				checkbox.animation.finish();
+				checkbox.loadAtlas('options/checkbox');
+				checkbox.addAnimation('select', 'checkbox select');
+				checkbox.addAnimation('unselect', 'checkbox unselect');
+				checkbox.setAnimationOffset('select', 12, 40);
+				checkbox.playAnimation('unselect');
+				checkbox.finishAnimation();
 				checkbox.updateHitbox();
+				
+				enabled = settingValue;
+				checkbox.finishAnimation();
 				add(checkbox);
 			default:
 		}
@@ -137,8 +141,8 @@ typedef SettingData = {
 	var ?type:SettingType;
 }
 
-enum SettingType {
-	BOOLEAN;
-	NUMBER;
-	STRING;
+enum abstract SettingType(String) to String {
+	var BOOLEAN = 'bool';
+	var NUMBER = 'number';
+	var STRING = 'string';
 }

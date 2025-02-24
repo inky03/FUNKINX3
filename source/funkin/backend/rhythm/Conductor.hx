@@ -3,6 +3,8 @@ package funkin.backend.rhythm;
 import funkin.backend.rhythm.Metronome;
 import funkin.backend.rhythm.TempoChange;
 
+import flixel.util.FlxSignal.FlxTypedSignal;
+
 class Conductor {
 	public var timeScale:Float = 1;
 	public var paused:Bool = false;
@@ -17,6 +19,11 @@ class Conductor {
 	@:isVar public var bar(get, set):Float;
 	// @:isVar public var ms(get, set):Float;
 	
+	public var dispatchEvents:Bool = true;
+	public var barHit:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
+	public var beatHit:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
+	public var stepHit:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
+	
 	public var metronome:Metronome;
 	public var syncTracker:FlxSound;
 	public var maxDisparity:Float = 33.34;
@@ -27,11 +34,26 @@ class Conductor {
 	}
 	public function update(elapsedMS:Float) {
 		if (paused) return;
+		
+		var prevStep:Int = Math.floor(metronome.step);
+		var prevBeat:Int = Math.floor(metronome.beat);
+		var prevBar:Int = Math.floor(metronome.bar);
+		
 		songPosition += Math.min(elapsedMS, 250) * timeScale;
 		if (syncTracker != null) {
 			timeScale = syncTracker.pitch;
 			if (syncTracker.playing && Math.abs(songPosition - syncTracker.time) > maxDisparity * timeScale)
 				songPosition = syncTracker.time;
+		}
+		
+		if (dispatchEvents) {
+			var curBar:Int = Math.floor(metronome.bar);
+			var curBeat:Int = Math.floor(metronome.beat);
+			var curStep:Int = Math.floor(metronome.step);
+			
+			if (prevBar != curBar) barHit.dispatch(curBar);
+			if (prevBeat != curBeat) beatHit.dispatch(curBeat);
+			if (prevStep != curStep) stepHit.dispatch(curStep);
 		}
 	}
 	
