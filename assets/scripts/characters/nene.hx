@@ -64,6 +64,7 @@ function create() {
 }
 function update(elapsed:Float) {
 	aBotSpeaker.update(elapsed);
+	super.update(elapsed);
 	
 	if (shouldTransitionState())
 		transitionState();
@@ -73,6 +74,7 @@ function draw() {
 	aBotSpeaker.alpha = alpha;
 	aBotSpeaker.color = color;
 	aBotSpeaker.draw();
+	super.draw();
 }
 
 function shouldTransitionState() {
@@ -116,7 +118,7 @@ function setState(state) {
 var MIN_BLINK_DELAY:Int = 3;
 var MAX_BLINK_DELAY:Int = 7;
 var blinkCountdown:Int = MIN_BLINK_DELAY;
-function dance() {
+function dance(?beat:Int = 0, ?forced:Bool = false) {
 	var stopDance:Bool = true;
 	
 	switch (getVar('state')) {
@@ -134,8 +136,8 @@ function dance() {
 			}
 	}
 	
-	if (stopDance)
-		return STOP;
+	if (!stopDance)
+		super.dance(beat, forced);
 }
 function animationFinishedC(anim:String) {
 	switch (getVar('state')) {

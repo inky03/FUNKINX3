@@ -81,6 +81,7 @@ function create() {
 	onAnimationFrame.add(animationAdvancedC);
 }
 function update(elapsed:Float) {
+	super.update(elapsed);
 	lightNene.update(elapsed);
 	aBotSpeaker.update(elapsed);
 	
@@ -95,15 +96,14 @@ function draw() {
 	aBotSpeaker.setPosition(x, y);
 	aBotSpeaker.alpha = alpha;
 	aBotSpeaker.draw();
-}
-function drawPost() {
+	super.draw();
 	lightNene.setPosition(x, y);
 	lightNene.alpha = light;
 	lightNene.draw();
 }
 
 function shouldTransitionState() {
-	return (game.player1 != null && game.player1.current.loadedCharacter != 'pico-blazin');
+	return (!game.inputDisabled && game.player1 != null && game.player1.current.loadedCharacter != 'pico-blazin');
 }
 function transitionState() {
 	switch (getVar('state')) {
@@ -143,7 +143,7 @@ function setState(state) {
 var MIN_BLINK_DELAY:Int = 3;
 var MAX_BLINK_DELAY:Int = 7;
 var blinkCountdown:Int = MIN_BLINK_DELAY;
-function dance() {
+function dance(beat:Int = 0, forced:Bool = false) {
 	var stopDance:Bool = true;
 	
 	switch (getVar('state')) {
@@ -162,10 +162,13 @@ function dance() {
 	}
 	
 	if (stopDance)
-		return STOP;
+		return false;
+	
+	return super.dance(beat, forced);
 }
-function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
-	lightNene.playAnimation(flipAnim(anim), forced, reversed, frame);
+function playAnimation(anim:String, ?forced:Bool = false, ?reversed:Bool = false, ?frame:Int = 0) {
+	super.playAnimation(anim, forced, reversed, frame);
+	lightNene.playAnimation(anim, forced, reversed, frame);
 }
 function animationFinishedC(anim:String) {
 	switch (getVar('state')) {
