@@ -45,7 +45,7 @@ class TitleState extends FunkinState {
 		preload();
 		currentIntroText = FlxG.random.getObject(introTexts) ?? ['funkin', 'FOREVER'];
 		
-		beatHit.add(beatHitEvent);
+		conductorInUse.beatHit.add(beatHitEvent);
 		
 		logo = new FunkinSprite().loadAtlas('titlescreen/logo');
 		logo.addAnimation('bump', 'logo bumpin');
@@ -125,19 +125,6 @@ class TitleState extends FunkinState {
 		DiscordRPC.presence.details = 'In the title screen';
 		DiscordRPC.dirty = true;
 	}
-	
-	public function beatHitEvent(beat:Int) {
-		logo.playAnimation('bump', true);
-		if (beat % 2 == 0) {
-			if (!confirmed) {
-				var to:FlxColor = 0xff3333cc;
-				var from:FlxColor = 0xff33ffff;
-				FlxTween.cancelTweensOf(enter);
-				FlxTween.color(enter, conductorInUse.crochet * .001 * 2, from, to, {type: (beat % 4 < 2 ? ONESHOT : BACKWARD)});
-			}
-		}
-	}
-	
 	public override function update(elapsed:Float) {
 		super.update(elapsed);
 		if (!inputEnabled) return;
@@ -157,6 +144,22 @@ class TitleState extends FunkinState {
 				new FlxTimer().start(2, (_) -> {
 					FlxG.switchState(MainMenuState.new);
 				});
+			}
+		}
+	}
+	public override function destroy() {
+		conductorInUse.beatHit.remove(beatHitEvent);
+		super.destroy();
+	}
+	
+	public function beatHitEvent(beat:Int) {
+		logo.playAnimation('bump', true);
+		if (beat % 2 == 0) {
+			if (!confirmed) {
+				var to:FlxColor = 0xff3333cc;
+				var from:FlxColor = 0xff33ffff;
+				FlxTween.cancelTweensOf(enter);
+				FlxTween.color(enter, conductorInUse.crochet * .001 * 2, from, to, {type: (beat % 4 < 2 ? ONESHOT : BACKWARD)});
 			}
 		}
 	}

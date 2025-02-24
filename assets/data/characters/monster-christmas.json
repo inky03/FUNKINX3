@@ -1,0 +1,63 @@
+{
+  "version": "1.0.0",
+  "name": "Monster (Festive)",
+  "assetPath": "characters/monsterFestive",
+  "renderType": "animateatlas",
+  "healthIcon": {
+    "id": "monster",
+    "flipX": false
+  }
+  "side": "left",
+  "animations": [
+    {
+      "name": "idle",
+      "prefix": "idle"
+    },
+    {
+      "name": "idle-hold",
+      "prefix": "idle",
+      "looped": true,
+      "frameIndices": [11, 12, 13, 14]
+    },
+    {
+      "name": "singLEFT",
+      "prefix": "right"
+    },
+    {
+      "name": "singLEFT-hold",
+      "prefix": "right",
+      "looped": true,
+      "frameIndices": [6, 7, 8, 9]
+    },
+    {
+      "name": "singDOWN",
+      "prefix": "down"
+    },
+    {
+      "name": "singDOWN-hold",
+      "prefix": "down",
+      "looped": true,
+      "frameIndices": [6, 7, 8, 9]
+    },
+    {
+      "name": "singUP",
+      "prefix": "up"
+    },
+    {
+      "name": "singUP-hold",
+      "prefix": "up",
+      "looped": true,
+      "frameIndices": [6, 7, 8, 9]
+    },
+    {
+      "name": "singRIGHT",
+      "prefix": "left"
+    },
+    {
+      "name": "singRIGHT-hold",
+      "prefix": "left",
+      "looped": true,
+      "frameIndices": [6, 7, 8, 9]
+    }
+  ]
+}

@@ -17,7 +17,9 @@ class FunkinSound extends FlxSound { // most code adapted from base game's Funki
 	var _scheduled:Bool = false;
 	var _label:String = 'unknown';
 	
-	public static function load(embeddedSound:FlxSoundAsset, volume:Float = 1, looped:Bool = false, autoDestroy:Bool = false, autoPlay:Bool = false, persist:Bool = false, ?onComplete:Void->Void, ?onLoad:Void->Void):Null<FunkinSound> {
+	public static function load(?embeddedSound:FlxSoundAsset, volume:Float = 1, looped:Bool = false, autoDestroy:Bool = false, autoPlay:Bool = false, persist:Bool = false, ?onComplete:Void->Void, ?onLoad:Void->Void):Null<FunkinSound> {
+		if (embeddedSound == null) return null;
+		
 		@:privateAccess
 		if (SoundMixer.__soundChannels.length >= SoundMixer.MAX_ACTIVE_CHANNELS) {
 			FlxG.log.error('FunkinSound could not play sound, channels exhausted! Found ${SoundMixer.__soundChannels.length} active sound channels.');
@@ -47,7 +49,9 @@ class FunkinSound extends FlxSound { // most code adapted from base game's Funki
 		
 		return sound;
 	}
-	public static function playOnce(embeddedSound:FlxSoundAsset, volume:Float = 1, ?onComplete:Void->Void, ?onLoad:Void->Void):Null<FunkinSound> {
+	public static function playOnce(?embeddedSound:FlxSoundAsset, volume:Float = 1, ?onComplete:Void->Void, ?onLoad:Void->Void):Null<FunkinSound> {
+		if (embeddedSound == null) return null;
+		
 		var result:Null<FunkinSound> = FunkinSound.load(embeddedSound, volume, false, true, true, false, onComplete, onLoad);
 		return result;
 	}

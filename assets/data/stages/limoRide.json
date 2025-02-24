@@ -252,7 +252,7 @@
     "gf": {
       "zIndex": 100,
       "position": [787, 779],
-      "cameraOffsets": [0, 0]
+      "cameraOffsets": [0, -50]
     },
     "dad": {
       "zIndex": 200,

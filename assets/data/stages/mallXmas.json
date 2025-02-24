@@ -1,5 +1,6 @@
 {
   "version": "1.0.0",
+  "library": "week5",
   "name": "Christmas Mall (Nice)",
   "cameraZoom": 0.8,
   "props": [

@@ -4,9 +4,15 @@ using StringTools;
 
 typedef HScriptAsset = flixel.util.typeLimit.OneOfTwo<String, HScript>;
 class HScripts { // todo: make this a flxtypedgroup?
+	public var interceptArray:Array<Dynamic>;
+	public var defaultVars:Map<String, Dynamic>;
+	
 	public var activeScripts:Array<HScript> = [];
 	
-	public function new() {}
+	public function new(?interceptArray:Array<Dynamic>, ?defaultVars:Map<String, Dynamic>) {
+		this.interceptArray = interceptArray;
+		this.defaultVars = defaultVars;
+	}
 	public function find(test:HScriptAsset) {
 		if (Std.isOfType(test, HScript)) {
 			return activeScripts.contains(test) ? test : null;
@@ -80,10 +86,10 @@ class HScripts { // todo: make this a flxtypedgroup?
 			Log.minor('using name "$name"...');
 		}
 
-		var hs:HScript = new HScript(name, code);
+		var hs:HScript = new HScript(name, code, interceptArray, defaultVars);
 		if (hs.compiled) {
 			Log.info('hscript "$name" loaded successfully!');
-			hs.run();
+			hs.run('create');
 			add(hs);
 			return hs;
 		} else {
@@ -106,10 +112,10 @@ class HScripts { // todo: make this a flxtypedgroup?
 			code = '';
 		}
 
-		var hs:HScript = new HScript(name, code);
+		var hs:HScript = new HScript(name, code, interceptArray, defaultVars);
 		if (hs.compiled) {
 			Log.info('hscript @ "$file" loaded successfully!');
-			hs.run();
+			hs.run('create');
 			add(hs);
 			return hs;
 		} else {

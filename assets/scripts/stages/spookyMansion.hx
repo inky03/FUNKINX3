@@ -1,13 +1,11 @@
 var lightningStrikeBeat:Int = 0;
 var lightningStrikeOffset:Int = 8;
 
-function create() {
-	Paths.sound('thunder_1', 'week2');
-	Paths.sound('thunder_2', 'week2');
-}
+Paths.sound('thunder_1', 'week2');
+Paths.sound('thunder_2', 'week2');
 
 function beatHit(beat:Int) {
-	if (beat == 4 && PlayState.song.name.toLowerCase() == 'spookeez')
+	if (beat == 4 && PlayState.chart.name.toLowerCase() == 'spookeez')
 		doLightningStrike(false, beat);
 
 	if (FlxG.random.bool(10) && beat > (lightningStrikeBeat + lightningStrikeOffset))

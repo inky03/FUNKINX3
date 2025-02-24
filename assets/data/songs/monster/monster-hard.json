@@ -2742,9 +2742,9 @@
 		"events": [],
 		"player3": null,
 		"song": "Monster",
-		"stage": "spooky",
+		"stage": "spookyMansion",
 		"needsVoices": true,
-		"speed": 1.6,
+		"speed": 1.8,
 		"bpm": 95
 	}
 }

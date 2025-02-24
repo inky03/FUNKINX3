@@ -317,17 +317,20 @@ class ModPane extends FunkinSpriteGroup {
 		add(globalTip);
 		
 		modText = new Alphabet(158, 54, '', 'techno');
-		modText.black = 0x80000000;
+		modText.black = 0xa0000000;
 		modText.scaleTo(.5, .5);
 		add(modText);
 		authText = new Alphabet(158, 98, '', 'techno');
 		authText.scaleTo(.35, .32);
 		authText.alpha = .5;
 		add(authText);
-		descText = new FlxText(30, 158, 425);
-		descText.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, LEFT, OUTLINE, 0x80000000);
+		var textScale:Float = .6;
+		descText = new FlxText(30, 158, 425 / textScale);
+		descText.setFormat(Paths.ttf('vcr'), 32, FlxColor.WHITE, LEFT, OUTLINE, 0xc0000000);
 		descText.antialiasing = Options.data.antialiasing;
-		descText.borderSize = 1.25;
+		descText.scale.set(textScale, textScale);
+		descText.updateHitbox();
+		descText.borderSize = 1.5;
 		add(descText);
 	}
 	public function updateWithCapsule(capsule:ModCapsule) {
@@ -335,6 +338,7 @@ class ModPane extends FunkinSpriteGroup {
 		this.capsule = capsule;
 		if (capsule == null || capsuleMatch) return;
 		
+		FlxTween.cancelTweensOf(portrait);
 		portrait.loadGraphicFromSprite(capsule.portrait);
 		portrait.setGraphicSize(105);
 		portrait.updateHitbox();
@@ -355,16 +359,16 @@ class ModPane extends FunkinSpriteGroup {
 			globalTip.visible = false;
 			descText.text = '';
 		}
+		descText.updateHitbox();
 		
 		// portrait.alpha = 0;
 		// portrait.x = pane.x + 28;
 		var targetColor:FlxColor = capsule.capsuleColor;
 		FlxTween.cancelTweensOf(pane);
-		FlxTween.cancelTweensOf(portrait);
 		FlxTween.cancelTweensOf(optionBox);
-		FlxTween.shake(portrait, .04, .13);
-		FlxTween.color(pane, .15, pane.color, targetColor);
-		FlxTween.color(optionBox, .15, pane.color, targetColor);
+		FlxTween.shake(portrait, .025, .1);
+		FlxTween.color(pane, .11, pane.color, targetColor);
+		FlxTween.color(optionBox, .11, pane.color, targetColor);
 		// FlxTween.tween(portrait, {x: pane.x + 38, alpha: 1}, .3, {ease: FlxEase.circOut});
 	}
 }
@@ -407,9 +411,9 @@ class ModCapsule extends FunkinSpriteGroup {
 		ringGlow.alpha = 0;
 		powerGlow = new FunkinSprite(524, 61).loadTexture('modmenu/powerGlow');
 		powerGlow.blend = ADD;
-		modText = new Alphabet(0, 0, '', 'techno');
+		modText = new Alphabet(0, 0, 'mmnfghghh,..', 'techno');
 		modText.color = FlxColor.WHITE;
-		modText.black = 0x80000000;
+		modText.black = 0xa0000000;
 		modText.scaleTo(.4, .35);
 		
 		powerButton = new FunkinSprite(162).loadAtlas('modmenu/powerButton');

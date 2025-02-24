@@ -21,7 +21,7 @@ class FunkinGame extends flixel.FlxGame {
 		if (!_state.active || !_state.exists)
 			return;
 		
-		if (FlxG.keys.justPressed.F2)
+		if (FlxG.keys.pressed.SHIFT && FlxG.keys.justPressed.F2)
 			crashGame();
 
 		if (_nextState != null)

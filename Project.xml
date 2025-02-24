@@ -4,7 +4,7 @@
 
 	<!-- _________________________ Application Settings _________________________ -->
 
-	<app title="Friday Night Funkin'" file="funkin" main="Main" version="0.0.5" company="HaxeFlixel" />
+	<app title="Friday Night Funkin'" file="funkin" main="Main" version="0.0.8" company="emi3" />
 	<app preloader="flixel.system.FlxPreloader" />
 	
 	<set name="SWF_VERSION" value="11.8" />
@@ -46,6 +46,8 @@
 	<haxelib name="moonchart" />
 	<haxelib name="tjson" />
 	<haxelib name="flxanimate" />
+	<haxelib name="funkin.vis" />
+	<haxelib name="grig.audio" />
 	<haxelib name="hxdiscord_rpc" if="cpp" />
 	
 	<haxelib name="hscript-iris" if="ALLOW_SCRIPTS" />
@@ -56,7 +58,11 @@
 	<haxeflag name="-dce no" />
 	<haxeflag name="--macro" value="addMetadata('@:build(funkin.macros.FunkinMacro.buildFlxBasic())', 'flixel.FlxBasic')" />
 	<haxeflag name="--macro" value="addMetadata('@:build(funkin.macros.HScriptMacro.buildInterp())', 'crowplexus.hscript.Interp')" />
-	<haxeflag name="--macro" value="include('flixel', true, ['flixel.addons.nape', 'flixel.addons.editors.spine', 'flixel.system.macros'])" if="USE_HSCRIPT" />
+	<haxeflag name="--macro" value="include('flixel', true, ['flixel.addons.nape', 'flixel.addons.editors.spine', 'flixel.system.macros'])" if="ALLOW_SCRIPTS" />
+	<haxeflag name="--macro" value="include('haxe', true, ['haxe.atomic', 'haxe.macro'])" if="ALLOW_SCRIPTS" />
+	<haxeflag name="--macro" value="include('funkin', true)" if="ALLOW_SCRIPTS" />
+	<haxeflag name="--macro" value="include('sys', true)" if="ALLOW_SCRIPTS" />
+	<!-- dont include sys.db and sys.ssl? -->
 	
 	<!-- ______________________________ Haxedefines _____________________________ -->
 	
@@ -64,10 +70,13 @@
 	
 	<!--<haxedef name="FLX_RECORD" />-->
 	<haxedef name="FLX_NO_MOUSE" if="mobile" />
-	<haxedef name="FLX_NO_KEYBOARD" if="mobile" />
 	<haxedef name="FLX_NO_TOUCH" if="desktop" />
-	
+	<haxedef name="FLX_NO_KEYBOARD" if="mobile" />
 	<haxedef name="FLX_NO_DEBUG" unless="debug" />
+	
+	<haxedef name="HXCPP_CHECK_POINTER" if="cpp" />
+	<haxedef name="HXCPP_STACK_TRACE" if="cpp" />
+	<haxedef name="HXCPP_STACK_LINE" if="cpp" />
 	
 	<haxedef name="message.reporting" value="pretty" />
 </project>

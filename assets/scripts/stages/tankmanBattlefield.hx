@@ -21,8 +21,8 @@ function createPost() {
 		picoStrumline.noteEvent.add(picoNoteEvent);
 		for (lane in picoStrumline.lanes.members) lane.spawnRadius = 3000;
 		
-		for (note in picoSong.generateNotes()) {
-			note.extraData['isTank'] = FlxG.random.bool(100 / 8); //100 / 16); too low
+		for (i => note in picoSong.notes) {
+			note.setVar('isTank', FlxG.random.bool(100 / 8)); //100 / 16); too low
 			picoStrumline.queueNote(note);
 		}
 	}

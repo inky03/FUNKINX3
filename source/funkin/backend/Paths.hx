@@ -1,5 +1,6 @@
 package funkin.backend;
 
+import flixel.util.FlxDestroyUtil.IFlxDestroyable;
 import openfl.utils.Assets as OFLAssets;
 import lime.utils.Assets as LimeAssets;
 import flxanimate.data.AnimationData;
@@ -15,6 +16,8 @@ import haxe.io.Path;
 using StringTools;
 
 class Paths {
+	public static var library:String = '';
+	
 	public static var workingDirectory:String = FileSystem.absolutePath('');
 	public static var graphicCache:Map<String, FlxGraphic> = [];
 	public static var dynamicCache:Map<String, Dynamic> = [];
@@ -30,8 +33,8 @@ class Paths {
 		for (key => graphic in graphicCache) {
 			if (!trackedAssets.contains(key) && !exclusions.contains(key)) {
 				if (graphic != null) {
-					graphic.destroyOnNoUse = true;
 					graphic.persist = false;
+					graphic.destroyOnNoUse = true;
 					FlxG.bitmap.remove(graphic);
 					// trace('graphic $key removed');
 				}
@@ -45,6 +48,16 @@ class Paths {
 					// trace('sound $key removed');
 				}
 				soundCache.remove(key);
+			}
+		}
+		for (key => dyn in dynamicCache) {
+			if (!trackedAssets.contains(key) && !excludeKeys.contains(key)) {
+				if (dyn != null) {
+					if (Std.isOfType(dyn, IFlxDestroyable))
+						try dyn.destroy();
+					dyn = null;
+				}
+				dynamicCache.remove(key);
 			}
 		}
 		FlxG.bitmap.clearUnused();
@@ -68,17 +81,49 @@ class Paths {
 			if (FileSystem.exists(globalModPath(key)))
 				return globalModPath(key);
 			
-			for (mod in Mods.getLocal()) {
-				var path:String = modPath(key, mod.directory, library);
-				if (FileSystem.exists(path)) return path;
+			var path:String;
+			var allMods:Bool = (Mods.currentMod == null);
+			var priorize:Bool = (!allMods);
+			
+			if (!allMods && Mods.currentMod != '') { // current mod is high priority
+				var curMod:Mod = Mods.modByDirectory(Mods.currentMod);
+				
+				priorize = true;
+				if (curMod.doLoad) {
+					path = modPath(key, Mods.currentMod, library);
+					if (FileSystem.exists(path)) {
+						return path;
+					} else {
+						path = modPath(key, Mods.currentMod);
+						if (FileSystem.exists(path))
+							return path;
+					}
+				}	
+			}
+			
+			for (mod in Mods.get()) {
+				if (!mod.doLoad || !mod.enabled || (!allMods && !mod.global) || (priorize && mod.directory == Mods.currentMod))
+					continue;
+				
+				path = modPath(key, mod.directory, library);
+				if (FileSystem.exists(path))
+					return path;
+				
 				if (library != null) {
-					var path:String = modPath(key, mod.directory);
-					if (FileSystem.exists(path)) return path;
+					path = modPath(key, mod.directory);
+					if (FileSystem.exists(path))
+						return path;
 				}
 			}
 		}
 		if (FileSystem.exists(sharedPath(key, library))) return sharedPath(key, library);
 		if (FileSystem.exists(key)) return key;
+		
+		if (library == null && Paths.library != '') {
+			return getPath(key, allowMods, Paths.library ?? '');
+		} else {
+			return null;
+		}
 
 		return (library == null ? null : getPath(key, allowMods));
 	}
@@ -93,9 +138,28 @@ class Paths {
 			if (FileSystem.exists(globalModPath(key)))
 				files.push({path: globalModPath(key), type: GLOBAL});
 			
-			for (mod in Mods.getLocal(allMods)) {
-				var path:String = modPath(key, mod.directory, library);
-				if (FileSystem.exists(path)) files.push({mod: mod.directory, path: path, type: MOD});
+			var path:String;
+			var priorize:Bool = (!allMods);
+			
+			if (Mods.currentMod == null) {
+				allMods = true;
+				priorize = false;
+			} else if (Mods.currentMod != '') { // current mod is high priority
+				var curMod:Mod = Mods.modByDirectory(Mods.currentMod);
+				
+				priorize = true;
+				path = modPath(key, Mods.currentMod, library);
+				if (curMod.doLoad && FileSystem.exists(path))
+					files.push({mod: Mods.currentMod, path: path, type: MOD});
+			}
+			
+			for (mod in Mods.get()) {
+				if (!mod.doLoad || !mod.enabled || (!allMods && !mod.global) || (priorize && mod.directory == Mods.currentMod))
+					continue;
+				
+				path = modPath(key, mod.directory, library);
+				if (FileSystem.exists(path))
+					files.push({mod: mod.directory, path: path, type: MOD});
 			}
 		}
 		
@@ -109,13 +173,15 @@ class Paths {
 			case MOD: modPath(key, mod, library);
 		}
 	}
-	inline public static function modPath(key:String, mod:String = '', library:String = '')
-		return mod.trim() == '' ? globalModPath(key) : 'mods/$mod/${library == '' ? key : '$library/$key'}';
-	inline public static function globalModPath(key:String, library:String = '')
-		return 'mods/${library == '' ? key : '$library/$key'}';
-	inline public static function sharedPath(key:String, library:String = '')
-		return 'assets/${library == '' ? key : '$library/$key'}';
-	inline public static function exists(key:String, allowMods:Bool = true, ?library:String)
+	inline static function offLibrary(library):Bool
+		return (library == null || library == '');
+	inline public static function modPath(key:String, mod:String = '', library:String = ''):String
+		return mod.trim() == '' ? globalModPath(key) : 'mods/$mod/${offLibrary(library) ? key : '$library/$key'}';
+	inline public static function globalModPath(key:String, library:String = ''):String
+		return 'mods/${offLibrary(library) ? key : '$library/$key'}';
+	inline public static function sharedPath(key:String, library:String = ''):String
+		return 'assets/${offLibrary(library) ? key : '$library/$key'}';
+	inline public static function exists(key:String, allowMods:Bool = true, ?library:String):Bool
 		return (getPath(key, allowMods, library) != null);
 
 	inline public static function sound(key:String, ?library:String)
@@ -217,6 +283,7 @@ class Paths {
 			return dynamicCache[key];
 		}
 
+		trackedAssets.push(key);
 		return dynamicCache[key] = dataFunc();
 	}
 
@@ -232,17 +299,17 @@ class Paths {
 	inline public static function otf(key:String, ?library:String)
 		return font('$key.otf', library);
 	
-	public static function sparrowAtlas(key:String, ?library:String) {
+	public static function sparrowAtlas(key:String, ?library:String):FlxAtlasFrames {
 		var xmlContent:String = text('images/$key.xml', library);
 		if (xmlContent == null) return null;
 		return FlxAtlasFrames.fromSparrow(image(key, library), xmlContent);
 	}
-	public static function packerAtlas(key:String, ?library:String) {
+	public static function packerAtlas(key:String, ?library:String):FlxAtlasFrames {
 		var sheetContent:String = text('images/$key.txt', library);
 		if (sheetContent == null) return null;
 		return FlxAtlasFrames.fromSpriteSheetPacker(image(key, library), sheetContent);
 	}
-	public static function packerJSONAtlas(key:String, ?library:String) {
+	public static function packerJSONAtlas(key:String, ?library:String):FlxAtlasFrames {
 		var sheetContent:String = text('images/$key.json', library);
 		if (sheetContent == null) return null;
 		return FlxAtlasFrames.fromTexturePackerJson(image(key, library), sheetContent);

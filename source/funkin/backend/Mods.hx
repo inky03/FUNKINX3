@@ -3,7 +3,7 @@ package funkin.backend;
 using Lambda;
 
 class Mods {
-	public static var currentMod:String = '';
+	public static var currentMod:Null<String> = null;
 	private static var list:Array<Mod> = [];
 	static var tempList:Array<Mod> = [];
 
@@ -21,9 +21,10 @@ class Mods {
 		
 		var priorize:Bool = (!allMods || keepPriority);
 		
-		if (currentMod == '') {
+		if (currentMod == null) {
 			allMods = true;
-		} else if (priorize) { // current mod is always high priority
+			priorize = false;
+		} else if (currentMod != '' && priorize) { // current mod is always high priority
 			var curMod:Mod = modByDirectory(currentMod);
 			if (curMod.doLoad)
 				tempList.push(curMod);

@@ -4,7 +4,7 @@
   "assetPath": "characters/momCar",
   "singTime": 8.0,
   "healthIcon": {
-    "id": "mom"
+    "id": "mommy"
   },
   "cameraOffsets": [0, -100],
   "animations": [

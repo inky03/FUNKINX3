@@ -5,7 +5,6 @@ import crowplexus.hscript.Expr;
 import crowplexus.hscript.Tools;
 
 class ModInterp extends crowplexus.hscript.Interp {
-	public static var intercept:Array<Dynamic>;
 	public var hscript:HScript;
 	
 	override function setVar(name:String, v:Dynamic) {
@@ -14,13 +13,19 @@ class ModInterp extends crowplexus.hscript.Interp {
 			return;
 		}
 		
-		if (intercept != null) {
-			for (obj in intercept) {
+		if (hscript.interceptArray != null) {
+			for (obj in hscript.interceptArray) {
 				var prop:Dynamic = Reflect.getProperty(obj, name);
 				if (Reflect.hasField(obj, name) || prop != null) {
 					Reflect.setProperty(obj, name, v);
 					return;
 				}
+			}
+		}
+		if (hscript.defaultVars != null) {
+			if (hscript.defaultVars.exists(name)) {
+				hscript.defaultVars.set(name, v);
+				return;
 			}
 		}
 		
@@ -38,12 +43,16 @@ class ModInterp extends crowplexus.hscript.Interp {
 			return v;
 		}
 		
-		if (intercept != null) {
-			for (obj in intercept) {
+		if (hscript.interceptArray != null) {
+			for (obj in hscript.interceptArray) {
 				var prop:Dynamic = Reflect.getProperty(obj, id);
 				if (Reflect.hasField(obj, id) || prop != null)
 					return prop;
 			}
+		}
+		if (hscript.defaultVars != null) {
+			if (hscript.defaultVars.exists(id))
+				return hscript.defaultVars.get(id);
 		}
 
 		error(EUnknownVariable(id));

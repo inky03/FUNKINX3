@@ -32,8 +32,8 @@ class FreeplaySubState extends FunkinState {
 		backingCard.x -= backingCard.back.width;
 		backingCard.slideIn();
 		add(backingCard);
-
-		beatHit.add(beatHitEvent);
+		
+		conductorInUse.beatHit.add(beatHitEvent);
 
 		angleMask = new AngleMask();
 		bg = new FunkinSprite(FlxG.width, 0).loadTexture('freeplay/freeplayBGdad');

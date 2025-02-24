@@ -16,11 +16,11 @@ import flixel.graphics.frames.FlxFramesCollection;
 
 using StringTools;
 
-class FunkinAnimate extends FlxAnimate { // this is kind of useless, but pop off
+class FunkinAnimate extends FlxAnimate implements funkin.backend.FunkinSprite.IZoomFactor { // this is kind of useless, but pop off
 	public var funkAnim:FunkinAnimateAnim;
 	
-	public var zoomFactor:Float = 1;
-	public var initialZoom:Float = 1;
+	public var zoomFactor(default, set):Float = 1;
+	public var initialZoom(default, set):Float = 1;
 	
 	public function new(x:Float = 0, y:Float = 0, ?path:String, ?settings:flxanimate.Settings) {
 		super(x, y);
@@ -230,6 +230,13 @@ class FunkinAnimate extends FlxAnimate { // this is kind of useless, but pop off
 		#if FLX_DEBUG
 		FlxBasic.visibleCount++;
 		#end
+	}
+	
+	function set_zoomFactor(value:Float):Float {
+		return zoomFactor = value;
+	}
+	function set_initialZoom(value:Float):Float {
+		return initialZoom = value;
 	}
 }
 

@@ -4,7 +4,7 @@ typedef BarBounds = {
 	var min:Float;
 	var max:Float;
 }
-class Bar extends FlxSpriteGroup {
+class Bar extends FunkinSpriteGroup {
 	public var overlay:FunkinSprite;
 	public var leftBar:FunkinSprite;
 	public var rightBar:FunkinSprite;
@@ -18,7 +18,7 @@ class Bar extends FlxSpriteGroup {
 	public var barRect:FlxRect = new FlxRect(4, 4);
 	public var barCenter:FlxPoint = new FlxPoint();
 	
-	public var leftToRight:Bool = true;
+	public var leftToRight(default, set):Bool = true;
 	
 	public function new(x:Float = 0, y:Float = 0, valueFunction:Bar -> Float = null, overlayImage:String = 'healthBar') {
 		super(x, y);
@@ -63,7 +63,11 @@ class Bar extends FlxSpriteGroup {
 	public override function update(elapsed:Float) {
 		super.update(elapsed);
 		updateTargetPercent();
-		percent = Util.smoothLerp(percent, targetPercent, percentLerp * elapsed);
+		if (percentLerp >= 0) {
+			percent = Util.smoothLerp(percent, targetPercent, percentLerp * elapsed);
+		} else {
+			percent = targetPercent;
+		}
 		updateBarCenter();
 	}
 	
@@ -85,9 +89,21 @@ class Bar extends FlxSpriteGroup {
 		updateBars();
 	}
 	function updateTargetPercent():Float {
-		if (valueFunc != null)
-			return targetPercent = FlxMath.remapToRange(valueFunc(this), bounds.min, bounds.max, 0, 100);
-		return targetPercent;
+		if (valueFunc != null) {
+			if (bounds.max <= bounds.min)
+				return 0;
+			
+			var val:Float = valueFunc(this);
+			return targetPercent = Util.clamp((val - bounds.min) / bounds.max * 100, 0, 100);
+		} else {
+			return Util.clamp(targetPercent, 0, 100);
+		}
+	}
+	function set_leftToRight(isIt:Bool) {
+		if (leftToRight == isIt) return isIt;
+		leftToRight = isIt;
+		updateBars();
+		return isIt;
 	}
 	public function updateBars() {
 		var fPercent:Float = (leftToRight ? 100 - percent : percent) * .01;
