@@ -28,25 +28,23 @@ function createPost() {
 	additionalLighten.blend = BlendMode.ADD;
 	additionalLighten.visible = false;
 
-	stage.add(scrollingSky = new FlxTiledSprite(Paths.image('phillyBlazin/skyBlur', 'weekend1'), 2000, 359, true, false));
+	stage.add(scrollingSky = new FlxTiledSprite(Paths.image('phillyBlazin/skyBlur', 'weekend1'), 2000, 380, true, false));
 	scrollingSky.setPosition(-500, -120);
 	scrollingSky.scrollFactor.set(0, 0);
 	scrollingSky.zIndex = 10;
 
 	rainShader = new RuntimeShader('rain');
-	rainShader.setFloat('uScale', FlxG.height / 200);
 	rainShader.setFloat('uIntensity', .5);
-	rainShader.setFloatArray('uScreenResolution', [FlxG.width, FlxG.height]);
-	rainShader.setFloatArray('uCameraBounds', [0, 0, FlxG.width, FlxG.height]);
+	rainShader.setFloat('uScale', FlxG.height / 200);
 	rainShader.setFloatArray('uRainColor', [0x66 / 0xff, 0x80 / 0xff, 0xcc / 0xff]);
-	game.camGame.filters = [new ShaderFilter(rainShader)];
+	camGame.addFilter(rainShader);
 
-	game.player1.setPosition(1200, 1300);
-	game.player2.setPosition(1280, 1300); // uh?
-	game.player1.color = game.player2.color = 0xffdedede;
-	game.player3.color = 0xff888888;
-	game.ratingGroup.x += 560;
-	game.ratingGroup.y -= 320;
+	player1.setPosition(1360, 1720);
+	player2.setPosition(1440, 1720); // uh?
+	player1.color = player2.color = 0xffdedede;
+	player3.color = 0xff888888;
+	ratingGroup.x += 560;
+	ratingGroup.y -= 320;
 
 	stage.sortZIndex();
 }
@@ -71,35 +69,38 @@ function deathPre(instant:Bool) {
 	darn.playAnimation('uppercutPrep');
 	pico.specialAnim = darn.specialAnim = true;
 	new FlxTimer().start(.2, (_) -> {
-		game.camGame.shake(0.03, 0.1);
+		camGame.shake(0.03, 0.1);
 		pico.zIndex = 2000;
 		pico.playAnimation('hitLow');
 		darn.playAnimation('punchLow$alt');
-		darn.animation.timeScale = pico.animation.timeScale = 0;
+		darn.current.animation.timeScale = pico.current.animation.timeScale = 0;
 		stage.sortZIndex();
 	});
 }
 function hitShake()
-	game.camGame.shake(0.0025, 0.15);
+	camGame.shake(0.0025, 0.15);
 function blockShake()
-	game.camGame.shake(0.002, 0.1);
+	camGame.shake(0.002, 0.1);
 function picoAnim(e:NoteEvent) {
-	if (e.type != NoteEventType.HIT && e.type != NoteEventType.LOST && e.type != NoteEventType.GHOST)
+	if (e.type != 'hit' && e.type != 'lost' && e.type != 'ghost')
 		return;
 
-	var missed:Bool = e.type == NoteEventType.LOST;
+	var missed:Bool = (e.type == 'lost');
 	var alt:String = (picoAlt ? 2 : 1);
-	var pico:Character = game.player1;
+	var pico:Character = player1;
 	var front:Bool = false;
+	pico.bop = false;
 	
-	if (e.type == NoteEventType.GHOST) {
-		pico.playAnimationSteps('punchHigh$alt', true);
-		picoAlt = !picoAlt;
-		front = true;
-		
-		var darn:Character = player2;
-		var darnellDodge:Bool = FlxG.random.bool(50);
-		darn.playAnimationSteps(darnellDodge ? 'dodge' : 'block', true);
+	if (e.type == 'ghost') {
+		if (!Options.data.ghostTapping) {
+			pico.playAnimationSteps('punchHigh$alt', true);
+			picoAlt = !picoAlt;
+			front = true;
+			
+			var darn:Character = player2;
+			var darnellDodge:Bool = FlxG.random.bool(50);
+			darn.playAnimationSteps(darnellDodge ? 'dodge' : 'block', true);
+		}
 	} else {
 		var kind:String = e.note.noteKind;
 		
@@ -157,21 +158,22 @@ function picoAnim(e:NoteEvent) {
 			case 'weekend-1-idle': pico.playAnimation('idle', true);
 		}
 	}
-	game.player1.zIndex = (front ? 3001 : 2000);
+	player1.zIndex = (front ? 3001 : 2000);
 	stage.sortZIndex();
 }
 function picoUppercut(hit:Bool) {
-	game.player1.playAnimationSteps('uppercut', true);
+	player1.playAnimationSteps('uppercut', true);
 	if (hit)
-		game.camGame.shake(0.005, 0.25);
+		camGame.shake(0.005, 0.25);
 }
 function darnellAnim(e:NoteEvent) {
-	if (e.type != NoteEventType.HIT && e.type != NoteEventType.LOST) return;
+	if (e.type != 'hit' && e.type != 'lost') return;
 
-	var missed:Bool = e.type == NoteEventType.LOST;
+	var missed:Bool = (e.type == 'lost');
 	var alt:String = (darnellAlt ? 2 : 1);
-	var darn:Character = game.player2;
 	var kind:String = e.note.noteKind;
+	var darn:Character = player2;
+	darn.bop = false;
 
 	if (cantUppercut) {
 		darn.playAnimationSteps('punchHigh$alt', true);
@@ -214,7 +216,7 @@ function darnellAnim(e:NoteEvent) {
 			darnellAlt = !darnellAlt;
 
 		case 'weekend-1-darnelluppercutprep': darn.playAnimation('uppercutPrep', true);
-		case 'weekend-1-darnelluppercut': darn.playAnimationSteps('uppercut', true); game.camGame.shake(0.005, 0.25);
+		case 'weekend-1-darnelluppercut': darn.playAnimationSteps('uppercut', true); camGame.shake(0.005, 0.25);
 
 		case 'weekend-1-picouppercut': darn.playAnimationSteps(missed ? 'dodge' : 'uppercutHit', true);
 
@@ -238,7 +240,7 @@ function darnellAnim(e:NoteEvent) {
 }
 
 function deathPost()
-	game.camGame.filters = null;
+	camGame.filters = null;
 
 function update(elapsed, paused, dead) {
 	if (paused || dead) return;
@@ -255,8 +257,7 @@ function update(elapsed, paused, dead) {
 		lightningTimer = FlxG.random.float(7, 15);
 	}
 
-	var cam:FunkinCamera = game.camGame;
-	rainShader.setFloatArray('uCameraBounds', [cam.viewLeft, cam.viewTop, cam.viewRight, cam.viewBottom]);
+	var cam:FunkinCamera = camGame;
 	rainShader.setFloat('uTime', rainTimer);
 }
 
@@ -287,9 +288,9 @@ function applyLightning():Void {
 	if (FlxG.random.bool(65)) lightning.x = FlxG.random.int(-250, 280);
 	else lightning.x = FlxG.random.int(780, 900);
 
-	FlxTween.color(game.player1, LIGHTNING_FADE_DURATION, 0xFF606060, 0xffdedede);
-	FlxTween.color(game.player2, LIGHTNING_FADE_DURATION, 0xFF606060, 0xffdedede);
-	FlxTween.color(game.player3, LIGHTNING_FADE_DURATION, 0xff606060, 0xff888888);
+	FlxTween.color(player1, LIGHTNING_FADE_DURATION, 0xFF606060, 0xffdedede);
+	FlxTween.color(player2, LIGHTNING_FADE_DURATION, 0xFF606060, 0xffdedede);
+	FlxTween.color(player3, LIGHTNING_FADE_DURATION, 0xff606060, 0xff888888);
 
 	FlxG.sound.play(Paths.sound('Lightning${FlxG.random.int(1, 3)}', 'weekend1'));
 }

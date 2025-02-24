@@ -23,6 +23,14 @@
 			"prefix": "dance right hair blow"
 		},
 		{
+			"name": "danceLeft-hairblowCar",
+			"prefix": "dance left hair blow car"
+		},
+		{
+			"name": "danceRight-hairblowCar",
+			"prefix": "dance right hair blow car"
+		},
+		{
 			"name": "hairFall",
 			"prefix": "dance left hair blow end"
 		},
@@ -32,6 +40,16 @@
 		},
 		{
 			"name": "sad-hold",
+			"prefix": "cry alt",
+			"looped": true,
+			"frameIndices": [2, 3, 4, 5, 6, 7, 8, 9]
+		},
+		{
+			"name": "drop70",
+			"prefix": "cry alt"
+		},
+		{
+			"name": "drop70-hold",
 			"prefix": "cry alt",
 			"looped": true,
 			"frameIndices": [2, 3, 4, 5, 6, 7, 8, 9]
@@ -54,6 +72,10 @@
 		},
 		{
 			"name": "cheer",
+			"prefix": "cheer"
+		},
+		{
+			"name": "combo50",
 			"prefix": "cheer"
 		},
 		{

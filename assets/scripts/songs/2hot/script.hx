@@ -10,7 +10,7 @@ function opponentNoteEventPre(e:NoteEvent) {
 	if (!StringTools.startsWith(noteKind, 'weekend-1')) return;
 	
 	switch (e.type) {
-		case NoteEventType.SPAWNED:
+		case 'spawned':
 			note.visible = false;
 			var msTime:Float = e.note.msTime;
 			switch (noteKind) {
@@ -22,7 +22,7 @@ function opponentNoteEventPre(e:NoteEvent) {
 				case "weekend-1-kneecan":
 					scheduleSound(Paths.sound('Kick_Can_FORWARD', 'weekend1'), msTime - 22);
 			}
-		case NoteEventType.HIT:
+		case 'hit':
 			var darn:Character = e.targetCharacter;
 			e.animateReceptor = false;
 			e.playAnimation = false;
@@ -47,7 +47,7 @@ var deathByCan:Bool = false;
 var gunCocked:Bool = false;
 function playerNoteEventPre(e:NoteEvent) {
 	switch (e.type) {
-		case NoteEventType.HIT:
+		case 'hit':
 			switch (e.note.noteKind) {
 				case 'weekend-1-cockgun':
 					e.playAnimation = false;
@@ -59,7 +59,7 @@ function playerNoteEventPre(e:NoteEvent) {
 					}
 					e.playAnimation = false;
 			}
-		case NoteEventType.LOST:
+		case 'lost':
 			if (e.note.noteKind == 'weekend-1-firegun') {
 				e.playAnimation = false;
 				switch (PlayState.chart.difficulty) {
@@ -85,7 +85,7 @@ function playerNoteEvent(e:NoteEvent) {
 	
 	var pico:Character = e.targetCharacter;
 	switch (e.type) {
-		case NoteEventType.HIT:
+		case 'hit':
 			switch (noteKind) {
 				case 'weekend-1-cockgun':
 					FlxG.sound.play(Paths.sound('Gun_Prep', 'weekend1'));
@@ -100,7 +100,7 @@ function playerNoteEvent(e:NoteEvent) {
 					gunCocked = false;
 				default:
 			}
-		case NoteEventType.LOST:
+		case 'lost':
 			switch (noteKind) {
 				case 'weekend-1-firegun':
 					FlxG.sound.play(Paths.sound('Pico_Bonk', 'weekend1'));
@@ -125,14 +125,14 @@ FunkinAnimate.cacheAnimate('spraycanAtlas', 'weekend1');
 var scheduledSounds:Array<Dynamic> = [];
 
 var picoFlicker:FlxFlicker = null;
-var picoFade:FlxSprite = new FlxSprite();
+var picoFade:FunkinSprite = new FunkinSprite();
 var sprayCans:FlxTypedGroup = new FlxSpriteGroup();
 var casingGroup:FlxSpriteGroup = new FlxSpriteGroup();
 
 function scheduleSound(snd:Sound, time:Float) {
 	if (snd == null) return;
 	
-	var snd:FlxSound = FunkinSound.load(snd);
+	var snd:FunkinSound = FunkinSound.load(snd);
 	scheduledSounds.push({sound: snd, targetTime: time});
 }
 function updatePost() {
@@ -178,13 +178,13 @@ function picoAnim(pico:Character, anim:String) {
 }
 function makePicoFade(chara:Character) {
 	picoFade.zIndex = chara.zIndex - 3;
-	picoFade.frames = chara.frames;
-	picoFade.frame = chara.frame;
+	picoFade.frames = chara.current.frames;
+	picoFade.frame = chara.current.frame;
+	picoFade.x = chara.current.x;
+	picoFade.y = chara.current.y;
 	picoFade.scale.set(1, 1);
 	picoFade.updateHitbox();
-	picoFade.x = chara.x;
-	picoFade.y = chara.y;
-	picoFade.alpha = .3;
+	picoFade.alpha = 1;
 	stage.sortZIndex();
 	FlxTween.cancelTweensOf(picoFade);
 	FlxTween.cancelTweensOf(picoFade.scale);
@@ -267,7 +267,7 @@ function missNextCan(pico:Character) {
 			var explodeEZ:FunkinSprite = new FunkinSprite().loadAtlas('spraypaintExplosionEZ', 'weekend1');
 			explodeEZ.addAnimation('idle', 'explosion round 1 short', 24, false);
 			explodeEZ.playAnimation('idle');
-			explodeEZ.setPosition(pico.x - 340, pico.y - 300);
+			explodeEZ.setPosition(pico.x - explodeEZ.width * .5 - 50, pico.y - explodeEZ.height * .75 - 75);
 			stage.add(explodeEZ);
 			
 			explodeEZ.onAnimationComplete.add((anim:String) -> {
@@ -297,15 +297,16 @@ function death(instant:Bool, gameOver:GameOverSubState) {
 		gameOver.deathAnimationPostfix = 'Explosion';
 		
 		if (!instant) {
-			for (can in sprayCans.members) {
+			for (can in sprayCans) {
 				can.anim.timeScale = 0;
+				FlxTween.shake(can, .1, .3);
 			}
-			player1.animation.timeScale = 0;
+			player1.current.animation.timeScale = 0;
 			FlxTween.shake(player1, .1, .3, FlxAxes.X, {onUpdate: (t) -> {
-				player1.spriteOffset.x = player1.animOffset.x + FlxG.random.float(-75, 75) * (1 - FlxEase.elasticInOut(t.percent));
+				player1.offset.x = player1.offset.x + FlxG.random.float(-75, 75) * (1 - FlxEase.elasticInOut(t.percent));
 			}, onComplete: (t) -> {
-				player1.spriteOffset.x = player1.animOffset.x;
-				player1.spriteOffset.y = player1.animOffset.y;
+				player1.offset.x = 0;
+				player1.offset.y = 0;
 			}});
 		}
 	}
@@ -313,22 +314,23 @@ function death(instant:Bool, gameOver:GameOverSubState) {
 function deathCreate(instant:Bool, gameOver:GameOverSubState) {
 	if (!deathByCan) return;
 	
-	player1.animation.timeScale = 1;
-	picoDeath = new FunkinSprite(player1.x + 270, player1.y + 170).loadAnimate('characters/picoExplosionDeath', 'weekend1');
+	player1.current.animation.timeScale = 1;
+	picoDeath = new FunkinSprite(player1.x, player1.y).loadAnimate('characters/picoExplosionDeath', 'weekend1');
 	picoDeath.addAnimation('loop', 'Loop Start', 24, true);
 	picoDeath.addAnimation('confirm', 'Confirm');
 	picoDeath.addAnimation('intro', 'intro');
 	picoDeath.playAnimation('intro');
 	picoDeath.updateHitbox();
+	picoDeath.y -= picoDeath.height;
+	picoDeath.x -= picoDeath.width * .5 - 200;
 	picoDeath.onAnimationComplete.add((anim:String) -> {
 		if (anim == 'intro')
 			picoDeath.playAnimation('loop');
 	});
-	gameOver.remove(player1);
+	gameOver.remove(player1.current);
 	gameOver.add(picoDeath);
 	
-	singed = new FlxSound().loadEmbedded(Paths.sound('singed_loop', 'weekend1'));
-	FlxG.sound.list.add(singed);
+	singed = FunkinSound.load(Paths.sound('singed_loop', 'weekend1'));
 	singed.looped = true;
 	new FlxTimer().start(3, (_) -> {
 		gameOver.startGameOver();

@@ -4,6 +4,8 @@ function setupStage(id:String, stage:Stage) {
 	Paths.sound('carPass0', 'week4');
 	Paths.sound('carPass1', 'week4');
 	
+	stage.characters.get('gf').current.idleSuffix = '-hairblowCar';
+	
 	// todo: whatever shader shit is in the base stage
 	resetFastCar();
 }

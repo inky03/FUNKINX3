@@ -52,7 +52,7 @@
     },
     "gf": {
       "zIndex": 100,
-      "cameraOffsets": [0, 0],
+      "cameraOffsets": [0, -60],
       "position": [751.5, 787]
     }
   },

@@ -8,7 +8,6 @@
     "id": "spooky",
     "flipX": false
   },
-  "offsets": [0, 200],
   "startingAnimation": "danceRight",
   "animations": [
     {

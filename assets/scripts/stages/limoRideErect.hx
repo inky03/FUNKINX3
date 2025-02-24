@@ -72,6 +72,8 @@ function setupStage(id:String, stage:Stage) {
 	mist5.velocity.x = 100;
 	mist5.scale.set(1.5, 1.5);
 	
+	stage.characters.get('gf').current.idleSuffix = '-hairblowCar';
+	
 	stage.props['shootingStar'].blend = BlendMode.ADD;
 	
 	resetFastCar();
