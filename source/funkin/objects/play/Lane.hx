@@ -47,7 +47,7 @@ class Lane extends FunkinSpriteGroup {
 	
 	public function set_scrollSpeed(newSpeed:Float) {
 		var cam = camera ?? FlxG.camera;
-		spawnRadius = Note.distanceToMS(camera.height / camera.zoom, newSpeed) + 50;
+		spawnRadius = Note.distanceToMS(camera.height / camera.zoom, Math.abs(newSpeed)) + 50;
 		return scrollSpeed = newSpeed;
 	}
 	public function set_held(newHeld:Bool) {
@@ -83,10 +83,10 @@ class Lane extends FunkinSpriteGroup {
 		receptor.lane = this; //lol
 		this.noteData = data;
 		this.add(receptor);
-		topMembers.push(notes);
-		topMembers.push(noteCover);
-		topMembers.push(noteSparks);
-		topMembers.push(noteSplashes);
+		for (mem in [notes, noteCover, noteSparks, noteSplashes]) {
+			topMembers.push(mem); // render conditionally
+			this.add(mem);
+		}
 
 		noteCover.shader = splashRGB.shader;
 
@@ -105,7 +105,7 @@ class Lane extends FunkinSpriteGroup {
 				queue.remove(note);
 				continue;
 			}
-			early = (note.msTime - conductorInUse.songPosition > spawnRadius);
+			early = (note.msTime - conductorInUse.songPosition > Math.max(spawnRadius, hitWindow));
 			if (!early && (oneWay || (note.msTime + note.msLength - conductorInUse.songPosition) >= -spawnRadius)) {
 				queue.remove(note);
 				insertNote(note);
@@ -120,7 +120,6 @@ class Lane extends FunkinSpriteGroup {
 
 		super.update(elapsed);
 		extraWindow = Math.max(extraWindow - elapsed * 200, 0);
-		for (member in topMembers) member.update(elapsed);
 	}
 	public function updateNotes() {
 		var i:Int = notes.length;
@@ -132,15 +131,16 @@ class Lane extends FunkinSpriteGroup {
 		}
 	}
 	public override function draw() {
-		super.draw();
-		if (selfDraw) drawTop();
+		drawThing(selfDraw ? null : false);
 	}
-	public function drawTop() {
+	function drawThing(?top:Bool):Void {
 		@:privateAccess {
 			final oldDefaultCameras = FlxCamera._defaultCameras;
 			if (_cameras != null) FlxCamera._defaultCameras = _cameras;
 
-			for (member in topMembers) {
+			for (member in members) {
+				if (top != null && topMembers.contains(member) != top)
+					continue;
 				if (member != null && member.exists && member.visible)
 					member.draw();
 			}
@@ -162,22 +162,12 @@ class Lane extends FunkinSpriteGroup {
 	public function fireInput(key:FlxKey, pressed:Bool):Bool {
 		if (!inputKeys.contains(key) || !allowInput) return false;
 		if (pressed) {
-			var note = getHighestNote(inputFilter);
-			if (note != null) {
-				hitNote(note);
-			} else {
-				ghostTapped();
-			}
+			_noteEvent(basicEvent(PRESSED, getHighestNote(inputFilter)));
 		} else {
-			held = false;
 			var note:Note = heldNote;
-			if (note != null) {
-				note.held = false;
-				_noteEvent(basicEvent(RELEASED, note));
-				killNote(note);
-			} else {
-				receptor.playAnimation('static');
-			}
+			_noteEvent(basicEvent(RELEASED, note));
+			if (note != null)
+				_noteEvent(basicEvent(RELEASED));
 		}
 		return true;
 	}
@@ -223,8 +213,8 @@ class Lane extends FunkinSpriteGroup {
 	}
 	
 	public function splash():NoteSplash {
-		var splash:NoteSplash = noteSplashes.recycle(NoteSplash, () -> new NoteSplash(noteData));
-		splash.camera = camera; //silly. freaking silly
+		var splash:NoteSplash = noteSplashes.recycle(NoteSplash, () -> new NoteSplash(noteData), true);
+		preAdd(splash);
 		splash.alpha = alpha * .7;
 		splash.shader = splashRGB.shader;
 		splash.splashOnReceptor(receptor);
@@ -235,9 +225,9 @@ class Lane extends FunkinSpriteGroup {
 		return noteCover;
 	}
 	public function spark():NoteSpark {
-		var spark:NoteSpark = noteSparks.recycle(NoteSpark, () -> new NoteSpark(noteData));
+		var spark:NoteSpark = noteSparks.recycle(NoteSpark, () -> new NoteSpark(noteData), true);
+		preAdd(spark);
 		spark.alpha = alpha;
-		spark.camera = camera;
 		spark.shader = splashRGB.shader;
 		spark.sparkOnReceptor(receptor);
 		return spark;
@@ -310,6 +300,7 @@ class Lane extends FunkinSpriteGroup {
 	public function insertNote(songNote:ChartNote, pos:Int = 0) {
 		var note:Note = notes.recycle(Note, () -> generateNote(songNote));
 		
+		preAdd(note);
 		note.lane = this;
 		note.chartNote = songNote;
 		note.hitWindow = hitWindow;
@@ -344,6 +335,25 @@ class Lane extends FunkinSpriteGroup {
 		return receptor?.width ?? 0;
 	public override function get_height()
 		return receptor?.height ?? 0;
+	
+	override function set_zoomFactor(value:Float):Float {
+		super.set_zoomFactor(value);
+		for (sprite in topMembers) {
+			if (sprite == null) continue;
+			var funk:IZoomFactor = getFunk(sprite);
+			if (funk != null) funk.zoomFactor = value;
+		}
+		return zoomFactor = value;
+	}
+	override function set_initialZoom(value:Float):Float {
+		super.set_initialZoom(value);
+		for (sprite in topMembers) {
+			if (sprite == null) continue;
+			var funk:IZoomFactor = getFunk(sprite);
+			if (funk != null) funk.initialZoom = value;
+		}
+		return initialZoom = value;
+	}
 }
 
 class Receptor extends FunkinSprite {

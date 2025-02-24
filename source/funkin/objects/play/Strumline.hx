@@ -62,27 +62,27 @@ class Strumline extends FunkinSpriteGroup {
 	}
 	
 	//getters
-	public function get_leftBound() {
+	function get_leftBound() {
 		var minX:Float = Math.POSITIVE_INFINITY;
 		for (lane in lanes) minX = Math.min(minX, lane.receptor.x);
 		return minX;
 	}
-	public function get_rightBound() {
+	function get_rightBound() {
 		var maxX:Float = Math.NEGATIVE_INFINITY;
 		for (lane in lanes) maxX = Math.max(maxX, lane.receptor.x + lane.receptor.width);
 		return maxX;
 	}
-	public function get_topBound() {
+	function get_topBound() {
 		var minY:Float = Math.POSITIVE_INFINITY;
 		for (lane in lanes) minY = Math.min(minY, lane.receptor.y);
 		return minY;
 	}
-	public function get_bottomBound() {
+	function get_bottomBound() {
 		var maxY:Float = Math.NEGATIVE_INFINITY;
 		for (lane in lanes) maxY = Math.max(maxY, lane.receptor.y + lane.receptor.height);
 		return maxY;
 	}
-	public function get_strumlineWidth() {
+	function get_strumlineWidth() {
 		var minX:Float = Math.POSITIVE_INFINITY;
 		var maxX:Float = Math.NEGATIVE_INFINITY;
 		for (lane in lanes) {
@@ -91,7 +91,7 @@ class Strumline extends FunkinSpriteGroup {
 		}
 		return (maxX - minX);
 	}
-	public function get_strumlineHeight() {
+	function get_strumlineHeight() {
 		var minY:Float = Math.POSITIVE_INFINITY;
 		var maxY:Float = Math.NEGATIVE_INFINITY;
 		for (lane in lanes) {
@@ -100,12 +100,12 @@ class Strumline extends FunkinSpriteGroup {
 		}
 		return (maxY - minY);
 	}
-	public function get_receptorWidth() {
+	function get_receptorWidth() {
 		var width:Float = 0;
 		for (lane in lanes) width = Math.max(width, lane.receptor.width);
 		return width;
 	}
-	public function get_receptorHeight() {
+	function get_receptorHeight() {
 		var height:Float = 0;
 		for (lane in lanes) height = Math.max(height, lane.receptor.height);
 		return height;
@@ -143,7 +143,7 @@ class Strumline extends FunkinSpriteGroup {
 		super.draw();
 		for (lane in lanes) { // draw on top
 			if (!lane.selfDraw)
-				lane.drawTop();
+				@:privateAccess lane.drawThing(true);
 		}
 	}
 	public function forEachLane(func:Lane -> Void) {

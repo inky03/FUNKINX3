@@ -7,13 +7,14 @@ import funkin.objects.play.Lane;
 import funkin.backend.play.Scoring;
 import funkin.objects.play.Strumline;
 
-@:structInit class NoteEvent {
+@:structInit class NoteEvent implements IPlayEvent {
+	public var type(default, null):NoteEventType;
+	public var cancelled:Bool = false;
+	
 	public var note:Note;
 	public var lane:Lane;
 	public var receptor:Receptor;
-	public var type:NoteEventType;
 	public var strumline:Strumline;
-	public var cancelled:Bool = false;
 	public var animSuffix:String = '';
 
 	public var spark:NoteSpark = null;
@@ -26,13 +27,15 @@ import funkin.objects.play.Strumline;
 	public var doSpark:Bool = false; // many vars...
 	public var doSplash:Bool = false;
 	public var playSound:Bool = false;
+	public var popRating:Bool = true;
 	public var applyRating:Bool = false;
 	public var playAnimation:Bool = true;
 	public var animateReceptor:Bool = true;
-
+	
 	public function cancel() cancelled = true;
 	public function dispatch() { // hahaaa
 		if (cancelled) return;
+		
 		var game:PlayState;
 		if (Std.isOfType(FlxG.state, PlayState)) {
 			game = cast FlxG.state;
@@ -41,6 +44,7 @@ import funkin.objects.play.Strumline;
 			throw(new haxe.Exception('note event can\'t be dispatched outside of PlayState!!'));
 			return;
 		}
+		
 		switch (type) {
 			case HIT:
 				if (game.genericVocals != null)
@@ -55,10 +59,12 @@ import funkin.objects.play.Strumline;
 				
 				if (applyRating) {
 					scoring ??= scoreHandler?.judgeNoteHit(note, (lane.cpu ? 0 : note.msTime - lane.conductorInUse.songPosition));
-					var rating:FunkinSprite = game.popRating(scoring.rating);
-					rating.velocity.y = -FlxG.random.int(140, 175);
-					rating.velocity.x = FlxG.random.int(0, 10);
-					rating.acceleration.y = 550;
+					if (popRating) {
+						var rating:FunkinSprite = game.popRating(scoring.rating);
+						rating.velocity.y = -FlxG.random.int(140, 175);
+						rating.velocity.x = FlxG.random.int(0, 10);
+						rating.acceleration.y = 550;
+					}
 					applyExtraWindow(6);
 					
 					game.totalHits ++;
@@ -85,11 +91,9 @@ import funkin.objects.play.Strumline;
 				
 				if (playAnimation && targetCharacter != null) {
 					var anim:String = 'sing${game.singAnimations[note.noteData]}';
-					var suffixAnim:String = anim + targetCharacter.animSuffix;
-					if (targetCharacter.animationExists(suffixAnim)) {
-						targetCharacter.playAnimationSoft(suffixAnim, true);
-						targetCharacter.timeAnimSteps();
-					}
+					var suffixAnim:String = anim + animSuffix;
+					if (targetCharacter.animationExists(suffixAnim + targetCharacter.animSuffix))
+						targetCharacter.playAnimationSteps(suffixAnim, true);
 				}
 
 				if (animateReceptor)
@@ -101,18 +105,32 @@ import funkin.objects.play.Strumline;
 				} else if (animateReceptor && !lane.cpu) {
 					lane.receptor.grayBeat = note.beatTime + 1;
 				}
+			case PRESSED:
+				if (note != null) {
+					lane.hitNote(note);
+				} else {
+					lane.ghostTapped();
+				}
 			case HELD | RELEASED:
-				var perfectRelease:Bool = true;
 				final released:Bool = (type == RELEASED);
+				
+				if (released && note == null) {
+					lane.held = false;
+					if (animateReceptor)
+						receptor.playAnimation('static');
+					return;
+				}
+				
+				var perfectRelease:Bool = true;
 				final songPos:Float = lane.conductorInUse.songPosition;
 				
-				perfect = (released && songPos >= note.endMs - Scoring.holdLeniencyMS);
+				perfect = (released && (lane.cpu || songPos >= note.endMs - Scoring.holdLeniencyMS));
 				
 				if (applyRating) {
 					perfectRelease = perfect;
 					
 					var prevHitTime:Float;
-					if (!note.held && note.holdTime <= note.msTime + Scoring.holdLeniencyMS) {
+					if (!note.held && (lane.cpu || note.holdTime <= note.msTime + Scoring.holdLeniencyMS)) {
 						prevHitTime = note.msTime;
 					} else {
 						prevHitTime = Math.max(note.holdTime, note.msTime);
@@ -143,8 +161,8 @@ import funkin.objects.play.Strumline;
 				
 				if (playAnimation && targetCharacter != null) {
 					var anim:String = 'sing${game.singAnimations[note.noteData]}';
-					var suffixAnim:String = anim + targetCharacter.animSuffix;
-					if (targetCharacter.animationExists(suffixAnim))
+					var suffixAnim:String = anim + animSuffix + targetCharacter.animSuffix;
+					if ((!targetCharacter.specialAnim || targetCharacter.currentAnimation == suffixAnim) && targetCharacter.animationExists(suffixAnim))
 						targetCharacter.timeAnimSteps();
 				}
 				
@@ -174,6 +192,7 @@ import funkin.objects.play.Strumline;
 					}
 					
 					note.held = false;
+					lane.killNote(note);
 				}
 			case GHOST:
 				if (animateReceptor)
@@ -186,7 +205,7 @@ import funkin.objects.play.Strumline;
 					targetCharacter.specialAnim = false;
 					targetCharacter.playAnimationSteps('sing${game.singAnimations[lane.noteData]}miss', true);
 				}
-
+				
 				applyExtraWindow(15);
 				if (applyRating) {
 					game.score -= 10;
@@ -209,10 +228,12 @@ import funkin.objects.play.Strumline;
 
 				if (applyRating) {
 					scoring ??= scoreHandler?.judgeNoteMiss(note);
-					var rating:FunkinSprite = game.popRating('sadmiss');
-					rating.velocity.y = -FlxG.random.int(80, 95);
-					rating.velocity.x = FlxG.random.int(-6, 6);
-					rating.acceleration.y = 240;
+					if (popRating) {
+						var rating:FunkinSprite = game.popRating('sadmiss');
+						rating.velocity.y = -FlxG.random.int(80, 95);
+						rating.velocity.x = FlxG.random.int(-6, 6);
+						rating.acceleration.y = 240;
+					}
 					
 					if (scoreHandler != null) {
 						game.totalNotes ++;
@@ -248,6 +269,7 @@ enum abstract NoteEventType(String) to String {
 
 	var HIT = 'hit';
 	var HELD = 'held';
+	var PRESSED = 'pressed';
 	var RELEASED = 'released';
 
 	var LOST = 'lost';

@@ -3,13 +3,13 @@ package funkin.objects.play;
 import funkin.objects.play.Lane;
 import funkin.backend.play.Scoring;
 import funkin.backend.rhythm.Event;
+import funkin.backend.FunkinSprite;
 import funkin.objects.CharacterGroup;
 
+import flixel.math.FlxMatrix;
 import flixel.graphics.frames.FlxFrame;
-import flixel.addons.display.FlxTiledSprite;
-import flixel.graphics.frames.FlxFramesCollection;
 
-@:structInit class ChartNote implements ITimeSortable {
+@:structInit class ChartNote implements ISpriteVars implements ITimeSortable {
 	public var laneIndex:Int;
 	public var kind:String = '';
 	public var msTime:Float = 0;
@@ -26,9 +26,17 @@ import flixel.graphics.frames.FlxFramesCollection;
 		if (extraData == null) return null;
 		return extraData.get(k);
 	}
+	public function hasVar(k:String):Bool {
+		if (extraData == null) return false;
+		return extraData.exists(k);
+	}
+	public function removeVar(k:String):Bool {
+		if (extraData == null) return false;
+		return extraData.remove(k);
+	}
 }
 
-class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affect society
+class Note extends FunkinSprite {
 	public static var directionNames:Array<String> = ['left', 'down', 'up', 'right'];
 	public static var directionColors:Array<Array<FlxColor>> = [
 		[FlxColor.fromRGB(194, 75, 153), FlxColor.fromRGB(60, 31, 86)],
@@ -53,7 +61,6 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	public var lost:Bool = false;
 	public var canHit:Bool = true;
 	
-	public var noteOffset:FlxPoint;
 	public var clipDistance:Float = 0;
 	public var scrollDistance:Float = 0;
 	public var followAngle:Bool = true;
@@ -122,36 +129,31 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 	}
 	
 	public function reload() {
+		healthLoss = 6.0 / 100;
+		healthGain = 1.5 / 100;
+		healthGainPerSecond = 7.5 / 100;
 		lost = goodHit = held = consumed = preventDespawn = ignore = false;
-		followAngle = canHit = true;
+		followAngle = canHit = visible = true;
 		holdTime = hitTime = -1;
+		multAlpha = 1;
 		clipDistance = 0;
-		if (noteOffset == null) {
-			noteOffset = FlxPoint.get();
-		} else {
-			noteOffset.set();
+		if (tail != null) {
+			tail.loadAtlas('notes');
+			tail.reload();
 		}
-		if (tail != null)
-			tail.clipRect = null;
 		
 		loadAtlas('notes');
 		reloadAnimations();
 	}
-	public function reloadTail() {
+	public function updateTail() {
 		isHoldNote = (msLength > 0);
-		if (tail == null && isHoldNote) {
+		if (tail == null && isHoldNote)
 			tail = new NoteTail(this);
-		}
 	}
 	public function reloadAnimations() {
 		var dirName:String = directionNames[noteData];
 		addAnimation('hit-$noteData', '$dirName note', 24, false);
 		playAnimation('hit-$noteData', true);
-		/*if (isHoldPiece) {
-			addAnimation('tail-$noteData', '$dirName hold tail', 24, false);
-			addAnimation('hold-$noteData', '$dirName hold piece', 24, false);
-			playAnimation(this.isHoldTail ? 'tail' : 'hold', true);
-		}*/
 		updateHitbox();
 	}
 	public function toChartNote():ChartNote {
@@ -175,14 +177,14 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		if (msLength == newLength) return newLength;
 		msLength = newLength;
 		@:bypassAccessor beatLength = conductorInUse.convertMeasure(msTime + newLength, MS, BEAT) - beatTime;
-		reloadTail();
+		updateTail();
 		return newLength;
 	}
 	public function set_beatLength(newLength:Float) {
 		if (beatLength == newLength) return newLength;
 		beatLength = newLength;
 		@:bypassAccessor msLength = conductorInUse.convertMeasure(beatTime + newLength, BEAT, MS) - msTime;
-		reloadTail();
+		updateTail();
 		return newLength;
 	}
 	public function get_endMs()
@@ -198,65 +200,188 @@ class Note extends FunkinSprite { // todo: pooling?? maybe?? how will this affec
 		var receptor:Receptor = lane.receptor;
 		var speed:Float = scrollSpeed * scrollMultiplier;
 		var dir:Float = lane.direction + directionOffset;
-
-		var holdOffsetX:Float = 0;
-		var holdOffsetY:Float = 0;
-
-		scrollDistance = Note.msToDistance(msTime - conductorInUse.songPosition, speed);
+		
+		scrollDistance = msToDistance(msTime - conductorInUse.songPosition, speed);
 		
 		var xP:Float = 0;
 		var yP:Float = scrollDistance;
 		var rad:Float = dir / 180 * Math.PI;
-		x = receptor.x + noteOffset.x + Math.sin(rad) * xP + Math.cos(rad) * yP + holdOffsetX;
-		y = receptor.y + noteOffset.y + Math.sin(rad) * yP + Math.cos(rad) * xP + holdOffsetY;
+		x = receptor.x + Math.sin(rad) * xP + Math.cos(rad) * yP;
+		y = receptor.y + Math.sin(rad) * yP + Math.cos(rad) * xP;
 		alpha = lane.alpha * receptor.alpha * multAlpha;
 		
 		if (followAngle)
 			angle = lane.receptor.angle;
 		
 		if (isHoldNote && tail != null) {
+			var absDistance:Float = msToDistance(msTime - conductorInUse.songPosition, Math.abs(speed));
 			var tailY:Float = height * .5;
-			tail.setGraphicSize(35, Note.msToDistance(msLength, speed) - tailY);
+			tail.offset.y = 0;
 			tail.angle = dir - 90;
-			tail.updateHitbox();
+			tail.scale.x = scale.x;
+			tail.scale.y = FlxMath.signOf(speed) * Math.abs(scale.x);
 			tail.setPosition(x + (width - tail.width) * .5, y + tailY);
+			tail.sustainHeight = msToDistance(msLength, Math.abs(speed));
+			tail.updateHitbox();
 			
-			if (goodHit && scrollDistance < 0)
-				clipDistance = -scrollDistance;
-			
-			if (clipDistance > 0) {
-				if (tail.clipRect == null)
-					tail.clipRect = new FlxRect(0, 0, tail.frameWidth);
-				
-				var clipDist:Float = (clipDistance / tail.height) * tail.frameHeight;
-				tail.clipRect.height = tail.frameHeight - clipDist;
-				tail.clipRect.y = clipDist;
-				
-				tail.clipRect = tail.clipRect;
-			}
+			if (goodHit && absDistance < 0)
+				tail.sustainClip = -absDistance;
 		}
 	}
-	inline function clipto(ya:Float = 0, yb:Float = 0)
-		clipRect.set(0, ya, frameWidth, yb - ya);
 }
 
 class NoteTail extends FunkinSprite {
-	public var parent:Note;
+	public var parent(default, set):Note;
+	public var noteData:Int;
 	
 	public var multAlpha:Float = .6;
+	public var sustainClip:Float = 0;
+	public var sustainHeight:Float = 0;
+	
+	var _tileMatrix:FlxMatrix = new FlxMatrix();
 	
 	public function new(parent:Note) {
 		super();
 		
-		makeGraphic(1, FlxG.height, FlxColor.WHITE);
-		origin.set(frameWidth * .5, 0);
 		this.parent = parent;
+		this.reload();
+	}
+	public override function destroy() {
+		_tileMatrix = null;
+		super.destroy();
+	}
+	
+	function set_parent(note:Note):Note {
+		if (parent == note) return note;
+		noteData = note.noteData;
+		return parent = note;
+	}
+	
+	public function reload() {
+		reloadAnimations();
+		sustainClip = 0;
+	}
+	public function reloadAnimations() {
+		var dirName:String = Note.directionNames[noteData];
+		addAnimation('tail-$noteData', '$dirName hold tail', 24, false);
+		addAnimation('hold-$noteData', '$dirName hold piece', 24, false);
+		playAnimation('hold-$noteData', true);
 	}
 	public override function draw() {
 		alpha = multAlpha;
-		if (parent != null)
+		if (parent != null) {
+			scrollFactor.copyFrom(parent.scrollFactor);
+			initialZoom = parent.initialZoom;
+			zoomFactor = parent.zoomFactor;
+			shader = parent.shader;
 			alpha *= parent.alpha;
+			color = parent.color;
+		}
 		
 		super.draw();
+	}
+	// this is kinda mediocre tbh
+	public override function drawComplex(camera:FlxCamera) {
+		if (sustainHeight <= sustainClip)
+			return;
+		
+		updateShader(camera);
+		
+		var top:Float = 1;
+		var bottom:Float = 0;
+		var doTail:Bool = true;
+		playAnimation('tail-$noteData', true);
+		origin.set(frameWidth * .5, 0);
+		cropFrame(top, bottom);
+		getDrawMatrix();
+		
+		var totalHeight:Float = sustainHeight;
+		var absScale:Float = Math.abs(scale.y);
+		
+		if (absScale < Math.max(Math.abs(scale.x), .05)) return; // TODO: add negative scale rendering (and flipY, i guess)
+		
+		var scaleSign:Int = FlxMath.signOf(scale.y);
+		var rad:Float = angle / 180 * Math.PI;
+		var sin:Float = Math.sin(rad);
+		var cos:Float = Math.cos(rad);
+		var cut:Bool = false;
+		
+		while (true) {
+			var pieceHeight:Float = (frameHeight - top - bottom) * absScale;
+			if (pieceHeight <= 0) return;
+			
+			totalHeight -= pieceHeight;
+			if (totalHeight <= sustainClip) {
+				var dist:Float = (sustainClip - totalHeight) / absScale;
+				_frame = frame.clipTo(_rect.set(0, dist, frameWidth, frameHeight - dist - bottom), _frame);
+				getDrawMatrix();
+				cut = true;
+			}
+			
+			_tileMatrix.copyFrom(_matrix);
+			_tileMatrix.translate(-totalHeight * sin, totalHeight * cos * scaleSign);
+			FunkinSprite.transformMatrixZoom(_tileMatrix, camera, zoomFactor, initialZoom);
+			camera.drawPixels(_frame, framePixels, _tileMatrix, colorTransform, blend, antialiasing, shader);
+			
+			if (cut) break;
+			
+			if (doTail) {
+				bottom = 1;
+				doTail = false;
+				playAnimation('hold-$noteData', true);
+				origin.set(frameWidth * .5, 0);
+				cropFrame(top, bottom);
+				getDrawMatrix();
+			}
+		}
+	}
+	function cropFrame(cropTop:Float = 0, cropBottom:Float = 0) {
+		_frame = frame.clipTo(_rect.set(0, cropTop, frameWidth, frameHeight - cropTop - cropBottom), _frame);
+	}
+	function getDrawMatrix() {
+		_frame.prepareMatrix(_matrix, FlxFrameAngle.ANGLE_0, checkFlipX(), checkFlipY());
+		
+		_matrix.translate(-origin.x, -origin.y);
+		_matrix.scale(scale.x, scale.y);
+		
+		if (bakedRotationAngle <= 0) {
+			updateTrig();
+
+			if (angle != 0)
+				_matrix.rotateWithTrig(_cosAngle, _sinAngle);
+		}
+		
+		transformSpriteOffset(_transPoint);
+		getScreenPosition(_point, camera);
+		_point.add(-offset.x, -offset.y);
+		_point.add(-_transPoint.x, -_transPoint.y);
+		_matrix.translate(_point.x + origin.x, _point.y + origin.y);
+		
+		if (isPixelPerfectRender(camera)) {
+			_matrix.tx = Math.floor(_matrix.tx);
+			_matrix.ty = Math.floor(_matrix.ty);
+		}
+	}
+	public override function getScreenBounds(?newRect:FlxRect, ?camera:FlxCamera):FlxRect {
+		if (newRect == null)
+			newRect = FlxRect.get();
+		
+		if (camera == null)
+			camera = getDefaultCamera();
+		
+		newRect.setPosition(x, y);
+		if (pixelPerfectPosition)
+			newRect.floor();
+		_scaledOrigin.set(origin.x * Math.abs(scale.x), origin.y * Math.abs(scale.y));
+		newRect.x += -Std.int(camera.scroll.x * scrollFactor.x) - offset.x + origin.x - _scaledOrigin.x;
+		newRect.y += -Std.int(camera.scroll.y * scrollFactor.y) - offset.y + origin.y - _scaledOrigin.y;
+		if (isPixelPerfectRender(camera))
+			newRect.floor();
+		newRect.setSize(frameWidth * Math.abs(scale.x), sustainHeight);
+		if (scale.y < 0) newRect.y -= sustainHeight;
+		return newRect.getRotatedBounds(angle, _scaledOrigin, newRect);
+	}
+	public override function isSimpleRender(?camera:FlxCamera):Bool {
+		return false; // lazy zzz
 	}
 }
