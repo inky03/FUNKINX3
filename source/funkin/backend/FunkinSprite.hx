@@ -4,6 +4,7 @@ import flixel.math.FlxMatrix;
 import flixel.util.FlxAxes;
 import flixel.util.FlxSignal;
 import flixel.util.FlxDestroyUtil;
+import flixel.system.FlxAssets;
 import flixel.graphics.frames.FlxFrame;
 import flixel.graphics.frames.FlxAtlasFrames;
 import flixel.graphics.frames.FlxFramesCollection;
@@ -270,7 +271,11 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 		return this;
 	}
 	
-	public override function makeGraphic(width:Int, height:Int, color:FlxColor = FlxColor.WHITE, unique:Bool = false, ?key:String) {
+	public override function loadGraphic(graphic:FlxGraphicAsset, animated:Bool = false, frameWidth:Int = 0, frameHeight:Int = 0, unique:Bool = false, ?key:String):FunkinSprite {
+		super.loadGraphic(graphic, animated, frameWidth, frameHeight, unique, key);
+		return this;
+	}
+	public override function makeGraphic(width:Int, height:Int, color:FlxColor = FlxColor.WHITE, unique:Bool = false, ?key:String):FunkinSprite {
 		super.makeGraphic(width, height, color, unique, key);
 		return this;
 	}

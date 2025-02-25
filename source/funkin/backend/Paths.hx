@@ -181,6 +181,8 @@ class Paths {
 		return 'mods/${offLibrary(library) ? key : '$library/$key'}';
 	inline public static function sharedPath(key:String, library:String = ''):String
 		return 'assets/${offLibrary(library) ? key : '$library/$key'}';
+	inline public static function modPathExists(key:String, mod:String = '', library:String = ''):Bool
+		return (FileSystem.exists(modPath(key, mod, library)));
 	inline public static function exists(key:String, allowMods:Bool = true, ?library:String):Bool
 		return (getPath(key, allowMods, library) != null);
 
@@ -278,6 +280,7 @@ class Paths {
 		
 		return File.getContent(assetKey);
 	}
+	
 	public static function cachedDynamic(key:String, dataFunc:Void->Dynamic) {
 		if (dynamicCache[key] != null) {
 			return dynamicCache[key];
