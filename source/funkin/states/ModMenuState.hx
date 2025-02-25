@@ -3,7 +3,9 @@ package funkin.states;
 import funkin.backend.Mods;
 import funkin.objects.Alphabet;
 import funkin.shaders.HSBShift;
+
 import openfl.display.BitmapData;
+import flixel.util.FlxGradient;
 import flixel.effects.FlxFlicker;
 import flixel.graphics.FlxGraphic;
 
@@ -293,8 +295,10 @@ class ModPane extends FunkinSpriteGroup {
 	public var modText:Alphabet;
 	public var descText:FlxText;
 	public var authText:Alphabet;
+	public var textGradient:FunkinSprite;
 	
 	public var pane:FunkinSprite;
+	public var banner:FunkinSprite;
 	public var portrait:FunkinSprite;
 	public var optionBox:FunkinSprite;
 	
@@ -304,9 +308,18 @@ class ModPane extends FunkinSpriteGroup {
 	public function new(x:Float = 0, y:Float = 0) {
 		super(x, y);
 		
+		textGradient = new FunkinSprite().loadGraphic(FlxGradient.createGradientBitmapData(425, 1, [FlxColor.WHITE, FlxColor.TRANSPARENT], 1, 0));
+		textGradient.scale.set(1, 60);
+		textGradient.updateHitbox();
+		textGradient.alpha = .75;
+		textGradient.blend = MULTIPLY;
+		
 		pane = new FunkinSprite().loadTexture('modmenu/pane');
 		add(pane);
+		banner = new FunkinSprite();
+		add(banner);
 		portrait = new FunkinSprite(30, 30);
+		add(textGradient);
 		add(portrait);
 		optionBox = new FunkinSprite(480, 158).loadTexture('modmenu/optionBox');
 		add(optionBox);
@@ -316,16 +329,19 @@ class ModPane extends FunkinSpriteGroup {
 		globalTip.visible = false;
 		add(globalTip);
 		
-		modText = new Alphabet(158, 54, '', 'techno');
+		modText = new Alphabet(160, 64, '', 'techno');
+		// modText.setPosition(50, 158);
 		modText.black = 0xa0000000;
-		modText.scaleTo(.5, .5);
+		modText.scaleTo(.43, .4);
 		add(modText);
-		authText = new Alphabet(158, 98, '', 'techno');
-		authText.scaleTo(.35, .32);
+		authText = new Alphabet(160, 90, '', 'techno');
+		// authText.setPosition(50, 190);
+		authText.scaleTo(.3, .27);
 		authText.alpha = .5;
 		add(authText);
-		var textScale:Float = .6;
-		descText = new FlxText(30, 158, 425 / textScale);
+		var textScale:Float = .53;
+		descText = new FlxText(50, 158, 405 / textScale);
+		// descText.y = 216;
 		descText.setFormat(Paths.ttf('vcr'), 32, FlxColor.WHITE, LEFT, OUTLINE, 0xc0000000);
 		descText.antialiasing = Options.data.antialiasing;
 		descText.scale.set(textScale, textScale);
@@ -344,6 +360,8 @@ class ModPane extends FunkinSpriteGroup {
 		portrait.updateHitbox();
 		
 		var mod:Mod = capsule.mod;
+		var modDir:Null<String> = mod?.directory;
+		var targetColor:FlxColor = capsule.capsuleColor;
 		if (mod != null) {
 			modText.text = mod.name;
 			authText.text = 'by ${mod.author}';
@@ -360,15 +378,34 @@ class ModPane extends FunkinSpriteGroup {
 			descText.text = '';
 		}
 		descText.updateHitbox();
+		textGradient.x = portrait.x + portrait.width - 75;
+		textGradient.y = portrait.getMidpoint().y - textGradient.height * .5;
+		
+		banner.visible = false;
+		if (Paths.modPathExists('banner.png', modDir)) {
+			try {
+				banner.loadGraphic(BitmapData.fromFile(Paths.modPath('banner.png', modDir)));
+				banner.updateHitbox();
+				banner.visible = true;
+			}
+		}
+		banner.x = FlxG.width;
+		banner.y = Math.floor(portrait.getMidpoint().y - banner.height * .5);
+		
+		var gradientCol:FlxColor = targetColor; // maybe use cmyk instead of hsb?
+		gradientCol.brightness = Math.min(gradientCol.brightness * (gradientCol.saturation * .5 + .5), .75);
+		gradientCol.saturation = Math.min(gradientCol.saturation * 2.5, 1);
+		textGradient.color = gradientCol;
 		
 		// portrait.alpha = 0;
 		// portrait.x = pane.x + 28;
-		var targetColor:FlxColor = capsule.capsuleColor;
 		FlxTween.cancelTweensOf(pane);
+		FlxTween.cancelTweensOf(banner);
 		FlxTween.cancelTweensOf(optionBox);
-		FlxTween.shake(portrait, .025, .1);
+		FlxTween.shake(portrait, .015, .1);
 		FlxTween.color(pane, .11, pane.color, targetColor);
 		FlxTween.color(optionBox, .11, pane.color, targetColor);
+		FlxTween.tween(banner, {x: FlxG.width - banner.width}, .1, {ease: FlxEase.sineOut});
 		// FlxTween.tween(portrait, {x: pane.x + 38, alpha: 1}, .3, {ease: FlxEase.circOut});
 	}
 }
@@ -461,18 +498,10 @@ class ModCapsule extends FunkinSpriteGroup {
 	}
 	
 	function loadModPortrait(?dir:String) {
-		var pngDir:String = 'mods/$dir/pack.png';
-		var loadDefault:Bool = true;
-		try {
-			if (FileSystem.exists(pngDir)) {
-				var bmd:BitmapData = BitmapData.fromFile(pngDir);
-				portrait.loadGraphic(bmd);
-				loadDefault = false;
-			}
-		} catch (e:haxe.Exception) {}
+		portrait.loadTexture('defaultModPortrait');
 		
-		if (loadDefault)
-			portrait.loadTexture('defaultModPortrait');
+		if (Paths.modPathExists('pack.png', dir))
+			try { portrait.loadGraphic(BitmapData.fromFile(Paths.modPath('pack.png', dir))); }
 		
 		portrait.setGraphicSize(60);
 		portrait.updateHitbox();
