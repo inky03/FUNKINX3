@@ -539,7 +539,8 @@ class Chart {
 			return null;
 		}
 	}
-
+	
+	/*
 	public function generateNotes(singleSegmentHolds:Bool = false):Array<Note> {
 		var time:Float = Sys.time();
 		Log.minor('generating notes from song');
@@ -597,6 +598,7 @@ class Chart {
 		
 		return noteArray;
 	}
+	*/
 	
 	public function loadMusic(path:String, overwrite:Bool = true) { // this could be better
 		if (instLoaded && !overwrite) return true;
@@ -613,6 +615,7 @@ class Chart {
 				inst.play();
 				inst.stop();
 				inst.volume = 1;
+				inst.looped = false;
 				Log.info('instrumental loaded!! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 				return true;
 			}
@@ -632,24 +635,17 @@ class Chart {
 	}
 }
 
-enum ChartFormat {
-	AUTO;
-	MODERN;
-	LEGACY; // psych / pre0.3
-	STEPMANIA;
-	SHARK;
-	CNE;
+enum abstract ChartFormat(String) to String {
+	var AUTO = 'auto';
+	var MODERN = 'modern';
+	var LEGACY = 'legacy'; // psych / pre0.3
+	var STEPMANIA = 'stepmania';
+	var SHARK = 'stepmaniashark';
+	var CNE = 'codenameengine';
 
-	UNKNOWN;
+	var UNKNOWN = 'unknown';
 }
 
-@:structInit class ChartNote implements ITimeSortable {
-	public var laneIndex:Int;
-	public var msTime:Float = 0;
-	public var kind:String = '';
-	public var msLength:Float = 0;
-	public var player:Bool = true;
-}
 @:structInit class ChartEvent implements ITimedEvent<ChartEvent> {
 	public var name:String;
 	public var msTime:Float = 0;

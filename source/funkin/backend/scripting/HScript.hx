@@ -61,9 +61,8 @@ class HScript extends Iris {
 		'Metronome' => funkin.backend.rhythm.Metronome,
 		'CharacterGroup' => funkin.objects.CharacterGroup,
 		
-		'Measure' => funkin.backend.rhythm.Metronome.Measure,
-		'NoteEventType' => funkin.backend.play.NoteEvent.NoteEventType,
-		'SpriteRenderType' => funkin.backend.FunkinSprite.SpriteRenderType,
+		'NoteEventType' => {SPAWNED: 'spawned', DESPAWNED: 'despawned', HIT: 'hit', HELD: 'held', RELEASED: 'released', LOST: 'lost', GHOST: 'ghost'},
+		// THIS WILL BE DEPRECATED
 		
 		'STOP' => STOP,
 		'STOPALL' => STOPALL,

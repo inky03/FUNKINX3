@@ -18,6 +18,9 @@ import flixel.input.keyboard.FlxKey;
 import flixel.addons.display.FlxBackdrop;
 
 class CharterState extends FunkinState {
+	// TODO: REWRITE THIS STATE TO ACCOMODATE TO THE NEW SYSTEM
+}
+	/*
 	public static var genericRGB:RGBSwap;
 	
 	public static var instance:CharterState;
@@ -669,8 +672,6 @@ class CharterState extends FunkinState {
 		scrollSpeed = newSpeed;
 		for (strumline in strumlines) {
 			strumline.scrollSpeed = visualScrollSpeed;
-			/*for (lane in strumline.lanes)
-				lane.spawnRadius *= 1.5;*/
 		}
 		return newSpeed;
 	}
@@ -1589,4 +1590,4 @@ class CharterNote extends Note {
 		point.scale(camera.zoom);
 		return point;
 	}
-}
+}*/
