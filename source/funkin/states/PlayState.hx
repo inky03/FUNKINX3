@@ -693,11 +693,12 @@ class PlayState extends FunkinState {
 			if (conductorInUse.syncTracker != null && conductorInUse.syncTracker.playing)
 				conductorInUse.songPosition = newTimeMaybe; // too rigged? (Math.abs(newTimeMaybe) < Math.abs(oldTime) ? newTimeMaybe : oldTime);
 			
-			if (keybind >= 0) {
-				if (!HScript.stopped(hscripts.run('keybindPressed', [keybind, key]))) {
-					for (strumline in strumlineGroup)
-						strumline.fireInput(key, true);
-				}
+			var canFireInput:Bool = true;
+			if (keybind >= 0)
+				canFireInput = !HScript.stopped(hscripts.run('keybindPressed', [keybind, key]));
+			if (canFireInput) {
+				for (strumline in strumlineGroup)
+					strumline.fireInput(key, true);
 			}
 			
 			conductorInUse.songPosition = oldTime;

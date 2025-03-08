@@ -6,7 +6,10 @@ function setupStage(id:String, stage:Stage) {
 	
 	stage.characters.get('gf').current.idleSuffix = '-hairblowCar';
 	
-	// todo: whatever shader shit is in the base stage
+	var skyOverlay:RuntimeShader = new RuntimeShader('limoOverlay');
+	skyOverlay.setSampler2D('image', Paths.bmd('limo/limoOverlay', 'week4'));
+	stage.getProp('limoSunset').shader = skyOverlay;
+	
 	resetFastCar();
 }
 

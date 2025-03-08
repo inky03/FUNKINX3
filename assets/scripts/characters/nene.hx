@@ -71,8 +71,8 @@ function update(elapsed:Float) {
 }
 function draw() {
 	aBotSpeaker.setPosition(x, y);
+	// aBotSpeaker.color = color;
 	aBotSpeaker.alpha = alpha;
-	aBotSpeaker.color = color;
 	aBotSpeaker.draw();
 	super.draw();
 }
