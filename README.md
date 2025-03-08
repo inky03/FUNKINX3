@@ -1,3 +1,5 @@
+**NOTE:** branch main is CURRENTLY BROKEN (sorry :p) - compile with notepool branch instead
+
 this engine is HEAVILY UNFINISHED; be wary of MISSING FEATURES and BREAKING API CHANGES while i keep working on it<br>
 see [CREDITS.md](CREDITS.md) for a list of credits
 
