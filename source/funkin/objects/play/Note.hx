@@ -14,8 +14,20 @@ import flixel.graphics.frames.FlxFrame;
 	public var kind:String = '';
 	public var msTime:Float = 0;
 	public var msLength:Float = 0;
-	public var player:Bool = true;
+	public var strumlineIndex:Int = 0;
 	public var extraData:Map<String, Dynamic> = null;
+	
+	public function copy(?toNote:ChartNote):ChartNote {
+		if (toNote == null)
+			return {strumlineIndex: strumlineIndex, laneIndex: laneIndex, msLength: msLength, msTime: msTime, kind: kind};
+		
+		toNote.strumlineIndex = strumlineIndex;
+		toNote.laneIndex = laneIndex;
+		toNote.msLength = msLength;
+		toNote.msTime = msTime;
+		toNote.kind = kind;
+		return toNote;
+	}
 	
 	public function setVar(k:String, v:Dynamic):Dynamic {
 		if (extraData == null) extraData = new Map();
@@ -49,10 +61,6 @@ class Note extends FunkinSprite {
 	public var tail:NoteTail;
 	
 	public var lane:Lane;
-	public var score:Score;
-	public var held:Bool = false;
-	public var hitTime:Float = -1;
-	public var holdTime:Float = -1;
 	public var chartNote(default, set):ChartNote;
 	
 	public var preventDespawn:Bool = false;
@@ -61,9 +69,16 @@ class Note extends FunkinSprite {
 	public var lost:Bool = false;
 	public var canHit:Bool = true;
 	
+	public var followVisible:Bool = true;
+	public var followAlpha:Bool = true;
+	public var followAngle:Bool = true;
+	
+	public var score:Score;
+	public var held:Bool = false;
+	public var hitTime:Float = -1;
+	public var holdTime:Float = -1;
 	public var clipDistance:Float = 0;
 	public var scrollDistance:Float = 0;
-	public var followAngle:Bool = true;
 	
 	public var healthLoss:Float = 6.0 / 100;
 	public var healthGain:Float = 1.5 / 100;
@@ -75,9 +90,12 @@ class Note extends FunkinSprite {
 	public var directionOffset:Float = 0;
 	public var hitPriority:Float = 1;
 	public var multAlpha:Float = 1;
-	public var player:Bool = false;
 	public var ignore:Bool = false;
-	public var noteData:Int = 0;
+	
+	public var laneIndex:Int = 0;
+	public var strumlineIndex:Int = 0;
+	@:deprecated('noteData is deprecated, use laneIndex instead!') public var noteData(get, set):Int;
+	@:deprecated('player is deprecated, use strumlineIndex instead!') public var player(get, never):Bool;
 
 	public var endMs(get, never):Float;
 	public var endBeat(get, never):Float;
@@ -86,6 +104,10 @@ class Note extends FunkinSprite {
 	public var msLength(default, set):Float = 0;
 	public var beatLength(default, set):Float = 0;
 	public var isHoldNote(default, null):Bool = false;
+	
+	function get_noteData():Int { return laneIndex; }
+	function set_noteData(value:Int):Int { return laneIndex = value; }
+	function get_player():Bool { return (strumlineIndex == 0); }
 	
 	public override function destroy() {
 		if (tail != null)
@@ -111,11 +133,11 @@ class Note extends FunkinSprite {
 	}
 	public function set_chartNote(songNote:ChartNote):ChartNote {
 		if (songNote != null) {
-			this.player = songNote.player;
 			this.msTime = songNote.msTime;
 			this.noteKind = songNote.kind;
 			this.msLength = songNote.msLength;
-			this.noteData = songNote.laneIndex;
+			this.laneIndex = songNote.laneIndex;
+			this.strumlineIndex = songNote.strumlineIndex;
 			
 			this.extraData.clear();
 			if (songNote.extraData != null) {
@@ -151,13 +173,13 @@ class Note extends FunkinSprite {
 			tail = new NoteTail(this);
 	}
 	public function reloadAnimations() {
-		var dirName:String = directionNames[noteData];
-		addAnimation('hit-$noteData', '$dirName note', 24, false);
-		playAnimation('hit-$noteData', true);
+		var dirName:String = directionNames[laneIndex];
+		addAnimation('hit-$laneIndex', '$dirName note', 24, false);
+		playAnimation('hit-$laneIndex', true);
 		updateHitbox();
 	}
 	public function toChartNote():ChartNote {
-		return chartNote ?? {laneIndex: noteData, msTime: msTime, kind: noteKind, msLength: msLength, player: player};
+		return chartNote ?? {laneIndex: laneIndex, msTime: msTime, kind: noteKind, msLength: msLength, strumlineIndex: strumlineIndex};
 	}
 	
 	public function set_noteKind(newKind:String) {
@@ -208,21 +230,24 @@ class Note extends FunkinSprite {
 		var rad:Float = dir / 180 * Math.PI;
 		x = receptor.x + Math.sin(rad) * xP + Math.cos(rad) * yP;
 		y = receptor.y + Math.sin(rad) * yP + Math.cos(rad) * xP;
-		alpha = lane.alpha * receptor.alpha * multAlpha;
 		
+		if (followAlpha)
+			alpha = receptor.alpha * multAlpha;
+		if (followVisible)
+			visible = receptor.visible;
 		if (followAngle)
 			angle = lane.receptor.angle;
 		
 		if (isHoldNote && tail != null) {
-			var absDistance:Float = msToDistance(msTime - conductorInUse.songPosition, Math.abs(speed));
-			var tailY:Float = height * .5;
-			tail.offset.y = 0;
-			tail.angle = dir - 90;
 			tail.scale.x = scale.x;
 			tail.scale.y = FlxMath.signOf(speed) * Math.abs(scale.x);
-			tail.setPosition(x + (width - tail.width) * .5, y + tailY);
-			tail.sustainHeight = msToDistance(msLength, Math.abs(speed));
 			tail.updateHitbox();
+			tail.offset.y = 0;
+			
+			var absDistance:Float = msToDistance(msTime - conductorInUse.songPosition, Math.abs(speed));
+			tail.sustainHeight = msToDistance(msLength, Math.abs(speed));
+			tail.setPosition(x + (width - tail.width) * .5, y + height * .5);
+			tail.angle = dir - 90;
 			
 			if (goodHit && absDistance < 0)
 				tail.sustainClip = -absDistance;
@@ -232,28 +257,38 @@ class Note extends FunkinSprite {
 
 class NoteTail extends FunkinSprite {
 	public var parent(default, set):Note;
-	public var noteData:Int;
+	public var laneIndex:Int;
 	
 	public var multAlpha:Float = .6;
 	public var sustainClip:Float = 0;
 	public var sustainHeight:Float = 0;
+	
+	public var holdScale(default, null):FlxPoint;
+	public var tailScale(default, null):FlxPoint;
 	
 	var _tileMatrix:FlxMatrix = new FlxMatrix();
 	
 	public function new(parent:Note) {
 		super();
 		
+		holdScale = FlxPoint.get(1, 1);
+		tailScale = FlxPoint.get(1, 1);
+		
 		this.parent = parent;
 		this.reload();
 	}
 	public override function destroy() {
+		holdScale.put();
+		tailScale.put();
+		
 		_tileMatrix = null;
 		super.destroy();
 	}
 	
 	function set_parent(note:Note):Note {
 		if (parent == note) return note;
-		noteData = note.noteData;
+		
+		laneIndex = note.laneIndex;
 		return parent = note;
 	}
 	
@@ -262,10 +297,10 @@ class NoteTail extends FunkinSprite {
 		sustainClip = 0;
 	}
 	public function reloadAnimations() {
-		var dirName:String = Note.directionNames[noteData];
-		addAnimation('tail-$noteData', '$dirName hold tail', 24, false);
-		addAnimation('hold-$noteData', '$dirName hold piece', 24, false);
-		playAnimation('hold-$noteData', true);
+		var dirName:String = Note.directionNames[laneIndex];
+		addAnimation('tail-$laneIndex', '$dirName hold tail', 24, false);
+		addAnimation('hold-$laneIndex', '$dirName hold piece', 24, false);
+		playAnimation('hold-$laneIndex', true);
 	}
 	public override function draw() {
 		alpha = multAlpha;
@@ -290,15 +325,16 @@ class NoteTail extends FunkinSprite {
 		var top:Float = 1;
 		var bottom:Float = 0;
 		var doTail:Bool = true;
-		playAnimation('tail-$noteData', true);
-		origin.set(frameWidth * .5, 0);
+		var sc:FlxPoint = tailScale;
+		playAnimation('tail-$laneIndex', true);
+		origin.set(frameWidth * .5);
 		cropFrame(top, bottom);
-		getDrawMatrix();
+		getDrawMatrix(sc);
 		
 		var totalHeight:Float = sustainHeight;
-		var absScale:Float = Math.abs(scale.y);
+		var absScale:Float = Math.abs(scale.y * tailScale.y);
 		
-		if (absScale < Math.max(Math.abs(scale.x), .05)) return; // TODO: add negative scale rendering (and flipY, i guess)
+		if (absScale < Math.max(Math.abs(scale.x), .05)) return; 
 		
 		var scaleSign:Int = FlxMath.signOf(scale.y);
 		var rad:Float = angle / 180 * Math.PI;
@@ -312,9 +348,9 @@ class NoteTail extends FunkinSprite {
 			
 			totalHeight -= pieceHeight;
 			if (totalHeight <= sustainClip) {
-				var dist:Float = (sustainClip - totalHeight) / absScale;
-				_frame = frame.clipTo(_rect.set(0, dist, frameWidth, frameHeight - dist - bottom), _frame);
-				getDrawMatrix();
+				var dist:Float = (sustainClip - totalHeight) / absScale; // pieceHeight * frameHeight;
+				cropFrame(dist + top, bottom);
+				getDrawMatrix(sc);
 				cut = true;
 			}
 			
@@ -326,23 +362,30 @@ class NoteTail extends FunkinSprite {
 			if (cut) break;
 			
 			if (doTail) {
+				sc = holdScale;
+				
 				bottom = 1;
 				doTail = false;
-				playAnimation('hold-$noteData', true);
-				origin.set(frameWidth * .5, 0);
+				playAnimation('hold-$laneIndex', true);
+				absScale = Math.abs(scale.y * holdScale.y);
+				origin.set(frameWidth * .5);
 				cropFrame(top, bottom);
-				getDrawMatrix();
+				getDrawMatrix(sc);
+				
+				if (absScale < Math.max(Math.abs(scale.x), .05)) return; 
 			}
 		}
 	}
 	function cropFrame(cropTop:Float = 0, cropBottom:Float = 0) {
 		_frame = frame.clipTo(_rect.set(0, cropTop, frameWidth, frameHeight - cropTop - cropBottom), _frame);
 	}
-	function getDrawMatrix() {
+	function getDrawMatrix(?scaleFactor:FlxPoint) {
 		_frame.prepareMatrix(_matrix, FlxFrameAngle.ANGLE_0, checkFlipX(), checkFlipY());
 		
 		_matrix.translate(-origin.x, -origin.y);
 		_matrix.scale(scale.x, scale.y);
+		if (scaleFactor != null)
+			_matrix.scale(scaleFactor.x, scaleFactor.y);
 		
 		if (bakedRotationAngle <= 0) {
 			updateTrig();

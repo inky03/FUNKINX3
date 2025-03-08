@@ -33,7 +33,7 @@ class FreeplaySubState extends FunkinState {
 		backingCard.slideIn();
 		add(backingCard);
 		
-		conductorInUse.beatHit.add(beatHitEvent);
+		beatHit.add(beatHitEvent);
 
 		angleMask = new AngleMask();
 		bg = new FunkinSprite(FlxG.width, 0).loadTexture('freeplay/freeplayBGdad');
@@ -64,7 +64,7 @@ class FreeplaySubState extends FunkinState {
 		add(fnfFreeplay);
 		add(ostName);
 
-		var testCaspule:FreeplayCapsule = new FreeplayCapsule(400, 400, 'TESTING!');
+		var testCaspule:FreeplayCapsule = new FreeplayCapsule(400, 400, 'TESTING!', MEDIUM);
 		add(testCaspule);
 
 		playMusic('freeplayRandom');
@@ -221,12 +221,12 @@ class FreeplaySongText extends FlxSpriteGroup {
 	public var font(default, set):Null<String>;
 	public var glowColor(default, set):FlxColor;
 
-	public function new(x:Float = 0, y:Float = 0, ?text:String, glowColor:FlxColor = 0xff00ccff, intensity:Float = 1) {
+	public function new(x:Float = 0, y:Float = 0, ?text:String, glowColor:FlxColor = 0xff00ccff, intensity:Float = 1, quality:BitmapFilterQuality = LOW) {
 		super(x, y);
 		blurText = new FlxText(0, 0, 'Random', 40);
 		whiteText = new FlxText(0, 0, 'Random', 40);
-		textGlowFilter = new GlowFilter(glowColor, 1, intensity * 5, intensity * 5, 210, BitmapFilterQuality.LOW);
-		blurText.textField.filters = [new openfl.filters.BlurFilter(intensity * 3, intensity * 3, BitmapFilterQuality.LOW)];
+		textGlowFilter = new GlowFilter(glowColor, 1, intensity * 5, intensity * 5, 210, quality);
+		blurText.textField.filters = [new openfl.filters.BlurFilter(intensity * 3, intensity * 3, quality)];
 		whiteText.textField.filters = [textGlowFilter];
 		blurText.blend = BlendMode.ADD;
 		
@@ -275,7 +275,8 @@ class FreeplayCapsule extends FlxSpriteGroup {
 		capsule.playAnimation('unselected');
 		add(capsule);
 
-		songText = new FreeplaySongText(capsule.width * 0.26, 45, text);
+		songText = new FreeplaySongText(capsule.width * .26, 45, text);
+		songText.size = Std.int(songText.size * .8);
 		add(songText);
 
 		bpmText = new FunkinSprite(144, 87).loadTexture('freeplay/capsule/bpmtext');

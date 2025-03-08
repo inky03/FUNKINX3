@@ -16,6 +16,8 @@ class Character extends FunkinSprite implements ICharacter {
 	public var scaleMultiplier:Float = 1;
 	public var sway:Bool = false;
 	
+	public var hasDropAnimations(get, never):Bool;
+	public var hasComboAnimations(get, never):Bool;
 	public var comboNoteCounts(default, null):Array<Int>;
 	public var dropNoteCounts(default, null):Array<Int>;
 	
@@ -289,9 +291,9 @@ class Character extends FunkinSprite implements ICharacter {
 			return false;
 		
 		if (sway) {
-			playAnimation((beat % 2 == 0 ? 'danceLeft' : 'danceRight') + idleSuffix);
-		} else if (beat % 2 == 0) {
-			playAnimation('idle$idleSuffix');
+			playAnimation((beat % 2 == 0 ? 'danceLeft' : 'danceRight') + idleSuffix, forced);
+		} else if (forced || beat % bopFrequency == 0) {
+			playAnimation('idle$idleSuffix', forced);
 		}
 		
 		return true;
@@ -527,6 +529,8 @@ class Character extends FunkinSprite implements ICharacter {
 		}
 	}
 	
+	function get_hasComboAnimations():Bool { return comboNoteCounts.length > 0; }
+	function get_hasDropAnimations():Bool { return dropNoteCounts.length > 0; }
 	function findCountAnimations(prefix:String):Array<Int> {
 		var counts:Array<Int> = [];
 		

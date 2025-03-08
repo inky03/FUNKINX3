@@ -110,44 +110,21 @@ class PlayState extends FunkinState {
 	
 	override public function create() {
 		super.create();
-		Main.watermark.visible = false;
+		
 		godmode = false; // practice mode?
 		downscroll = Options.data.downscroll;
 		middlescroll = Options.data.middlescroll;
 		ghostTapping = Options.data.ghostTapping;
 		
 		conductorInUse = new Conductor();
-		conductorInUse.metronome.tempoChanges = chart.tempoChanges;
+		conductorInUse.tempoChanges = chart.tempoChanges;
+		barHit.add((t:Int) -> dispatchSongEvent({type: BAR_HIT, time: t}));
+		beatHit.add((t:Int) -> dispatchSongEvent({type: BEAT_HIT, time: t}));
+		stepHit.add((t:Int) -> dispatchSongEvent({type: STEP_HIT, time: t}));
 		
 		hitsound = FunkinSound.load(Paths.sound('gameplay/hitsounds/hitsound'), .7);
 		music = new FunkinSoundGroup();
 		songName = chart.name;
-		
-		if (!simple) {
-			var loadedEvents:Array<String> = [];
-			var noteKinds:Array<String> = [];
-			for (note in chart.notes) {
-				var noteKind:String = note.kind;
-				if (noteKind.trim() != '' && !noteKinds.contains(noteKind)) {
-					hscripts.loadFromPaths('scripts/notekinds/$noteKind.hx');
-					noteKinds.push(noteKind);
-				}
-			}
-			for (event in chart.events) {
-				var eventName:String = event.name;
-				if (!loadedEvents.contains(eventName)) {
-					loadedEvents.push(eventName);
-					hscripts.loadFromPaths('scripts/events/$eventName.hx');
-				}
-			}
-			
-			hscripts.loadFromFolder('scripts/global');
-			hscripts.loadFromFolder('scripts/songs/${chart.path}');
-		}
-		
-		conductorInUse.stepHit.add((t:Int) -> dispatchSongEvent({type: STEP_HIT, time: t}));
-		conductorInUse.beatHit.add((t:Int) -> dispatchSongEvent({type: BEAT_HIT, time: t}));
-		conductorInUse.barHit.add((t:Int) -> dispatchSongEvent({type: BAR_HIT, time: t}));
 		
 		@:privateAccess FlxG.cameras.defaults.resize(0);
 		camOther = new FunkinCamera();
@@ -165,6 +142,40 @@ class PlayState extends FunkinState {
 		add(camFocusTarget);
 		
 		camGame.zoomFollowLerp = camHUD.zoomFollowLerp = 3;
+		
+		uiGroup = new FunkinSpriteGroup();
+		uiGroup.cameras = [camHUD];
+		uiGroup.zIndex = 75;
+		add(uiGroup);
+		strumlineGroup = new FunkinTypedSpriteGroup();
+		strumlineGroup.cameras = [camHUD];
+		strumlineGroup.zIndex = 100;
+		add(strumlineGroup);
+		ratingGroup = new FunkinTypedSpriteGroup();
+		
+		// the good stuff
+		if (!simple) {
+			var loadedEvents:Array<String> = [];
+			var noteKinds:Array<String> = [];
+			for (note in chart.notes) {
+				notes.push(note.copy());
+				var noteKind:String = note.kind;
+				if (noteKind.trim() != '' && !noteKinds.contains(noteKind)) {
+					hscripts.loadFromPaths('scripts/notekinds/$noteKind.hx');
+					noteKinds.push(noteKind);
+				}
+			}
+			for (event in chart.events) {
+				var eventName:String = event.name;
+				if (!loadedEvents.contains(eventName)) {
+					loadedEvents.push(eventName);
+					hscripts.loadFromPaths('scripts/events/$eventName.hx');
+				}
+			}
+			
+			hscripts.loadFromFolder('scripts/global');
+			hscripts.loadFromFolder('scripts/songs/${chart.path}');
+		}
 		
 		if (!simple) {
 			stage = new Stage(chart);
@@ -209,15 +220,6 @@ class PlayState extends FunkinState {
 		}
 		loadVocals(chart.path, chart.audioSuffix);
 		
-		uiGroup = new FunkinSpriteGroup();
-		uiGroup.cameras = [camHUD];
-		uiGroup.zIndex = 75;
-		add(uiGroup);
-		strumlineGroup = new FunkinTypedSpriteGroup();
-		strumlineGroup.cameras = [camHUD];
-		strumlineGroup.zIndex = 100;
-		add(strumlineGroup);
-		
 		var scrollDir:Float = (Options.data.downscroll ? 270 : 90);
 		var strumlineBound:Float = (FlxG.width - 300) * .5;
 		var strumlineY:Float = 50;
@@ -239,17 +241,18 @@ class PlayState extends FunkinState {
 		playerStrumline.assignKeybinds(keybinds);
 		playerStrumline.zIndex = 50;
 		
+		strumlineGroup.insert(0, playerStrumline);
+		strumlineGroup.insert(0, opponentStrumline);
+		
 		if (middlescroll) {
 			playerStrumline.screenCenter(X);
 			opponentStrumline.fitToSize(playerStrumline.leftBound - 50 - opponentStrumline.leftBound, 0, Y);
 		}
-		for (note in chart.notes) {
-			var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
-			strumline.queueNote(note);
-			notes.push(note);
+		for (note in notes) {
+			var strumline:Strumline = strumlineGroup.members[note.strumlineIndex];
+			strumline?.queueNote(note);
 		}
 		
-		ratingGroup = new FunkinTypedSpriteGroup();
 		ratingGroup.setPosition(player3?.getMidpoint()?.x ?? FlxG.width * .5, player3?.getMidpoint()?.y ?? FlxG.height * .5);
 		if (stage != null) {
 			ratingGroup.zIndex = Util.getHighestZIndex(stage.characters, 50) + 5;
@@ -297,9 +300,6 @@ class PlayState extends FunkinState {
 		scoreTxt.zIndex = 30;
 		uiGroup.add(scoreTxt);
 		
-		strumlineGroup.add(opponentStrumline);
-		strumlineGroup.add(playerStrumline);
-		
 		for (i in 0...4)
 			Paths.sound('gameplay/hitsounds/miss$i');
 		Paths.sound('gameplay/hitsounds/hitsoundTail');
@@ -313,14 +313,15 @@ class PlayState extends FunkinState {
 		for (event in chart.events)
 			dispatchSongEvent({type: PUSH_EVENT, chartEvent: event});
 		
+		if (downscroll)
+			flipUI();
+		
 		hscripts.run('createPost');
+		
 		uiGroup.sortZIndex();
 		stage?.sortZIndex();
 		updateScoreText();
 		sortZIndex();
-		
-		if (downscroll)
-			flipUI();
 		
 		if (playCountdown) {
 			for (strumline in strumlineGroup)
@@ -412,10 +413,11 @@ class PlayState extends FunkinState {
 				
 				events.resize(0);
 				for (note in notes) {
-					var strumline:Strumline = (note.player ? playerStrumline : opponentStrumline);
-					strumline.queueNote(note);
+					var strumline:Strumline = strumlineGroup.members[note.strumlineIndex];
+					strumline?.queueNote(note);
 				}
-				for (event in chart.events) events.push(event);
+				for (event in chart.events)
+					events.push(event);
 				music.pause();
 				music.time = 0;
 				resetConductor();
@@ -907,7 +909,6 @@ class PlayState extends FunkinState {
 		DiscordRPC.presence.startTimestamp = DiscordRPC.presence.endTimestamp = 0;
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
-		Main.watermark.visible = true;
 		conductorInUse.paused = false;
 		super.destroy();
 	}

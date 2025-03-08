@@ -41,6 +41,7 @@ class Strumline extends FunkinSpriteGroup {
 		var i:Int = 0;
 		var diff:Float = newSpacing - laneSpacing;
 		for (lane in lanes) {
+			lane.startX += i * diff;
 			lane.x += i * diff;
 			i ++;
 		}
@@ -124,16 +125,14 @@ class Strumline extends FunkinSpriteGroup {
 	}
 	public function fadeIn() {
 		var i:Int = 0;
-		var targetY:Float = y;
 		for (lane in lanes) {
 			lane.alpha = 0;
-			var targetX:Float = x + i * laneSpacing;
 			var rad:Float = lane.direction / 180 * Math.PI;
 			
 			FlxTween.cancelTweensOf(lane);
-			lane.x = targetX - Math.cos(rad) * 10;
-			lane.y = targetY - Math.sin(rad) * 10;
-			FlxTween.tween(lane, {x: targetX, y: targetY, alpha: alpha}, 1, {ease: FlxEase.circOut, startDelay: .5 + i * .2});
+			lane.x = lane.startX - Math.cos(rad) * 10;
+			lane.y = lane.startY - Math.sin(rad) * 10;
+			FlxTween.tween(lane, {x: lane.startX, y: lane.startY, alpha: alpha}, 1, {ease: FlxEase.circOut, startDelay: .5 + i * .2});
 			
 			i ++;
 		}
@@ -221,6 +220,10 @@ class Strumline extends FunkinSpriteGroup {
 		}
 		return null;
 	}
+	public function dequeueNote(note:ChartNote) {
+		for (lane in lanes)
+			lane.dequeueNote(note);
+	}
 	public function clearAllNotes() {
 		for (lane in lanes)
 			lane.clearNotes();
@@ -239,5 +242,24 @@ class Strumline extends FunkinSpriteGroup {
 				fired = true;
 		}
 		return fired;
+	}
+	
+	override function set_x(value:Float):Float {
+		if (exists && x != value) {
+			var diff:Float = (value - x);
+			transformChildren(xTransform, diff);
+			for (lane in lanes)
+				lane.startX += diff;
+		}
+		return x = value;
+	}
+	override function set_y(value:Float):Float {
+		if (exists && y != value) {
+			var diff:Float = (value - y);
+			transformChildren(yTransform, diff);
+			for (lane in lanes)
+				lane.startY += diff;
+		}
+		return y = value;
 	}
 }

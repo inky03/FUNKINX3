@@ -44,14 +44,14 @@ class HScriptFlxColor { // i hate it in here
 	public static var TRANSPARENT(default, never):Int = cast FlxColor.TRANSPARENT;
 
 	public var color:FlxColor;
-	public var alpha(default, set):Int;
-	public var alphaFloat(default, set):Float;
 	@:isVar public var red(get, set):Int;
 	@:isVar public var green(get, set):Int;
 	@:isVar public var blue(get, set):Int;
+	@:isVar public var alpha(get, set):Int;
 	@:isVar public var redFloat(get, set):Float;
 	@:isVar public var greenFloat(get, set):Float;
 	@:isVar public var blueFloat(get, set):Float;
+	@:isVar public var alphaFloat(get, set):Float;
 	@:isVar public var hue(get, set):Float;
 	@:isVar public var cyan(get, set):Float;
 	@:isVar public var magenta(get, set):Float;
@@ -65,7 +65,9 @@ class HScriptFlxColor { // i hate it in here
 		this.color = cast (color, FlxColor);
 	} // this is so horrible i could kill myself
 	function set_alpha(newAlpha:Int) return alpha = color.alpha = newAlpha;
+	function get_alpha() return color.alpha;
 	function set_alphaFloat(newAlpha:Float) return alphaFloat = color.alphaFloat = newAlpha;
+	function get_alphaFloat() return color.alphaFloat;
 	function get_red() return color.red;
 	function set_red(newRed:Int) return red = color.red = newRed;
 	function get_green() return color.green;

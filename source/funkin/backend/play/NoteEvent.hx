@@ -7,7 +7,7 @@ import funkin.objects.play.Lane;
 import funkin.backend.play.Scoring;
 import funkin.objects.play.Strumline;
 
-@:structInit class NoteEvent implements IPlayEvent {
+@:structInit class NoteEvent implements IPlayEvent { // TODO: EVENT RECYCLER
 	public var type(default, null):NoteEventType;
 	public var cancelled:Bool = false;
 	
@@ -32,17 +32,17 @@ import funkin.objects.play.Strumline;
 	public var playAnimation:Bool = true;
 	public var animateReceptor:Bool = true;
 	
+	var game:PlayState = null;
+	var inGame:Bool = false;
+	
 	public function cancel() cancelled = true;
 	public function dispatch() { // hahaaa
 		if (cancelled) return;
 		
-		var game:PlayState;
-		if (Std.isOfType(FlxG.state, PlayState)) {
+		inGame = Std.isOfType(FlxG.state, PlayState);
+		if (inGame) {
 			game = cast FlxG.state;
 			scoreHandler ??= game.scoring;
-		} else {
-			throw(new haxe.Exception('note event can\'t be dispatched outside of PlayState!!'));
-			return;
 		}
 		
 		switch (type) {
@@ -58,39 +58,28 @@ import funkin.objects.play.Strumline;
 					game.hitsound.play(true);
 				
 				if (applyRating) {
+					applyExtraWindow(6);
 					scoring ??= scoreHandler?.judgeNoteHit(note, (lane.cpu ? 0 : note.msTime - lane.conductorInUse.songPosition));
+					
 					if (popRating) {
 						var rating:FunkinSprite = game.popRating(scoring.rating);
 						rating.velocity.y = -FlxG.random.int(140, 175);
 						rating.velocity.x = FlxG.random.int(0, 10);
 						rating.acceleration.y = 550;
 					}
-					applyExtraWindow(6);
 					
-					game.totalHits ++;
-					game.totalNotes ++;
-					game.health += note.healthGain * scoring.healthMod;
-					if (scoreHandler != null) {
-						scoreHandler.countRating(scoring.rating);
-						note.score = scoring;
-						
-						scoreHandler.score += scoring.score;
-						scoreHandler.addMod(scoring.accuracyMod);
-						if (scoring.hitWindow != null && scoring.hitWindow.breaksCombo) {
-							scoreHandler.combo = 0; // maybe add the ghost note here?
-						} else {
-							scoreHandler.combo ++;
-						}
-					}
+					if (inGame)
+						game.health += note.healthGain * scoring.healthMod;
 					
-					game.updateScoreText();
+					applyScore(scoreHandler, scoring);
+					note.score = scoring;
 				}
 				
 				if (doSplash && (scoring.hitWindow == null || scoring.hitWindow.splash))
 					splash = lane.splash();
 				
 				if (playAnimation && targetCharacter != null) {
-					var anim:String = 'sing${game.singAnimations[note.noteData]}';
+					var anim:String = 'sing${game.singAnimations[note.laneIndex]}';
 					var suffixAnim:String = anim + animSuffix;
 					if (targetCharacter.animationExists(suffixAnim + targetCharacter.animSuffix))
 						targetCharacter.playAnimationSteps(suffixAnim, true);
@@ -146,13 +135,13 @@ import funkin.objects.play.Strumline;
 					final secondDiff:Float = Math.max(0, (nextHitTime - prevHitTime) * .001);
 					scoring ??= {score: 0, healthMod: secondDiff};
 					
-					if (scoreHandler != null) {
+					if (scoreHandler != null)
 						scoring.score = scoreHandler.holdScorePerSecond * secondDiff;
-						scoreHandler.score += scoring.score;
-					}
 					
-					game.health += scoring.healthMod * note.healthGainPerSecond;
-					game.updateScoreText();
+					if (inGame)
+						game.health += scoring.healthMod * note.healthGainPerSecond;
+					
+					applyScore(scoreHandler, scoring);
 					
 					if (!released)
 						note.held = true;
@@ -160,7 +149,7 @@ import funkin.objects.play.Strumline;
 				}
 				
 				if (playAnimation && targetCharacter != null) {
-					var anim:String = 'sing${game.singAnimations[note.noteData]}';
+					var anim:String = 'sing${game.singAnimations[note.laneIndex]}';
 					var suffixAnim:String = anim + animSuffix + targetCharacter.animSuffix;
 					if ((!targetCharacter.specialAnim || targetCharacter.currentAnimation == suffixAnim) && targetCharacter.animationExists(suffixAnim))
 						targetCharacter.timeAnimSteps();
@@ -207,19 +196,18 @@ import funkin.objects.play.Strumline;
 				}
 				
 				applyExtraWindow(15);
-				if (applyRating) {
-					game.score -= 10;
-					game.health -= .01;
-					game.updateScoreText();
-				}
+				scoring ??= scoreHandler?.judgeNoteGhost();
+				
+				applyScore(scoreHandler, scoring);
 			case LOST:
-				if (game.genericVocals != null)
+				if (inGame && game.genericVocals != null)
 					game.genericVocals.volume = 0;
+				
 				if (targetCharacter != null) {
 					targetCharacter.volume = 0;
 					if (playAnimation) {
 						targetCharacter.specialAnim = false;
-						targetCharacter.playAnimationSteps('sing${game.singAnimations[note.noteData]}miss', true);
+						targetCharacter.playAnimationSteps('sing${game.singAnimations[note.laneIndex]}miss', true);
 					}
 				}
 				
@@ -228,27 +216,34 @@ import funkin.objects.play.Strumline;
 
 				if (applyRating) {
 					scoring ??= scoreHandler?.judgeNoteMiss(note);
-					if (popRating) {
+					
+					if (popRating && inGame) {
 						var rating:FunkinSprite = game.popRating('sadmiss');
 						rating.velocity.y = -FlxG.random.int(80, 95);
 						rating.velocity.x = FlxG.random.int(-6, 6);
 						rating.acceleration.y = 240;
 					}
 					
-					if (scoreHandler != null) {
-						game.totalNotes ++;
-						scoreHandler.combo = 0;
-						scoreHandler.misses ++;
-						scoreHandler.score += scoring.score;
-						scoreHandler.addMod(scoring.accuracyMod);
-					}
+					if (inGame)
+						game.health -= note.healthLoss * scoring.healthMod;
 					
-					game.health -= note.healthLoss * scoring.healthMod;
-					
-					game.updateScoreText();
+					applyScore(scoreHandler, scoring);
 				}
 			default:
 		}
+	}
+	function applyScore(handler:ScoreHandler, score:Score) {
+		if (handler == null || score == null || !applyRating) return;
+		
+		if (inGame) {
+			game.totalNotes += score.hits + score.misses;
+			game.totalHits += score.hits;
+		}
+		
+		handler.applyScore(score);
+		
+		if (inGame)
+			game.updateScoreText();
 	}
 	function applyExtraWindow(window:Float) {
 		@:privateAccess {

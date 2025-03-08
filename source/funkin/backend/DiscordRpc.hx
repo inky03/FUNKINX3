@@ -107,7 +107,7 @@ class DiscordRPC {
 		refresh();
 	}
 	private static function onDisconnected(errorCode:Int, message:cpp.ConstCharStar):Void {
-		Log.error('Discord: disconnected ($errorCode:$message)');
+		Log.info('Discord: disconnected ($errorCode:$message)');
 	}
 	private static function onError(errorCode:Int, message:cpp.ConstCharStar):Void {
 		Log.error('Discord: $errorCode:$message');

@@ -31,7 +31,6 @@ class CrashState extends FlxState {
 		super.create();
 		
 		FlxG.sound.music.stop();
-		Main.watermark.visible = false;
 		Main.instance.removeChild(Main.debugDisplay);
 		
 		function loadCrashAsset(sprite:FunkinSprite, ?stack:Array<StackItem>) {
@@ -247,7 +246,6 @@ $message';
 	
 	override public function destroy() {
 		Main.instance.addChild(Main.debugDisplay);
-		Main.watermark.visible = true;
 		super.destroy();
 		
 		error = null;

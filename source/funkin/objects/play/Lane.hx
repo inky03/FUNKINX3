@@ -15,6 +15,9 @@ using StringTools;
 class Lane extends FunkinSpriteGroup {
 	public var rgbShader:RGBSwap;
 	public var splashRGB:RGBSwap;
+	
+	public var startX:Float;
+	public var startY:Float;
 
 	public var held(default, set):Bool = false;
 	public var heldNote:Note = null;
@@ -64,6 +67,9 @@ class Lane extends FunkinSpriteGroup {
 	}
 	public function new(x:Float, y:Float, data:Int) {
 		super(x, y);
+		
+		startX = x;
+		startY = y;
 		
 		inputFilter = (note:Note) -> {
 			var time:Float = note.msTime - conductorInUse.songPosition;

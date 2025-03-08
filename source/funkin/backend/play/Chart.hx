@@ -95,7 +95,7 @@ class Chart {
 		}
 	}
 
-	function loadGeneric(format:Dynamic, difficulty:String, ?playerNoteFilter:BasicNote -> Bool) {
+	function loadGeneric(format:Dynamic, difficulty:String, ?strumlineNoteFilter:BasicNote -> Int) {
 		this.difficulty = difficulty;
 		this.chart = format;
 
@@ -143,15 +143,15 @@ class Chart {
 		tempMetronome.tempoChanges = this.tempoChanges;
 		var notes:Array<BasicNote> = format.getNotes(difficulty);
 		for (note in notes) {
-			var isPlayer:Bool;
-			if (playerNoteFilter != null) {
-				isPlayer = playerNoteFilter(note);
+			var strumlineIndex:Int = 0;
+			if (strumlineNoteFilter != null) {
+				strumlineIndex = strumlineNoteFilter(note);
 			} else {
-				isPlayer = note.lane >= 4;
+				strumlineIndex = note.lane % keyCount;
 			}
 			tempMetronome.setMS(note.time + 1);
 			var stepCrochet:Float = tempMetronome.getCrochet(tempMetronome.bpm, tempMetronome.timeSignature.denominator) * .25;
-			this.notes.push({player: isPlayer, msTime: note.time, laneIndex: Std.int(note.lane % 4), msLength: note.length - stepCrochet, kind: note.type});
+			this.notes.push({strumlineIndex: strumlineIndex, msTime: note.time, laneIndex: Std.int(note.lane % 4), msLength: note.length - stepCrochet, kind: note.type});
 		}
 		
 		this.sort();
@@ -307,14 +307,14 @@ class Chart {
 					var noteLength:Float = dataNote[2];
 					var noteKind:Dynamic = dataNote[3];
 					if (!Std.isOfType(noteKind, String)) noteKind = '';
-					var playerNote:Bool;
+					var strumlineIndex:Int = 0;
 					if (fromSong) {
-						playerNote = ((noteData < keyCount) == section.mustHitSection);
+						strumlineIndex = ((noteData < keyCount) == section.mustHitSection ? 1 : 0);
 					} else { // assume psych 1.0
-						playerNote = (noteData < keyCount);
+						strumlineIndex = (noteData < keyCount ? 1 : 0);
 					}
 					
-					song.notes.push({player: playerNote, msTime: noteTime, laneIndex: noteData % keyCount, msLength: noteLength, kind: noteKind});
+					song.notes.push({strumlineIndex: strumlineIndex, msTime: noteTime, laneIndex: noteData % keyCount, msLength: noteLength, kind: noteKind});
 				}
 			}
 			song.sort();
@@ -364,7 +364,7 @@ class Chart {
 			}
 			var notes:Array<BasicNote> = shark.getNotes(difficulty);
 			var dance:StepManiaDance = shark.resolveDance(notes);
-			song.loadGeneric(shark, difficulty, (note:BasicNote) -> (dance == SINGLE ? note.lane < 4 : note.lane >= 4));
+			song.loadGeneric(shark, difficulty, (note:BasicNote) -> ((dance == SINGLE ? note.lane < 4 : note.lane >= 4) ? 1 : 0));
 			song.format = (useShark ? SHARK : STEPMANIA);
 
 			Log.info('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
@@ -398,7 +398,7 @@ class Chart {
 			var chartContent:String = Paths.text(chartPath);
 			var metaContent:String = Paths.text(metaPath);
 			vslice = new FNFVSlice().fromJson(chartContent, metaContent);
-			song.loadGeneric(vslice, difficulty, (note:BasicNote) -> note.lane >= 4);
+			song.loadGeneric(vslice, difficulty, (note:BasicNote) -> Std.int(note.lane / song.keyCount));
 
 			var meta:BasicMetaData = vslice.getChartMeta();
 			song.player1 = meta.extraData['FNF_P1'] ?? 'bf';
@@ -439,7 +439,7 @@ class Chart {
 			var metaContent:String = Paths.text(metaPath);
 			var chartContent:String = Paths.text(chartPath);
 			cne = new FNFCodename().fromJson(chartContent, metaContent);
-			song.loadGeneric(cne, difficulty, (note:BasicNote) -> note.lane >= 4);
+			song.loadGeneric(cne, difficulty, (note:BasicNote) -> Std.int(note.lane / song.keyCount));
 
 			var meta:BasicMetaData = cne.getChartMeta();
 			song.player1 = meta.extraData['FNF_P1'] ?? 'bf';
@@ -539,66 +539,6 @@ class Chart {
 			return null;
 		}
 	}
-	
-	/*
-	public function generateNotes(singleSegmentHolds:Bool = false):Array<Note> {
-		var time:Float = Sys.time();
-		Log.minor('generating notes from song');
-		var notes:Array<Note> = generateNotesFromArray(notes, singleSegmentHolds, this);
-		Log.info('generated ${notes.length} note objects! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
-		return notes;
-	}
-	public static function generateNotesFromArray(songNotes:Array<ChartNote>, singleSegmentHolds:Bool = false, ?chart:Chart) {
-		var noteArray:Array<Note> = [];
-		var tempMetronome:Metronome = null;
-		var type:Dynamic = (CharterState.inEditor ? CharterNote : Note);
-		if (chart != null) {
-			tempMetronome = new Metronome();
-			tempMetronome.tempoChanges = chart.tempoChanges;
-		}
-		
-		for (songNote in songNotes) {
-			tempMetronome?.setMS(songNote.msTime);
-			var hitNote:Note = Type.createInstance(type, [songNote.player, songNote.msTime, songNote.laneIndex, songNote.msLength, songNote.kind]);
-			noteArray.push(hitNote);
-			
-			if (hitNote.msLength > 0) { //hold bits
-				var endMs:Float = songNote.msTime + songNote.msLength;
-				if (!singleSegmentHolds && tempMetronome != null) {
-					var bitTime:Float = songNote.msTime;
-					while (bitTime < endMs) {
-						tempMetronome.setStep(Std.int(tempMetronome.step + .05) + 1);
-						var newTime:Float = tempMetronome.ms;
-						if (bitTime < songNote.msTime) {
-							Log.warning('??? $bitTime < ${songNote.msTime} (sustain bit off by ${songNote.msTime - bitTime}ms)');
-							bitTime = newTime;
-							break;
-						}
-						var bitLength:Float = Math.min(newTime - bitTime, endMs - bitTime);
-						var holdBit:Note = Type.createInstance(type, [songNote.player, bitTime, songNote.laneIndex, bitLength, songNote.kind, true]);
-						hitNote.children.push(holdBit);
-						holdBit.parent = hitNote;
-						noteArray.push(holdBit);
-						bitTime = newTime;
-					}
-				} else {
-					var holdBit:Note = Type.createInstance(type, [songNote.player, songNote.msTime, songNote.laneIndex, songNote.msLength, songNote.kind, true]);
-					hitNote.children.push(holdBit);
-					holdBit.parent = hitNote;
-					noteArray.push(holdBit);
-				}
-				var endBit:Note = Type.createInstance(type, [songNote.player, endMs, songNote.laneIndex, 0, songNote.kind, true]);
-				hitNote.children.push(endBit);
-				noteArray.push(endBit);
-				
-				endBit.parent = hitNote;
-				hitNote.tail = endBit;
-			}
-		}
-		
-		return noteArray;
-	}
-	*/
 	
 	public function loadMusic(path:String, overwrite:Bool = true) { // this could be better
 		if (instLoaded && !overwrite) return true;
