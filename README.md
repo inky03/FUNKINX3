@@ -1,3 +1,5 @@
+**NOTE:** branch main is CURRENTLY BROKEN (sorry :p) - compile with notepool branch instead
+
 this engine is HEAVILY UNFINISHED; be wary of MISSING FEATURES and BREAKING API CHANGES while i keep working on it<br>
 see [CREDITS.md](CREDITS.md) for a list of credits
 
@@ -18,6 +20,7 @@ lime setup flixel
 ```
 perfect! you can now run these commands in your terminal to install the rest of the required libraries!
 ```console
+haxelib install hxvlc
 haxelib install tjson
 haxelib install moonchart
 haxelib install hxdiscord_rpc

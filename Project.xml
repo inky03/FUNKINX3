@@ -48,6 +48,7 @@
 	<haxelib name="flxanimate" />
 	<haxelib name="funkin.vis" />
 	<haxelib name="grig.audio" />
+	<haxelib name="hxvlc" if="cpp" />
 	<haxelib name="hxdiscord_rpc" if="cpp" />
 	
 	<haxelib name="hscript-iris" if="ALLOW_SCRIPTS" />
@@ -60,6 +61,7 @@
 	<haxeflag name="--macro" value="addMetadata('@:build(funkin.macros.HScriptMacro.buildInterp())', 'crowplexus.hscript.Interp')" />
 	<haxeflag name="--macro" value="include('flixel', true, ['flixel.addons.nape', 'flixel.addons.editors.spine', 'flixel.system.macros'])" if="ALLOW_SCRIPTS" />
 	<haxeflag name="--macro" value="include('haxe', true, ['haxe.atomic', 'haxe.macro'])" if="ALLOW_SCRIPTS" />
+	<haxeflag name="--macro" value="include('hxvlc', true)" if="hxvlc ALLOW_SCRIPTS" />
 	<haxeflag name="--macro" value="include('funkin', true)" if="ALLOW_SCRIPTS" />
 	<haxeflag name="--macro" value="include('sys', true)" if="ALLOW_SCRIPTS" />
 	<!-- dont include sys.db and sys.ssl? -->
