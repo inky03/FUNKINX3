@@ -18,6 +18,7 @@ lime setup flixel
 ```
 perfect! you can now run these commands in your terminal to install the rest of the required libraries!
 ```console
+haxelib install hxvlc
 haxelib install tjson
 haxelib install moonchart
 haxelib install hxdiscord_rpc
