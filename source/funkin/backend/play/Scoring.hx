@@ -65,7 +65,7 @@ class Scoring {
 			}
 		}
 
-		return {hitWindow: win, rating: win.rating, healthMod: win.healthMod, accuracyMod: win.accuracyMod, score: win.score};
+		return {hits: 1, hitWindow: win, rating: win.rating, healthMod: win.healthMod, accuracyMod: win.accuracyMod, score: win.score, breaksCombo: win.breaksCombo};
 	}
 	public static function judgePBOT1(hitWindows:Array<HitWindow>, hitWindow:Float, time:Float):Score {
 		var win:HitWindow = hitWindows[hitWindows.length - 1];
@@ -93,16 +93,19 @@ class Scoring {
 			accuracyMod = score / maxScore;
 		}
 
-		return {hitWindow: win, rating: win.rating, healthMod: win.healthMod, accuracyMod: accuracyMod, score: score};
+		return {hits: 1, hitWindow: win, rating: win.rating, healthMod: win.healthMod, accuracyMod: accuracyMod, score: score, breaksCombo: win.breaksCombo};
 	}
 }
 
-@:structInit class Score {
+@:structInit class Score { // TODO: move to typedef?
+	public var rating:Null<String> = null;
 	public var hitWindow:HitWindow = null;
-	public var accuracyMod:Float = 0;
+	public var breaksCombo:Bool = false;
+	public var accuracyMod:Float = -1;
 	public var healthMod:Float = 1;
-	public var rating:String = '';
 	public var score:Float = 0;
+	public var misses:Int = 0;
+	public var hits:Int = 0;
 }
 
 enum abstract ScoringSystem(String) to String {

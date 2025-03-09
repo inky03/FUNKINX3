@@ -42,10 +42,12 @@ class TitleState extends FunkinState {
 		}
 	}
 	public override function create() {
+		super.create();
+		
 		preload();
 		currentIntroText = FlxG.random.getObject(introTexts) ?? ['funkin', 'FOREVER'];
 		
-		conductorInUse.beatHit.add(beatHitEvent);
+		beatHit.add(beatHitEvent);
 		
 		logo = new FunkinSprite().loadAtlas('titlescreen/logo');
 		logo.addAnimation('bump', 'logo bumpin');
@@ -146,10 +148,6 @@ class TitleState extends FunkinState {
 				});
 			}
 		}
-	}
-	public override function destroy() {
-		conductorInUse.beatHit.remove(beatHitEvent);
-		super.destroy();
 	}
 	
 	public function beatHitEvent(beat:Int) {

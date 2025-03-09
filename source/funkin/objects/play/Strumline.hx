@@ -1,5 +1,6 @@
 package funkin.objects.play;
 
+import funkin.objects.play.Note;
 import funkin.backend.play.Scoring;
 import funkin.backend.play.NoteEvent;
 
@@ -40,6 +41,7 @@ class Strumline extends FunkinSpriteGroup {
 		var i:Int = 0;
 		var diff:Float = newSpacing - laneSpacing;
 		for (lane in lanes) {
+			lane.startX += i * diff;
 			lane.x += i * diff;
 			i ++;
 		}
@@ -61,27 +63,27 @@ class Strumline extends FunkinSpriteGroup {
 	}
 	
 	//getters
-	public function get_leftBound() {
+	function get_leftBound() {
 		var minX:Float = Math.POSITIVE_INFINITY;
 		for (lane in lanes) minX = Math.min(minX, lane.receptor.x);
 		return minX;
 	}
-	public function get_rightBound() {
+	function get_rightBound() {
 		var maxX:Float = Math.NEGATIVE_INFINITY;
 		for (lane in lanes) maxX = Math.max(maxX, lane.receptor.x + lane.receptor.width);
 		return maxX;
 	}
-	public function get_topBound() {
+	function get_topBound() {
 		var minY:Float = Math.POSITIVE_INFINITY;
 		for (lane in lanes) minY = Math.min(minY, lane.receptor.y);
 		return minY;
 	}
-	public function get_bottomBound() {
+	function get_bottomBound() {
 		var maxY:Float = Math.NEGATIVE_INFINITY;
 		for (lane in lanes) maxY = Math.max(maxY, lane.receptor.y + lane.receptor.height);
 		return maxY;
 	}
-	public function get_strumlineWidth() {
+	function get_strumlineWidth() {
 		var minX:Float = Math.POSITIVE_INFINITY;
 		var maxX:Float = Math.NEGATIVE_INFINITY;
 		for (lane in lanes) {
@@ -90,7 +92,7 @@ class Strumline extends FunkinSpriteGroup {
 		}
 		return (maxX - minX);
 	}
-	public function get_strumlineHeight() {
+	function get_strumlineHeight() {
 		var minY:Float = Math.POSITIVE_INFINITY;
 		var maxY:Float = Math.NEGATIVE_INFINITY;
 		for (lane in lanes) {
@@ -99,12 +101,12 @@ class Strumline extends FunkinSpriteGroup {
 		}
 		return (maxY - minY);
 	}
-	public function get_receptorWidth() {
+	function get_receptorWidth() {
 		var width:Float = 0;
 		for (lane in lanes) width = Math.max(width, lane.receptor.width);
 		return width;
 	}
-	public function get_receptorHeight() {
+	function get_receptorHeight() {
 		var height:Float = 0;
 		for (lane in lanes) height = Math.max(height, lane.receptor.height);
 		return height;
@@ -123,16 +125,14 @@ class Strumline extends FunkinSpriteGroup {
 	}
 	public function fadeIn() {
 		var i:Int = 0;
-		var targetY:Float = y;
 		for (lane in lanes) {
 			lane.alpha = 0;
-			var targetX:Float = x + i * laneSpacing;
 			var rad:Float = lane.direction / 180 * Math.PI;
 			
 			FlxTween.cancelTweensOf(lane);
-			lane.x = targetX - Math.cos(rad) * 10;
-			lane.y = targetY - Math.sin(rad) * 10;
-			FlxTween.tween(lane, {x: targetX, y: targetY, alpha: alpha}, 1, {ease: FlxEase.circOut, startDelay: .5 + i * .2});
+			lane.x = lane.startX - Math.cos(rad) * 10;
+			lane.y = lane.startY - Math.sin(rad) * 10;
+			FlxTween.tween(lane, {x: lane.startX, y: lane.startY, alpha: alpha}, 1, {ease: FlxEase.circOut, startDelay: .5 + i * .2});
 			
 			i ++;
 		}
@@ -142,19 +142,19 @@ class Strumline extends FunkinSpriteGroup {
 		super.draw();
 		for (lane in lanes) { // draw on top
 			if (!lane.selfDraw)
-				lane.drawTop();
+				@:privateAccess lane.drawThing(true);
 		}
 	}
 	public function forEachLane(func:Lane -> Void) {
 		for (lane in lanes)
 			func(lane);
 	}
-	public function forEachNote(func:Note -> Void, includeQueued:Bool = false) {
+	public function forEachNote(func:ChartNote -> Void, includeQueued:Bool = false) {
 		for (lane in lanes)
 			lane.forEachNote(func, includeQueued);
 	}
 	public function getAllNotes() {
-		var notes:Array<Note> = [];
+		var notes:Array<ChartNote> = [];
 		for (lane in lanes) {
 			for (note in lane.getAllNotes())
 				notes.push(note);
@@ -210,12 +210,19 @@ class Strumline extends FunkinSpriteGroup {
 		}
 	}
 	
-	public function queueNote(note:Note, ?laneIndex:Int) {
-		laneIndex ??= note.noteData;
+	public function queueNote(note:ChartNote, ?laneIndex:Int):ChartNote {
+		laneIndex ??= note.laneIndex;
 		laneIndex = FlxMath.wrap(laneIndex, 0, lanes.length - 1);
 		var lane:Lane = getLane(laneIndex);
-		if (lane != null)
+		if (lane != null) {
 			lane.queueNote(note);
+			return note;
+		}
+		return null;
+	}
+	public function dequeueNote(note:ChartNote) {
+		for (lane in lanes)
+			lane.dequeueNote(note);
 	}
 	public function clearAllNotes() {
 		for (lane in lanes)
@@ -235,5 +242,24 @@ class Strumline extends FunkinSpriteGroup {
 				fired = true;
 		}
 		return fired;
+	}
+	
+	override function set_x(value:Float):Float {
+		if (exists && x != value) {
+			var diff:Float = (value - x);
+			transformChildren(xTransform, diff);
+			for (lane in lanes)
+				lane.startX += diff;
+		}
+		return x = value;
+	}
+	override function set_y(value:Float):Float {
+		if (exists && y != value) {
+			var diff:Float = (value - y);
+			transformChildren(yTransform, diff);
+			for (lane in lanes)
+				lane.startY += diff;
+		}
+		return y = value;
 	}
 }

@@ -185,7 +185,9 @@ class Paths {
 		return (FileSystem.exists(modPath(key, mod, library)));
 	inline public static function exists(key:String, allowMods:Bool = true, ?library:String):Bool
 		return (getPath(key, allowMods, library) != null);
-
+	
+	inline public static function video(key:String, ?library:String, ?format:String = 'mp4')
+		return getPath('videos/$key.$format', library);
 	inline public static function sound(key:String, ?library:String)
 		return ogg('sounds/$key', false, library);
 	inline public static function music(key:String, ?library:String)

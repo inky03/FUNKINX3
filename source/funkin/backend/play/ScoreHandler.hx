@@ -9,6 +9,7 @@ class ScoreHandler {
 	public var score:Float = 0;
 	public var accuracyMod:Float = 0;
 	public var accuracyDiv:Float = 0;
+	public var hits(default, set):Int = 0;
 	public var combo(default, set):Int = 0;
 	public var misses(default, set):Int = 0;
 	@:isVar public var accuracy(get, never):Float = 0;
@@ -16,6 +17,7 @@ class ScoreHandler {
 	
 	public var onMissesChange:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
 	public var onComboChange:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
+	public var onHit:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
 	
 	public var hitWindows:Array<HitWindow> = [];
 	public var holdScorePerSecond:Float;
@@ -40,6 +42,22 @@ class ScoreHandler {
 		ratingCount.clear();
 	}
 	
+	public function applyScore(score:Score) {
+		this.hits += score.hits;
+		this.score += score.score;
+		this.misses += score.misses;
+		
+		if (score.rating != null)
+			countRating(score.rating);
+		if (score.accuracyMod >= 0)
+			addMod(score.accuracyMod);
+		if (score.breaksCombo) {
+			combo = 0;
+		} else {
+			combo += score.hits;
+		}
+	}
+	
 	public function judgeNoteHit(note:funkin.objects.play.Note, time:Float):Score {
 		return switch (system) {
 			case EMI | WEEK7 | LEGACY:
@@ -51,12 +69,15 @@ class ScoreHandler {
 				score;
 		}
 	}
+	public function judgeNoteGhost():Score {
+		return {score: -10};
+	}
 	public function judgeNoteMiss(note:funkin.objects.play.Note):Score {
 		return switch (system) {
 			case EMI:
-				{score: -50};
+				{score: -50, misses: 1, accuracyMod: 0, breaksCombo: true};
 			default:
-				{score: -10};
+				{score: -10, misses: 1, accuracyMod: 0, breaksCombo: true};
 		}
 	}
 	public function getHitWindow(rating:String)
@@ -70,6 +91,12 @@ class ScoreHandler {
 		accuracyDiv += div;
 	}
 	
+	function set_hits(newHits:Int):Int {
+		if (newHits == hits)
+			return newHits;
+		onHit.dispatch(newHits);
+		return hits = newHits;
+	}
 	function set_combo(newCombo:Int):Int {
 		if (newCombo == combo)
 			return newCombo;

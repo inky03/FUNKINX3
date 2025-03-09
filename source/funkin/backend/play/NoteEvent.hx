@@ -7,13 +7,14 @@ import funkin.objects.play.Lane;
 import funkin.backend.play.Scoring;
 import funkin.objects.play.Strumline;
 
-@:structInit class NoteEvent {
+@:structInit class NoteEvent implements IPlayEvent { // TODO: EVENT RECYCLER
+	public var type(default, null):NoteEventType;
+	public var cancelled:Bool = false;
+	
 	public var note:Note;
 	public var lane:Lane;
 	public var receptor:Receptor;
-	public var type:NoteEventType;
 	public var strumline:Strumline;
-	public var cancelled:Bool = false;
 	public var animSuffix:String = '';
 
 	public var spark:NoteSpark = null;
@@ -26,21 +27,24 @@ import funkin.objects.play.Strumline;
 	public var doSpark:Bool = false; // many vars...
 	public var doSplash:Bool = false;
 	public var playSound:Bool = false;
+	public var popRating:Bool = true;
 	public var applyRating:Bool = false;
 	public var playAnimation:Bool = true;
 	public var animateReceptor:Bool = true;
-
+	
+	var game:PlayState = null;
+	var inGame:Bool = false;
+	
 	public function cancel() cancelled = true;
 	public function dispatch() { // hahaaa
 		if (cancelled) return;
-		var game:PlayState;
-		if (Std.isOfType(FlxG.state, PlayState)) {
+		
+		inGame = Std.isOfType(FlxG.state, PlayState);
+		if (inGame) {
 			game = cast FlxG.state;
 			scoreHandler ??= game.scoring;
-		} else {
-			throw(new haxe.Exception('note event can\'t be dispatched outside of PlayState!!'));
-			return;
 		}
+		
 		switch (type) {
 			case HIT:
 				if (game.genericVocals != null)
@@ -48,114 +52,124 @@ import funkin.objects.play.Strumline;
 				if (targetCharacter != null)
 					targetCharacter.volume = 1;
 
-				note.hitTime = lane.conductorInUse.songPosition;
-				if (!note.isHoldPiece) {
-					// if (lane.heldNote != null)
-					// 	lane.hitSustainsOf(lane.heldNote);
-					lane.heldNote = note;
+				note.hitTime = note.holdTime = lane.conductorInUse.songPosition;
 
-					if (playSound)
-						game.hitsound.play(true);
+				if (playSound)
+					game.hitsound.play(true);
+				
+				if (applyRating) {
+					applyExtraWindow(6);
+					scoring ??= scoreHandler?.judgeNoteHit(note, (lane.cpu ? 0 : note.msTime - lane.conductorInUse.songPosition));
 					
-					if (applyRating) {
-						scoring ??= scoreHandler?.judgeNoteHit(note, (lane.cpu ? 0 : note.msTime - lane.conductorInUse.songPosition));
+					if (popRating) {
 						var rating:FunkinSprite = game.popRating(scoring.rating);
 						rating.velocity.y = -FlxG.random.int(140, 175);
 						rating.velocity.x = FlxG.random.int(0, 10);
 						rating.acceleration.y = 550;
-						applyExtraWindow(6);
-						
-						game.totalHits ++;
-						game.totalNotes ++;
-						game.health += note.healthGain * scoring.healthMod;
-						if (scoreHandler != null) {
-							scoreHandler.countRating(scoring.rating);
-							note.score = scoring;
-							
-							scoreHandler.score += scoring.score;
-							scoreHandler.addMod(scoring.accuracyMod);
-							if (scoring.hitWindow != null && scoring.hitWindow.breaksCombo) {
-								scoreHandler.combo = 0; // maybe add the ghost note here?
-							} else {
-								scoreHandler.combo ++;
-							}
-						}
-						
-						game.updateScoreText();
 					}
 					
-					if (doSplash && (scoring.hitWindow == null || scoring.hitWindow.splash))
-						splash = lane.splash();
+					if (inGame)
+						game.health += note.healthGain * scoring.healthMod;
+					
+					applyScore(scoreHandler, scoring);
+					note.score = scoring;
+				}
+				
+				if (doSplash && (scoring.hitWindow == null || scoring.hitWindow.splash))
+					splash = lane.splash();
+				
+				if (playAnimation && targetCharacter != null) {
+					var anim:String = 'sing${game.singAnimations[note.laneIndex]}';
+					var suffixAnim:String = anim + animSuffix;
+					if (targetCharacter.animationExists(suffixAnim + targetCharacter.animSuffix))
+						targetCharacter.playAnimationSteps(suffixAnim, true);
+				}
+
+				if (animateReceptor)
+					lane.receptor.playAnimation('confirm', true);
+				
+				if (note.isHoldNote) {
+					lane.held = true;
+					lane.heldNote = note;
+				} else if (animateReceptor && !lane.cpu) {
+					lane.receptor.grayBeat = note.beatTime + 1;
+				}
+			case PRESSED:
+				if (note != null) {
+					lane.hitNote(note);
+				} else {
+					lane.ghostTapped();
+				}
+			case HELD | RELEASED:
+				final released:Bool = (type == RELEASED);
+				
+				if (released && note == null) {
+					lane.held = false;
+					if (animateReceptor)
+						receptor.playAnimation('static');
+					return;
+				}
+				
+				var perfectRelease:Bool = true;
+				final songPos:Float = lane.conductorInUse.songPosition;
+				
+				perfect = (released && (lane.cpu || songPos >= note.endMs - Scoring.holdLeniencyMS));
+				
+				if (applyRating) {
+					perfectRelease = perfect;
+					
+					var prevHitTime:Float;
+					if (!note.held && (lane.cpu || note.holdTime <= note.msTime + Scoring.holdLeniencyMS)) {
+						prevHitTime = note.msTime;
+					} else {
+						prevHitTime = Math.max(note.holdTime, note.msTime);
+					}
+					
+					var nextHitTime:Float;
+					if (perfectRelease) {
+						nextHitTime = note.endMs;
+					} else {
+						nextHitTime = Math.max(Math.min(songPos, note.endMs), prevHitTime);
+					}
+					
+					final secondDiff:Float = Math.max(0, (nextHitTime - prevHitTime) * .001);
+					scoring ??= {score: 0, healthMod: secondDiff};
+					
+					if (scoreHandler != null)
+						scoring.score = scoreHandler.holdScorePerSecond * secondDiff;
+					
+					if (inGame)
+						game.health += scoring.healthMod * note.healthGainPerSecond;
+					
+					applyScore(scoreHandler, scoring);
+					
+					if (!released)
+						note.held = true;
+					note.holdTime = nextHitTime;
 				}
 				
 				if (playAnimation && targetCharacter != null) {
-					var anim:String = 'sing${game.singAnimations[note.noteData]}';
-					var suffixAnim:String = anim + targetCharacter.animSuffix;
-					if (targetCharacter.animationExists(suffixAnim)) {
-						if (!note.isHoldPiece)
-							targetCharacter.playAnimationSoft(suffixAnim, true);
+					var anim:String = 'sing${game.singAnimations[note.laneIndex]}';
+					var suffixAnim:String = anim + animSuffix + targetCharacter.animSuffix;
+					if ((!targetCharacter.specialAnim || targetCharacter.currentAnimation == suffixAnim) && targetCharacter.animationExists(suffixAnim))
 						targetCharacter.timeAnimSteps();
-					}
 				}
-
-				if (animateReceptor) lane.receptor.playAnimation('confirm', true);
-				if (!note.isHoldPiece) {
-					if (note.msLength > 0) {
-						lane.held = true;
-						for (child in note.children) {
-							child.canHit = true;
-							lane.updateNote(child);
-						}
-					} else if (!lane.cpu && animateReceptor) {
-						lane.receptor.grayBeat = note.beatTime + 1;
-					}
-				}
-			case HELD | RELEASED:
-				var perfectRelease:Bool = true;
-				final released:Bool = (type == RELEASED);
-				final songPos:Float = lane.conductorInUse.songPosition;
-				perfect = (released && songPos >= note.endMs - Scoring.holdLeniencyMS);
-				if (applyRating) {
-					perfectRelease = perfect;
-				}
-				/*   ... ill do this later
-				if (applyRating) {
-					if (note.isHoldPiece && note.endMs > note.msTime) {
-						var prevHitTime:Float;
-						if (!note.held && note.hitTime <= note.msTime + Scoring.holdLeniencyMS)
-							prevHitTime = note.msTime;
-						else
-							prevHitTime = Math.max(note.hitTime, note.msTime);
-
-						perfectRelease = (released && songPos >= note.endMs - Scoring.holdLeniencyMS);
-						var nextHitTime:Float;
-						if (perfectRelease)
-							nextHitTime = note.endMs;
-						else
-							nextHitTime = Math.min(songPos, note.endMs);
-						if (!note.held) trace('started hitting ${Math.round(note.msTime)} -> ${Math.round(prevHitTime)} / ${Math.round(note.endMs)}');
-						if (released) trace('released ${Math.round(nextHitTime)} / ${Math.round(note.endMs)} (last : ${Math.round(prevHitTime)})');
-
-						final secondDiff:Float = Math.max(0, (nextHitTime - prevHitTime) * .001);
-						final scoreGain:Float = game.scoring.holdScorePerSecond * secondDiff;
-						scoring ??= {score: scoreGain, healthMod: secondDiff};
-						note.hitTime = nextHitTime;
-					}
-					if (scoring != null) {
-						game.health += scoring.healthMod * note.healthGainPerSecond;
-						game.score += scoring.score;
-						game.updateRating();
-					}
-				} else {
-					note.hitTime = songPos;
-				} */
-				if (released && note.isHoldTail) {
-					if (lane.held && (lane.heldNote == null || lane.heldNote == note.parent)) {
-						lane.heldNote = null;
+				
+				if (released && note.isHoldNote) {
+					note.consumed = true;
+					
+					if (lane.heldNote == note) {
 						lane.held = false;
-						if (!lane.cpu && animateReceptor)
-							lane.receptor.playAnimation('press', true);
+						lane.heldNote = null;
+						if (animateReceptor) {
+							if (lane.cpu || !note.held) {
+								lane.receptor.playAnimation('static');
+							} else {
+								lane.receptor.playAnimation('press');
+							}
+						}
 					}
+					
 					if (perfectRelease) {
 						if (doSpark)
 							spark = lane.spark();
@@ -165,8 +179,10 @@ import funkin.objects.play.Strumline;
 						if (playSound)
 							FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/hitsoundFail'), .7);
 					}
+					
+					note.held = false;
+					lane.killNote(note);
 				}
-				note.held = true;
 			case GHOST:
 				if (animateReceptor)
 					lane.receptor.playAnimation('press', true);
@@ -178,21 +194,20 @@ import funkin.objects.play.Strumline;
 					targetCharacter.specialAnim = false;
 					targetCharacter.playAnimationSteps('sing${game.singAnimations[lane.noteData]}miss', true);
 				}
-
+				
 				applyExtraWindow(15);
-				if (applyRating) {
-					game.score -= 10;
-					game.health -= .01;
-					game.updateScoreText();
-				}
+				scoring ??= scoreHandler?.judgeNoteGhost();
+				
+				applyScore(scoreHandler, scoring);
 			case LOST:
-				if (game.genericVocals != null)
+				if (inGame && game.genericVocals != null)
 					game.genericVocals.volume = 0;
+				
 				if (targetCharacter != null) {
 					targetCharacter.volume = 0;
 					if (playAnimation) {
 						targetCharacter.specialAnim = false;
-						targetCharacter.playAnimationSteps('sing${game.singAnimations[note.noteData]}miss', true);
+						targetCharacter.playAnimationSteps('sing${game.singAnimations[note.laneIndex]}miss', true);
 					}
 				}
 				
@@ -201,25 +216,34 @@ import funkin.objects.play.Strumline;
 
 				if (applyRating) {
 					scoring ??= scoreHandler?.judgeNoteMiss(note);
-					var rating:FunkinSprite = game.popRating('sadmiss');
-					rating.velocity.y = -FlxG.random.int(80, 95);
-					rating.velocity.x = FlxG.random.int(-6, 6);
-					rating.acceleration.y = 240;
 					
-					if (scoreHandler != null) {
-						game.totalNotes ++;
-						scoreHandler.combo = 0;
-						scoreHandler.misses ++;
-						scoreHandler.score += scoring.score;
-						scoreHandler.addMod(scoring.accuracyMod);
+					if (popRating && inGame) {
+						var rating:FunkinSprite = game.popRating('sadmiss');
+						rating.velocity.y = -FlxG.random.int(80, 95);
+						rating.velocity.x = FlxG.random.int(-6, 6);
+						rating.acceleration.y = 240;
 					}
 					
-					game.health -= note.healthLoss * scoring.healthMod;
+					if (inGame)
+						game.health -= note.healthLoss * scoring.healthMod;
 					
-					game.updateScoreText();
+					applyScore(scoreHandler, scoring);
 				}
 			default:
 		}
+	}
+	function applyScore(handler:ScoreHandler, score:Score) {
+		if (handler == null || score == null || !applyRating) return;
+		
+		if (inGame) {
+			game.totalNotes += score.hits + score.misses;
+			game.totalHits += score.hits;
+		}
+		
+		handler.applyScore(score);
+		
+		if (inGame)
+			game.updateScoreText();
 	}
 	function applyExtraWindow(window:Float) {
 		@:privateAccess {
@@ -234,14 +258,15 @@ import funkin.objects.play.Strumline;
 	}
 }
 
-enum NoteEventType {
-	SPAWNED;
-	DESPAWNED;
+enum abstract NoteEventType(String) to String {
+	var SPAWNED = 'spawned';
+	var DESPAWNED = 'despawned';
 
-	HIT;
-	HELD;
-	RELEASED;
+	var HIT = 'hit';
+	var HELD = 'held';
+	var PRESSED = 'pressed';
+	var RELEASED = 'released';
 
-	LOST;
-	GHOST;
+	var LOST = 'lost';
+	var GHOST = 'ghost';
 }

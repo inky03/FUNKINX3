@@ -42,6 +42,7 @@ class HScript extends Iris {
 		
 		'FunkinSound' => funkin.backend.FunkinSound,
 		'FunkinSprite' => funkin.backend.FunkinSprite,
+		'FunkinCamera' => funkin.backend.FunkinCamera,
 		'FunkinAnimate' => funkin.backend.FunkinAnimate,
 		'FunkinSpriteGroup' => funkin.backend.FunkinSpriteGroup,
 		
@@ -61,9 +62,8 @@ class HScript extends Iris {
 		'Metronome' => funkin.backend.rhythm.Metronome,
 		'CharacterGroup' => funkin.objects.CharacterGroup,
 		
-		'Measure' => funkin.backend.rhythm.Metronome.Measure,
-		'NoteEventType' => funkin.backend.play.NoteEvent.NoteEventType,
-		'SpriteRenderType' => funkin.backend.FunkinSprite.SpriteRenderType,
+		'NoteEventType' => {SPAWNED: 'spawned', DESPAWNED: 'despawned', HIT: 'hit', HELD: 'held', RELEASED: 'released', LOST: 'lost', GHOST: 'ghost'},
+		// THIS WILL BE DEPRECATED
 		
 		'STOP' => STOP,
 		'STOPALL' => STOPALL,
@@ -80,6 +80,7 @@ class HScript extends Iris {
 	public var scriptPath:Null<String> = null;
 	public var scriptName:String = '';
 	public var compiled:Bool = false;
+	public var failed:Bool = false;
 	public var active:Bool = true;
 	var executed:Bool = false;
 	var modInterp:ModInterp;
@@ -136,7 +137,7 @@ class HScript extends Iris {
 	}
 	
 	public function run(?func:String, ?args:Array<Any>, safe:Bool = true):Any {
-		if (!compiled || !active) return null;
+		if (!compiled || failed || !active) return null;
 		try {
 			if (func != null) {
 				if (!executed) execute();
@@ -148,8 +149,18 @@ class HScript extends Iris {
 			} else {
 				return execute();
 			}
-		} catch (e:IrisError) {
-			errorCaught(e);
+		} catch (e:Dynamic) {
+			if (!executed)
+				failed = true;
+			
+			var irisE:IrisError;
+			if (Std.isOfType(e, IrisError)) {
+				irisE = cast e;
+			} else {
+				@:privateAccess irisE = new IrisError(ECustom(Std.string(e)), parser.readPos, parser.readPos, parser.origin, parser.line);
+			}
+			
+			errorCaught(irisE);
 			return null;
 		}
 	}
@@ -186,6 +197,7 @@ class HScript extends Iris {
 		if (newCode == scriptString) return scriptString;
 		
 		scriptCode = newCode;
+		failed = false;
 		try {
 			parse(true);
 			compiled = true;
