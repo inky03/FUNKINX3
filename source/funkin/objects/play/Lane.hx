@@ -18,10 +18,10 @@ class Lane extends FunkinSpriteGroup {
 	
 	public var startX:Float;
 	public var startY:Float;
-
+	
 	public var held(default, set):Bool = false;
 	public var heldNote:Note = null;
-
+	
 	public var noteData:Int;
 	public var oneWay:Bool = true;
 	public var scrollSpeed(default, set):Float = 1;
@@ -93,9 +93,9 @@ class Lane extends FunkinSpriteGroup {
 			topMembers.push(mem); // render conditionally
 			this.add(mem);
 		}
-
+		
 		noteCover.shader = splashRGB.shader;
-
+		
 		spark().alpha = .0001;
 		splash().alpha = .0001;
 	}
@@ -312,8 +312,8 @@ class Lane extends FunkinSpriteGroup {
 		note.hitWindow = hitWindow;
 		
 		note.reload();
-		note.shader = rgbShader.shader;
 		note.scale.copyFrom(receptor.scale);
+		note.rgbShader = rgbShader.copy(note.rgbShader);
 		note.updateHitbox();
 		updateNote(note);
 		

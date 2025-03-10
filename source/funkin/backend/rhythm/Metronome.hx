@@ -165,6 +165,10 @@ class Metronome {
 		bpm = prevBPM;
 		return target;
 	}
+	
+	public function sortTempoChanges() {
+		tempoChanges.sort((a:TempoChange, b:TempoChange) -> Std.int(a.beatTime) - Std.int(b.beatTime));
+	}
 }
 
 enum abstract Measure(String) to String {

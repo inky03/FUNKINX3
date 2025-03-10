@@ -1,5 +1,6 @@
 package funkin.objects.play;
 
+import funkin.shaders.RGBSwap;
 import funkin.objects.play.Lane;
 import funkin.backend.play.Scoring;
 import funkin.backend.rhythm.Event;
@@ -59,6 +60,8 @@ class Note extends FunkinSprite {
 	public var conductorInUse:Conductor; // mostly charting stuff
 	
 	public var tail:NoteTail;
+	public var rgbShader(default, set):RGBSwap;
+	public var tailOffset(default, null):FlxPoint;
 	
 	public var lane:Lane;
 	public var chartNote(default, set):ChartNote;
@@ -110,6 +113,7 @@ class Note extends FunkinSprite {
 	function get_player():Bool { return (strumlineIndex == 0); }
 	
 	public override function destroy() {
+		tailOffset.put();
 		if (tail != null)
 			tail.destroy();
 		super.destroy();
@@ -127,6 +131,7 @@ class Note extends FunkinSprite {
 		super();
 		
 		this.conductorInUse = conductor ?? FunkinState.getCurrentConductor();
+		this.tailOffset = FlxPoint.get();
 		
 		this.chartNote = songNote;
 		reload();
@@ -157,6 +162,7 @@ class Note extends FunkinSprite {
 		lost = goodHit = held = consumed = preventDespawn = ignore = false;
 		followAngle = canHit = visible = true;
 		holdTime = hitTime = -1;
+		tailOffset.set();
 		multAlpha = 1;
 		clipDistance = 0;
 		if (tail != null) {
@@ -182,37 +188,44 @@ class Note extends FunkinSprite {
 		return chartNote ?? {laneIndex: laneIndex, msTime: msTime, kind: noteKind, msLength: msLength, strumlineIndex: strumlineIndex};
 	}
 	
-	public function set_noteKind(newKind:String) {
+	function set_noteKind(newKind:String) {
 		return noteKind = newKind;
 	}
-	public function set_msTime(newTime:Float) {
+	function set_msTime(newTime:Float) {
 		if (msTime == newTime) return newTime;
 		@:bypassAccessor beatTime = conductorInUse.convertMeasure(newTime, MS, BEAT);
 		return msTime = newTime;
 	}
-	public function set_beatTime(newTime:Float) {
+	function set_beatTime(newTime:Float) {
 		if (beatTime == newTime) return newTime;
 		@:bypassAccessor msTime = conductorInUse.convertMeasure(newTime, BEAT, MS);
 		return beatTime = newTime;
 	}
-	public function set_msLength(newLength:Float) {
+	function set_msLength(newLength:Float) {
 		if (msLength == newLength) return newLength;
 		msLength = newLength;
 		@:bypassAccessor beatLength = conductorInUse.convertMeasure(msTime + newLength, MS, BEAT) - beatTime;
 		updateTail();
 		return newLength;
 	}
-	public function set_beatLength(newLength:Float) {
+	function set_beatLength(newLength:Float) {
 		if (beatLength == newLength) return newLength;
 		beatLength = newLength;
 		@:bypassAccessor msLength = conductorInUse.convertMeasure(beatTime + newLength, BEAT, MS) - msTime;
 		updateTail();
 		return newLength;
 	}
-	public function get_endMs()
+	function get_endMs()
 		return msTime + msLength;
-	public function get_endBeat()
+	function get_endBeat()
 		return beatTime + beatLength;
+	function set_rgbShader(newShd:RGBSwap):RGBSwap {
+		if (newShd != null)
+			shader = newShd.shader;
+		if (newShd == null && rgbShader != null && shader == rgbShader.shader)
+			shader = null;
+		return rgbShader = newShd;
+	}
 	
 	public static function distanceToMS(distance:Float, scrollSpeed:Float)
 		return distance / (.45 * scrollSpeed);
@@ -246,7 +259,7 @@ class Note extends FunkinSprite {
 			
 			var absDistance:Float = msToDistance(msTime - conductorInUse.songPosition, Math.abs(speed));
 			tail.sustainHeight = msToDistance(msLength, Math.abs(speed));
-			tail.setPosition(x + (width - tail.width) * .5, y + height * .5);
+			tail.setPosition(x - tailOffset.x + (width - tail.width) * .5, y - tailOffset.y + receptor.height * .5);
 			tail.angle = dir - 90;
 			
 			if (goodHit && absDistance < 0)

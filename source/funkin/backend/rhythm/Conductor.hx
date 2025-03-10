@@ -86,4 +86,8 @@ class Conductor {
 	public function resetToDefault() {
 		metronome = new Metronome();
 	}
+	
+	public function sortTempoChanges() {
+		metronome.sortTempoChanges();
+	}
 }

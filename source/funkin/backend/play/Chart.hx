@@ -309,9 +309,13 @@ class Chart {
 					if (!Std.isOfType(noteKind, String)) noteKind = '';
 					var strumlineIndex:Int = 0;
 					if (fromSong) {
-						strumlineIndex = ((noteData < keyCount) == section.mustHitSection ? 1 : 0);
+						strumlineIndex = Std.int(noteData / keyCount);
+						if (section.mustHitSection)
+							strumlineIndex += (strumlineIndex % 2 == 0 ? 1 : -1);
 					} else { // assume psych 1.0
-						strumlineIndex = (noteData < keyCount ? 1 : 0);
+						strumlineIndex = Std.int(noteData / keyCount);
+						if (strumlineIndex < 2) // how silly
+							strumlineIndex = 1 - strumlineIndex;
 					}
 					
 					song.notes.push({strumlineIndex: strumlineIndex, msTime: noteTime, laneIndex: noteData % keyCount, msLength: noteLength, kind: noteKind});

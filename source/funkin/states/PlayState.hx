@@ -121,6 +121,7 @@ class PlayState extends FunkinState {
 		barHit.add((t:Int) -> dispatchSongEvent({type: BAR_HIT, time: t}));
 		beatHit.add((t:Int) -> dispatchSongEvent({type: BEAT_HIT, time: t}));
 		stepHit.add((t:Int) -> dispatchSongEvent({type: STEP_HIT, time: t}));
+		conductorInUse.sortTempoChanges();
 		
 		hitsound = FunkinSound.load(Paths.sound('gameplay/hitsounds/hitsound'), .7);
 		music = new FunkinSoundGroup();
@@ -157,14 +158,9 @@ class PlayState extends FunkinState {
 		if (!simple) {
 			var loadedEvents:Array<String> = [];
 			var noteKinds:Array<String> = [];
-			for (note in chart.notes) {
+			
+			for (note in chart.notes)
 				notes.push(note.copy());
-				var noteKind:String = note.kind;
-				if (noteKind.trim() != '' && !noteKinds.contains(noteKind)) {
-					hscripts.loadFromPaths('scripts/notekinds/$noteKind.hx');
-					noteKinds.push(noteKind);
-				}
-			}
 			for (event in chart.events) {
 				var eventName:String = event.name;
 				if (!loadedEvents.contains(eventName)) {
@@ -175,6 +171,14 @@ class PlayState extends FunkinState {
 			
 			hscripts.loadFromFolder('scripts/global');
 			hscripts.loadFromFolder('scripts/songs/${chart.path}');
+			
+			for (note in notes) {
+				var noteKind:String = note.kind;
+				if (noteKind.trim() != '' && !noteKinds.contains(noteKind)) {
+					hscripts.loadFromPaths('scripts/notekinds/$noteKind.hx');
+					noteKinds.push(noteKind);
+				}
+			}
 		}
 		
 		if (!simple) {
@@ -668,7 +672,7 @@ class PlayState extends FunkinState {
 		var canContinue = true;
 		
 		canContinue = (canContinue && !HScript.stopped(hscripts.run(func, args)));
-		for (chara in stage.characters) {
+		for (chara in stage?.characters) {
 			if (chara == null || !chara.exists || !chara.alive) continue;
 			
 			var current:Character = chara.current;

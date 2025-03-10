@@ -5,6 +5,15 @@ class MonoSwap {
 	public var black(default, set):FlxColor;
 	public var shader(default, null):MonoSwapShader = new MonoSwapShader();
 	
+	public function copy(?targetShd:MonoSwap):MonoSwap {
+		if (targetShd != null) {
+			targetShd.white = white;
+			targetShd.black = black;
+		} else {
+			targetShd = new MonoSwap(white, black);
+		}
+		return targetShd;
+	}
 	public function set_white(newC:FlxColor) {
 		shader.white.value = [newC.redFloat, newC.greenFloat, newC.blueFloat, newC.alphaFloat];
 		return white = newC;
@@ -13,9 +22,13 @@ class MonoSwap {
 		shader.black.value = [newC.redFloat, newC.greenFloat, newC.blueFloat, newC.alphaFloat];
 		return black = newC;
 	}
-	public function new(white:FlxColor = FlxColor.WHITE, black:FlxColor = FlxColor.BLACK) {
+	public function set(white:FlxColor = FlxColor.WHITE, black:FlxColor = FlxColor.BLACK) {
 		this.white = white;
 		this.black = black;
+	}
+	
+	public function new(white:FlxColor = FlxColor.WHITE, black:FlxColor = FlxColor.BLACK) {
+		this.set(white, black);
 	}
 }
 
