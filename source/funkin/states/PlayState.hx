@@ -154,13 +154,38 @@ class PlayState extends FunkinState {
 		add(strumlineGroup);
 		ratingGroup = new FunkinTypedSpriteGroup();
 		
+		var scrollDir:Float = (Options.data.downscroll ? 270 : 90);
+		var strumlineBound:Float = (FlxG.width - 300) * .5;
+		var strumlineY:Float = 50;
+		
+		keybinds = Options.data.keybinds['4k'];
+		
+		opponentStrumline = new Strumline(4, scrollDir, chart.scrollSpeed);
+		opponentStrumline.fitToSize(strumlineBound, opponentStrumline.height * .7);
+		opponentStrumline.noteEvent.add(opponentNoteEvent);
+		opponentStrumline.setPosition(50, strumlineY);
+		opponentStrumline.zIndex = 40;
+		opponentStrumline.cpu = true;
+		opponentStrumline.allowInput = false;
+		
+		playerStrumline = new Strumline(4, scrollDir, chart.scrollSpeed);
+		playerStrumline.fitToSize(strumlineBound, playerStrumline.height * .7);
+		playerStrumline.setPosition(FlxG.width - playerStrumline.width - 50 - 75, strumlineY);
+		playerStrumline.noteEvent.add(playerNoteEvent);
+		playerStrumline.assignKeybinds(keybinds);
+		playerStrumline.zIndex = 50;
+		
+		strumlineGroup.add(opponentStrumline);
+		strumlineGroup.add(playerStrumline);
+		
 		// the good stuff
+		for (note in chart.notes)
+			notes.push(note.copy());
+		
 		if (!simple) {
 			var loadedEvents:Array<String> = [];
 			var noteKinds:Array<String> = [];
 			
-			for (note in chart.notes)
-				notes.push(note.copy());
 			for (event in chart.events) {
 				var eventName:String = event.name;
 				if (!loadedEvents.contains(eventName)) {
@@ -224,30 +249,6 @@ class PlayState extends FunkinState {
 		}
 		loadVocals(chart.path, chart.audioSuffix);
 		
-		var scrollDir:Float = (Options.data.downscroll ? 270 : 90);
-		var strumlineBound:Float = (FlxG.width - 300) * .5;
-		var strumlineY:Float = 50;
-		
-		keybinds = Options.data.keybinds['4k'];
-		
-		opponentStrumline = new Strumline(4, scrollDir, chart.scrollSpeed);
-		opponentStrumline.fitToSize(strumlineBound, opponentStrumline.height * .7);
-		opponentStrumline.noteEvent.add(opponentNoteEvent);
-		opponentStrumline.setPosition(50, strumlineY);
-		opponentStrumline.zIndex = 40;
-		opponentStrumline.cpu = true;
-		opponentStrumline.allowInput = false;
-		
-		playerStrumline = new Strumline(4, scrollDir, chart.scrollSpeed * 1.08);
-		playerStrumline.fitToSize(strumlineBound, playerStrumline.height * .7);
-		playerStrumline.setPosition(FlxG.width - playerStrumline.width - 50 - 75, strumlineY);
-		playerStrumline.noteEvent.add(playerNoteEvent);
-		playerStrumline.assignKeybinds(keybinds);
-		playerStrumline.zIndex = 50;
-		
-		strumlineGroup.insert(0, playerStrumline);
-		strumlineGroup.insert(0, opponentStrumline);
-		
 		if (middlescroll) {
 			playerStrumline.screenCenter(X);
 			opponentStrumline.fitToSize(playerStrumline.leftBound - 50 - opponentStrumline.leftBound, 0, Y);
@@ -290,6 +291,8 @@ class PlayState extends FunkinState {
 				if (spotlight == player1.current)
 					focusOnCharacter(char);
 			});
+		}
+		if (player2 != null) {
 			player2.onCharacterChanged.add((name:String, char:Character) -> {
 				matchIconData(iconP2, char);
 				if (spotlight == player2.current)
@@ -672,12 +675,14 @@ class PlayState extends FunkinState {
 		var canContinue = true;
 		
 		canContinue = (canContinue && !HScript.stopped(hscripts.run(func, args)));
-		for (chara in stage?.characters) {
-			if (chara == null || !chara.exists || !chara.alive) continue;
-			
-			var current:Character = chara.current;
-			if (current != null)
-				canContinue = (canContinue && !HScript.stopped(current.hscripts.run(func, args)));
+		if (stage != null) {
+			for (chara in stage.characters) {
+				if (chara == null || !chara.exists || !chara.alive) continue;
+				
+				var current:Character = chara.current;
+				if (current != null)
+					canContinue = (canContinue && !HScript.stopped(current.hscripts.run(func, args)));
+			}
 		}
 		
 		return canContinue;

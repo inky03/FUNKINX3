@@ -389,10 +389,8 @@ class Receptor extends FunkinSprite {
 		reloadAnimations();
 
 		onAnimationComplete.add((anim:String) -> {
-			if (anim != 'confirm') return;
-			if (lane == null || (autoReset && !lane.held)) {
+			if (anim != 'static' && autoReset && (lane == null || !lane.held))
 				playAnimation('static', true);
-			}
 		});
 	}
 
