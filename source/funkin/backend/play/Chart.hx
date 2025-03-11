@@ -156,6 +156,7 @@ class Chart {
 		
 		this.sort();
 		this.findSongLength();
+		this.clearStackedNotes();
 		return this;
 	}
 	public function findSongLength() {
@@ -166,6 +167,25 @@ class Chart {
 			this.songLength = (lastNote == null ? 0 : lastNote.msTime + lastNote.msLength) + 500;
 		}
 		return this.songLength;
+	}
+	public function clearStackedNotes(minDifference:Float = FlxMath.EPSILON) {
+		var previousNote:ChartNote = null;
+		var caught:Int = 0;
+		var i:Int = notes.length;
+		
+		while (i > 0) {
+			var note:ChartNote = notes[i --];
+			
+			if (previousNote != null && Math.abs(note.msTime - previousNote.msTime) < minDifference &&
+				previousNote.kind == note.kind && previousNote.laneIndex == note.laneIndex && previousNote.strumlineIndex == note.strumlineIndex) {
+				notes.remove(note);
+				caught ++;
+			}
+			previousNote = note;
+		}
+		
+		if (caught > 0)
+			Log.warning('caught and deleted $caught stacked ${caught == 1 ? 'note' : 'notes'} in chart!');
 	}
 	
 	// TODO: these could just not be static
@@ -336,12 +356,13 @@ class Chart {
 		}
 		
 		song.audioSuffix = suffix;
+		song.clearStackedNotes();
 		return song;
 	}
 	static function loadStepMania(path:String, difficulty:String = 'Beginner', suffix:String = '') {
 		difficulty = difficulty.toLowerCase();
 		Log.minor('loading StepMania simfile "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
-
+		
 		var songPath:String = 'data/songs/$path/$path';
 		var sscPath:String = '${Util.pathSuffix(songPath, suffix)}.ssc';
 		var smPath:String = '$songPath.sm';
@@ -354,7 +375,7 @@ class Chart {
 			Log.minor('- chart: $smPath OR $sscPath');
 			return song;
 		}
-
+		
 		var time = Sys.time();
 		var shark:StepManiaShark;
 		@:privateAccess try {
@@ -382,12 +403,12 @@ class Chart {
 	static function loadModernChart(path:String, difficulty:String = 'normal', suffix:String = '') {
 		difficulty = difficulty.toLowerCase();
 		Log.minor('loading modern FNF song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
-
+		
 		var songPath:String = 'data/songs/$path/$path';
 		var chartPath:String = '${Util.pathSuffix('$songPath-chart', suffix)}.json';
 		var metaPath:String = '${Util.pathSuffix('$songPath-metadata', suffix)}.json';
 		var song:Chart = new Chart(path, 4);
-
+		
 		if (!Paths.exists(chartPath) || !Paths.exists(metaPath)) {
 			Log.warning('chart or metadata JSON not found... (chart not generated)');
 			Log.minor('verify paths:');
@@ -395,7 +416,7 @@ class Chart {
 			Log.minor('- metadata: $metaPath');
 			return song;
 		}
-
+		
 		var time = Sys.time();
 		var vslice:FNFVSlice;
 		try {
@@ -415,19 +436,19 @@ class Chart {
 		} catch (e:Exception) {
 			Log.error('chart error... -> <<< ${e.details()} >>>');
 		}
-
+		
 		song.audioSuffix = suffix;
 		return song;
 	}
 	static function loadCNEChart(path:String, difficulty:String = 'Normal', suffix:String = '') {
 		Log.minor('loading CNE song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
-
+		
 		var songPath:String = 'data/songs/$path';
 		var chartPath:String = '$songPath/charts/${Util.pathSuffix(difficulty, suffix)}.json';
 		var metaPath:String = '$songPath/${Util.pathSuffix('meta', suffix)}.json';
 		var chartPathA:String = chartPath;
 		var song:Chart = new Chart(path, 4);
-
+		
 		if (!Paths.exists(chartPath)) chartPath = '$songPath/$difficulty.json';
 		if (!Paths.exists(chartPath) || !Paths.exists(metaPath)) {
 			Log.warning('chart or metadata JSON not found... (chart not generated)');
@@ -436,7 +457,7 @@ class Chart {
 			Log.minor('- metadata: $metaPath');
 			return song;
 		}
-
+		
 		var time = Sys.time();
 		var cne:FNFCodename;
 		try {
@@ -456,7 +477,7 @@ class Chart {
 		} catch (e:Exception) {
 			Log.error('chart error... -> <<< ${e.details()} >>>');
 		}
-
+		
 		song.audioSuffix = suffix;
 		return song;
 	}
