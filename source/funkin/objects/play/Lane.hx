@@ -1,5 +1,6 @@
 package funkin.objects.play;
 
+import haxe.Constraints;
 import funkin.shaders.RGBSwap;
 import funkin.objects.play.Note;
 import funkin.backend.play.Scoring;
@@ -11,6 +12,7 @@ import flixel.util.FlxSignal.FlxTypedSignal;
 import flixel.graphics.frames.FlxFramesCollection;
 
 using StringTools;
+using Lambda;
 
 class Lane extends FunkinSpriteGroup {
 	public var rgbShader:RGBSwap;
@@ -24,6 +26,7 @@ class Lane extends FunkinSpriteGroup {
 	
 	public var noteData:Int;
 	public var oneWay:Bool = true;
+	public var noteClass:Class<Note> = Note;
 	public var scrollSpeed(default, set):Float = 1;
 	public var direction:Float = 90;
 	public var spawnRadius:Float;
@@ -49,8 +52,6 @@ class Lane extends FunkinSpriteGroup {
 	public var topMembers:Array<FlxSprite> = [];
 	
 	public function set_scrollSpeed(newSpeed:Float) {
-		var cam = camera ?? FlxG.camera;
-		spawnRadius = Note.distanceToMS(camera.height / camera.zoom, Math.abs(newSpeed)) + 50;
 		return scrollSpeed = newSpeed;
 	}
 	public function set_held(newHeld:Bool) {
@@ -101,6 +102,13 @@ class Lane extends FunkinSpriteGroup {
 	}
 	
 	public override function update(elapsed:Float) {
+		updateQueue();
+		updateNotes();
+
+		super.update(elapsed);
+		extraWindow = Math.max(extraWindow - elapsed * 200, 0);
+	}
+	public function updateQueue() {
 		var i:Int = 0;
 		var early:Bool;
 		var limit:Int = 50;
@@ -121,11 +129,6 @@ class Lane extends FunkinSpriteGroup {
 				i ++;
 			if (early && oneWay) break;
 		}
-		
-		updateNotes();
-
-		super.update(elapsed);
-		extraWindow = Math.max(extraWindow - elapsed * 200, 0);
 	}
 	public function updateNotes() {
 		var i:Int = notes.length;
@@ -185,14 +188,19 @@ class Lane extends FunkinSpriteGroup {
 		strumline?.noteEvent.dispatch(event);
 		noteEvent.dispatch(event);
 	}
-	public function getHighestNote(?filter:Note -> Bool) {
+	public function getHighestNote(?filter:Note -> Bool, hittableOnly:Bool = true) {
 		var highNote:Null<Note> = null;
 		for (note in notes) {
 			if (!note.alive) continue;
 			
 			var valid:Bool = (filter == null ? true : filter(note));
-			var canHit:Bool = (note.canHit && !note.goodHit && valid);
-			if (!canHit) continue;
+			
+			if (!valid)
+				continue;
+			if (hittableOnly) {
+				if (hittableOnly && (!note.canHit || note.goodHit))
+					continue;
+			}
 			if (highNote == null || (note.hitPriority > highNote.hitPriority || (note.hitPriority == highNote.hitPriority && note.msTime < highNote.msTime)))
 				highNote = note;
 		}
@@ -239,18 +247,22 @@ class Lane extends FunkinSpriteGroup {
 		return spark;
 	}
 	
-	public function queueNote(note:ChartNote, sorted:Bool = false):ChartNote {
-		if (!queue.contains(note)) {
-			if (sorted) {
-				for (i => otherNote in queue) {
-					if (otherNote.msTime >= note.msTime) {
+	public inline function queueNote(note:ChartNote, sorted:Bool = false, checkExists:Bool = true):ChartNote {
+		var pushed:Bool = false;
+		
+		if (sorted) {
+			for (i => otherNote in queue) {
+				if (otherNote.msTime >= note.msTime) {
+					if (!checkExists || !queue.contains(note))
 						queue.insert(i, note);
-						return note;
-					}
+					pushed = true;
+					break;
 				}
 			}
-			queue.push(note);
 		}
+		if (!pushed && (!checkExists || !queue.contains(note)))
+			queue.push(note);
+		
 		return note;
 	}
 	public function dequeueNote(note:ChartNote) {
@@ -300,11 +312,18 @@ class Lane extends FunkinSpriteGroup {
 		if (!oneWay && (note.msTime - conductorInUse.songPosition) > spawnRadius)
 			killNote(note, true);
 	}
-	public function generateNote(songNote:ChartNote):Note {
-		return new Note(songNote, conductorInUse);
+	public function findNoteByChartNote(songNote:ChartNote):Note {
+		return notes.members.find((note:Note) -> note.chartNote == songNote);
 	}
-	public function insertNote(songNote:ChartNote, pos:Int = 0) {
-		var note:Note = notes.recycle(Note, () -> generateNote(songNote));
+	public function generateNote(?cls:Class<Note>, songNote:ChartNote, pool:Bool = true):Note {
+		if (pool) {
+			return notes.recycle(noteClass, () -> generateNote(noteClass, songNote, false));
+		} else {
+			return Type.createInstance(cls ?? noteClass, [songNote, conductorInUse]);
+		}
+	}
+	public function insertNote(songNote:ChartNote, pos:Int = 0):Note {
+		var note:Note = generateNote(noteClass, songNote);
 		
 		preAdd(note);
 		note.lane = this;
@@ -319,6 +338,8 @@ class Lane extends FunkinSpriteGroup {
 		
 		notes.insert(pos, note);
 		_noteEvent(basicEvent(SPAWNED, note));
+		
+		return note;
 	}
 	public dynamic function hitNote(note:Note, kill:Bool = true) {
 		note.goodHit = true;
@@ -329,9 +350,9 @@ class Lane extends FunkinSpriteGroup {
 		if (kill && !note.isHoldNote && !note.ignore && !event.cancelled)
 			killNote(note);
 	}
-	public function killNote(note:Note, requeue:Bool = false) {
+	public function killNote(note:Note, requeue:Bool = false, sort:Bool = true) {
 		if (requeue)
-			queue.push(note.chartNote);
+			queueNote(note.chartNote, sort, false);
 		
 		note.kill();
 		_noteEvent(basicEvent(DESPAWNED, note));
@@ -480,11 +501,11 @@ class NoteSplash extends FunkinSprite {
 		fill.brightness = fill.brightness * .5 + .5;
 		
 		var ring:FlxColor = baseFill;
-		ring.red = Std.int(ring.red * .65);
-		ring.green = Std.int(ring.green * Math.max(.75 - ring.blue * .2, 0));
-		ring.blue = Std.int(Math.min((ring.blue + 80) * ring.brightness, 255));
-		ring.saturation = Math.min(1 - Math.pow(1 - ring.saturation * 1.4, 2), 1) * Math.min(ring.brightness / .125, 1);
-		ring.brightness = ring.brightness * .75 + .25;
+		ring.red = Std.int(ring.red * .9);
+		ring.green = Std.int(ring.green * Math.max(.95 - ring.blue / 255 * .3 - ring.red / 255 * .3, 0));
+		ring.blue = Std.int(Math.min((ring.blue * 2 + 80 - ring.red * .3) * ring.brightness, 255));
+		ring.saturation = Math.min(ring.saturation * 1.2 * Math.min(ring.brightness / .125, 1), 1);
+		ring.brightness = ring.brightness * .875 + .125;
 
 		return [fill, ring];
 	}

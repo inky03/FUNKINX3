@@ -18,16 +18,17 @@ import flixel.graphics.frames.FlxFrame;
 	public var strumlineIndex:Int = 0;
 	public var extraData:Map<String, Dynamic> = null;
 	
-	public function copy(?toNote:ChartNote):ChartNote {
-		if (toNote == null)
+	public inline function copy(?toNote:ChartNote):ChartNote {
+		if (toNote == null) {
 			return {strumlineIndex: strumlineIndex, laneIndex: laneIndex, msLength: msLength, msTime: msTime, kind: kind};
-		
-		toNote.strumlineIndex = strumlineIndex;
-		toNote.laneIndex = laneIndex;
-		toNote.msLength = msLength;
-		toNote.msTime = msTime;
-		toNote.kind = kind;
-		return toNote;
+		} else {
+			toNote.strumlineIndex = strumlineIndex;
+			toNote.laneIndex = laneIndex;
+			toNote.msLength = msLength;
+			toNote.msTime = msTime;
+			toNote.kind = kind;
+			return toNote;
+		}
 	}
 	
 	public function setVar(k:String, v:Dynamic):Dynamic {
@@ -47,6 +48,10 @@ import flixel.graphics.frames.FlxFrame;
 		if (extraData == null) return false;
 		return extraData.remove(k);
 	}
+	
+	function set_kind(v:String):String { return kind = v; }
+	function set_msTime(v:Float):Float { return msTime = v; }
+	function set_msLength(v:Float):Float { return msLength = v; }
 }
 
 class Note extends FunkinSprite {
@@ -88,7 +93,6 @@ class Note extends FunkinSprite {
 	public var healthGainPerSecond:Float = 7.5 / 100; // hold bonus
 	public var hitWindow:Float = Scoring.safeFrames * 1000 / 60;
 	
-	public var noteKind(default, set):String = '';
 	public var scrollMultiplier:Float = 1;
 	public var directionOffset:Float = 0;
 	public var hitPriority:Float = 1;
@@ -97,6 +101,8 @@ class Note extends FunkinSprite {
 	
 	public var laneIndex:Int = 0;
 	public var strumlineIndex:Int = 0;
+	public var kind(default, set):String = '';
+	@:deprecated('noteKind is deprecated, use kind instead!') public var noteKind(get, set):String;
 	@:deprecated('noteData is deprecated, use laneIndex instead!') public var noteData(get, set):Int;
 	@:deprecated('player is deprecated, use strumlineIndex instead!') public var player(get, never):Bool;
 
@@ -111,6 +117,8 @@ class Note extends FunkinSprite {
 	function get_noteData():Int { return laneIndex; }
 	function set_noteData(value:Int):Int { return laneIndex = value; }
 	function get_player():Bool { return (strumlineIndex == 0); }
+	function set_noteKind(newKind:String):String { return kind = newKind; }
+	function get_noteKind():String { return kind; }
 	
 	public override function destroy() {
 		tailOffset.put();
@@ -138,8 +146,8 @@ class Note extends FunkinSprite {
 	}
 	public function set_chartNote(songNote:ChartNote):ChartNote {
 		if (songNote != null) {
+			this.kind = songNote.kind;
 			this.msTime = songNote.msTime;
-			this.noteKind = songNote.kind;
 			this.msLength = songNote.msLength;
 			this.laneIndex = songNote.laneIndex;
 			this.strumlineIndex = songNote.strumlineIndex;
@@ -154,8 +162,15 @@ class Note extends FunkinSprite {
 		
 		return this.chartNote = songNote;
 	}
+	public function updateChartNote():Void {
+		chartNote.kind = kind;
+		chartNote.msTime = msTime;
+		chartNote.msLength = msLength;
+		chartNote.laneIndex = laneIndex;
+		chartNote.strumlineIndex = strumlineIndex;
+	}
 	
-	public function reload() {
+	public function reload():Void {
 		healthLoss = 6.0 / 100;
 		healthGain = 1.5 / 100;
 		healthGainPerSecond = 7.5 / 100;
@@ -173,7 +188,7 @@ class Note extends FunkinSprite {
 		loadAtlas('notes');
 		reloadAnimations();
 	}
-	public function updateTail() {
+	public function updateTail():Void {
 		isHoldNote = (msLength > 0);
 		if (tail == null && isHoldNote)
 			tail = new NoteTail(this);
@@ -185,11 +200,11 @@ class Note extends FunkinSprite {
 		updateHitbox();
 	}
 	public function toChartNote():ChartNote {
-		return chartNote ?? {laneIndex: laneIndex, msTime: msTime, kind: noteKind, msLength: msLength, strumlineIndex: strumlineIndex};
+		return chartNote ?? {laneIndex: laneIndex, msTime: msTime, kind: kind, msLength: msLength, strumlineIndex: strumlineIndex};
 	}
 	
-	function set_noteKind(newKind:String) {
-		return noteKind = newKind;
+	function set_kind(newKind:String) {
+		return kind = newKind;
 	}
 	function set_msTime(newTime:Float) {
 		if (msTime == newTime) return newTime;

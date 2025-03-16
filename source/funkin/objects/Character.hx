@@ -9,11 +9,13 @@ using StringTools;
 class Character extends FunkinSprite implements ICharacter {
 	public var bopFrequency:Int = 2;
 	public var bop(default, set):Bool = true;
+	public var flipSingAnimations:Bool = false;
 	public var animReset(default, set):Float = 0;
 	public var singForSteps(default, set):Float = 4;
 	public var specialAnim(default, set):Bool = false;
 	public var conductorInUse(default, set):Conductor = FunkinState.getCurrentConductor();
 	public var scaleMultiplier:Float = 1;
+	public var idleAfterAnim:Bool = true;
 	public var sway:Bool = false;
 	
 	public var hasDropAnimations(get, never):Bool;
@@ -127,15 +129,11 @@ class Character extends FunkinSprite implements ICharacter {
 	}
 	
 	function set_classicFlip(isIt:Bool) {
-		if (classicFlip == isIt)
-			return isIt;
 		classicFlip = isIt;
 		refreshSide();
 		return isIt;
 	}
 	function set_side(newSide:CharacterSide) {
-		if (side == newSide)
-			return newSide;
 		side = newSide;
 		refreshSide();
 		return newSide;
@@ -164,9 +162,10 @@ class Character extends FunkinSprite implements ICharacter {
 			var offset:FlxPoint = offsets[currentAnimation];
 			setAnimOffset(offset.x, offset.y);
 		}
+		flipSingAnimations = (!classicFlip && !sideMatches());
 	}
 	function flipAnim(anim:String):String {
-		if (classicFlip || sideMatches()) return anim;
+		if (!flipSingAnimations) return anim;
 		
 		if (anim.startsWith('singLEFT')) {
 			return anim.replace('singLEFT', 'singRIGHT');
@@ -216,13 +215,13 @@ class Character extends FunkinSprite implements ICharacter {
 		super.update(elapsed);
 		if (animReset > 0) {
 			animReset -= elapsed;
-			if (animReset <= 0 && !specialAnim) {
+			if (animReset <= 0 && !specialAnim && idleAfterAnim) {
 				animReset = 0;
 				dance();
 			}
 		}
 		if (specialAnim) {
-			if (isAnimationFinished() && animReset <= 0) {
+			if (isAnimationFinished() && animReset <= 0 && idleAfterAnim) {
 				specialAnim = false;
 				animReset = 0;
 				if (singForSteps <= 0) {
@@ -250,6 +249,35 @@ class Character extends FunkinSprite implements ICharacter {
 	public function animationIsLooping(anim:String):Bool {
 		return (currentAnimation == '$anim-loop' || currentAnimation == '$anim-hold');
 	}
+	public function playAnim(anim:String, context:PlayAnimContext = SOFT, forced:Bool = false, reversed:Bool = false, frame:Int = 0, ?time:Float) {
+		if (safeH != 'playAnim' && functionOverridden('playAnim')) {
+			safeCall('playAnim', [anim, context, forced, reversed, frame, time]);
+			return;
+		}
+		
+		switch (context) {
+			case SOFT:
+				playAnimationSoft(anim, forced, reversed, frame);
+			case SING:
+				playAnimationSteps(anim, forced, time, reversed, frame);
+			case SPECIAL:
+				playAnimationSpecial(anim, forced, time, reversed, frame);
+			default:
+				playAnimation(anim, forced, reversed, frame);
+		}
+	}
+	public function playAnimationSpecial(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0) {
+		if (safeH != 'playAnimationSpecial' && functionOverridden('playAnimationSpecial')) {
+			safeCall('playAnimationSpecial', [anim, forced, steps, reversed, frame]);
+			return;
+		}
+		
+		if (animationExists(anim)) {
+			specialAnim = false;
+			playAnimationSteps(anim, forced, steps, reversed, frame);
+			specialAnim = true;
+		}
+	}
 	public function playAnimationSoft(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
 		if (safeH != 'playAnimationSoft' && functionOverridden('playAnimationSoft')) {
 			safeCall('playAnimationSoft', [anim, forced, reversed, frame]);
@@ -265,9 +293,11 @@ class Character extends FunkinSprite implements ICharacter {
 			return;
 		}
 		
-		animReset = 0;
-		specialAnim = false;
-		super.playAnimation(flipAnim(anim) + animSuffix, forced, reversed, frame);
+		if (animationExists(anim)) {
+			animReset = 0;
+			specialAnim = false;
+			super.playAnimation(flipAnim(anim) + animSuffix, forced, reversed, frame);
+		}
 	}
 	public function playAnimationSteps(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0) {
 		if (safeH != 'playAnimationSteps' && functionOverridden('playAnimationSteps')) {
@@ -276,10 +306,11 @@ class Character extends FunkinSprite implements ICharacter {
 		}
 		
 		if (!specialAnim && animationExists(anim)) {
+			var animWasDone:Bool = isAnimationFinished();
 			playAnimation(anim, forced, reversed, frame);
 			
 			var sameAnim:Bool = (currentAnimation == anim);
-			if (forced || !sameAnim || isAnimationFinished())
+			if (forced || !sameAnim || animWasDone)
 				timeAnimSteps(steps ?? singForSteps);
 		}
 	}
@@ -617,6 +648,8 @@ interface ICharacter extends IBopper extends IFunkinSpriteAnim {
 	public function animationIsLooping(anim:String):Bool;
 	public function playAnimationSoft(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0):Void;
 	public function playAnimationSteps(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0):Void;
+	public function playAnimationSpecial(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0):Void;
+	public function playAnim(anim:String, context:PlayAnimContext = SOFT, forced:Bool = false, reversed:Bool = false, frame:Int = 0, ?time:Float):Void;
 	public function playComboDropAnimation(combo:Int):Void;
 	public function playComboAnimation(combo:Int):Void;
 }
@@ -625,6 +658,13 @@ interface IBopper {
 	public var idleSuffix(default, set):String;
 	
 	public function dance(beat:Int = 0, forced:Bool = false):Bool;
+}
+
+enum abstract PlayAnimContext(String) to String {
+	var SOFT = 'soft';
+	var SING = 'sing';
+	var SPECIAL = 'special';
+	var DEFAULT = 'default';
 }
 
 enum abstract CharacterDataType(String) to String {

@@ -7,7 +7,7 @@ import funkin.objects.Character;
 using StringTools;
 
 //THIS IS ALL KINDOF A MESS BUT IT WORKS??? I THINK
-class Stage extends FlxSpriteGroup {
+class Stage extends FunkinSpriteGroup {
 	var chart:Chart;
 	public var name:String;
 	public var json:Dynamic;
@@ -72,27 +72,6 @@ class Stage extends FlxSpriteGroup {
 			Log.warning('no stage content (json or script): loading fallback stage');
 			loadFallback();
 		}
-	}
-	
-	public function sortZIndex() {
-		sort(Util.sortZIndex, FlxSort.ASCENDING);
-	}
-	public function insertZIndex(obj:FlxSprite) {
-		if (members.contains(obj)) remove(obj);
-		var low:Float = Math.POSITIVE_INFINITY;
-		for (pos => mem in members) {
-			low = Math.min(mem.zIndex, low);
-			if (obj.zIndex < mem.zIndex) {
-				insert(pos, obj);
-				return obj;
-			}
-		}
-		if (obj.zIndex < low) {
-			insert(0, obj);
-		} else {
-			add(obj);
-		}
-		return obj;
 	}
 	
 	public function beatHit(beat:Int) {

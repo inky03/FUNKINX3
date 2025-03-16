@@ -32,11 +32,11 @@ class PlayState extends FunkinState {
 	public var scoreTxt:FlxText;
 	public var iconP1:HealthIcon;
 	public var iconP2:HealthIcon;
+	public var uiGroup:FunkinSpriteGroup;
+	public var ratingGroup:FunkinTypedSpriteGroup<FunkinSprite>;
 	
 	public var playerStrumline:Strumline;
 	public var opponentStrumline:Strumline;
-	public var uiGroup:FunkinSpriteGroup;
-	public var ratingGroup:FunkinTypedSpriteGroup<FunkinSprite>;
 	public var strumlineGroup:FunkinTypedSpriteGroup<Strumline>;
 	
 	public var singAnimations:Array<String> = ['LEFT', 'DOWN', 'UP', 'RIGHT'];
@@ -53,10 +53,10 @@ class PlayState extends FunkinState {
 	public var camFocusTarget:FlxObject;
 	public var spotlight(default, set):Null<FlxSprite>;
 	
-	public var camZoomRate:Int = -1; // 0: no bop - <0: every measure (always)
 	public var camZooming:Bool = true;
 	public var camZoomIntensity:Float = 1;
 	public var hudZoomIntensity:Float = 2;
+	public var camZoomRate:Null<Int> = null; // 0: no bop - null: every measure (always)
 	
 	public static var chart:Chart = null;
 	public var notes:Array<ChartNote> = [];
@@ -179,6 +179,9 @@ class PlayState extends FunkinState {
 		strumlineGroup.add(playerStrumline);
 		
 		// the good stuff
+		var time:Float = Sys.time();
+		
+		Log.minor('cloning notes');
 		for (note in chart.notes)
 			notes.push(note.copy());
 		
@@ -197,9 +200,10 @@ class PlayState extends FunkinState {
 			hscripts.loadFromFolder('scripts/global');
 			hscripts.loadFromFolder('scripts/songs/${chart.path}');
 			
+			Log.minor('loading notekinds');
 			for (note in notes) {
 				var noteKind:String = note.kind;
-				if (noteKind.trim() != '' && !noteKinds.contains(noteKind)) {
+				if (noteKind != '' && noteKind.trim() != '' && !noteKinds.contains(noteKind)) {
 					hscripts.loadFromPaths('scripts/notekinds/$noteKind.hx');
 					noteKinds.push(noteKind);
 				}
@@ -253,9 +257,10 @@ class PlayState extends FunkinState {
 			playerStrumline.screenCenter(X);
 			opponentStrumline.fitToSize(playerStrumline.leftBound - 50 - opponentStrumline.leftBound, 0, Y);
 		}
+		Log.minor('queueing notes');
 		for (note in notes) {
 			var strumline:Strumline = strumlineGroup.members[note.strumlineIndex];
-			strumline?.queueNote(note);
+			strumline?.queueNote(note, null, false, false);
 		}
 		
 		ratingGroup.setPosition(player3?.getMidpoint()?.x ?? FlxG.width * .5, player3?.getMidpoint()?.y ?? FlxG.height * .5);
@@ -341,6 +346,8 @@ class PlayState extends FunkinState {
 		}
 		beginCountdown();
 		update(0);
+		
+		Log.info('GAME ON! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 	}
 	function flipUI() {
 		for (mem in uiGroup)
@@ -421,7 +428,7 @@ class PlayState extends FunkinState {
 				events.resize(0);
 				for (note in notes) {
 					var strumline:Strumline = strumlineGroup.members[note.strumlineIndex];
-					strumline?.queueNote(note);
+					strumline?.queueNote(note, null, false, false);
 				}
 				for (event in chart.events)
 					events.push(event);
@@ -531,7 +538,7 @@ class PlayState extends FunkinState {
 		
 		if (DiscordRPC.supported && music.playing && DiscordRPC.presence.endTimestamp.toInt() == 0)
 			refreshRPCTime();
-		if (camZoomRate > 0 && beat % camZoomRate == 0)
+		if (camZoomRate != null && camZoomRate > 0 && beat % camZoomRate == 0)
 			bopCamera();
 		
 		iconP1.bop();
@@ -542,7 +549,7 @@ class PlayState extends FunkinState {
 		hscripts.run('beatHit', [beat]);
 	}
 	public function barHitEvent(beat:Int) {
-		if (camZoomRate < 0)
+		if (camZoomRate == null)
 			bopCamera();
 		
 		hscripts.run('barHit', [beat]);
@@ -718,13 +725,22 @@ class PlayState extends FunkinState {
 		heldKeys.remove(key);
 		
 		if (HScript.stopped(hscripts.run('keyReleased', [key])) || inputDisabled || paused) return;
+		
 		var keybind:Int = Controls.keybindFromArray(keybinds, key);
-
-		if (keybind >= 0) {
-			var result:Dynamic = hscripts.run('keybindReleased', [keybind, key]);
+		var oldTime:Float = conductorInUse.songPosition;
+		var newTimeMaybe:Float = conductorInUse.syncTracker?.time ?? oldTime;
+		if (conductorInUse.syncTracker != null && conductorInUse.syncTracker.playing)
+			conductorInUse.songPosition = newTimeMaybe;
+		
+		var canFireInput:Bool = true;
+		if (keybind >= 0)
+			canFireInput = !HScript.stopped(hscripts.run('keybindReleased', [keybind, key]));
+		if (canFireInput) {
 			for (strumline in strumlineGroup)
 				strumline.fireInput(key, false);
 		}
+		
+		conductorInUse.songPosition = oldTime;
 	}
 
 	public function playerNoteEvent(e:NoteEvent) {
@@ -751,6 +767,8 @@ class PlayState extends FunkinState {
 		dispatchPlayEvent('opponentNoteEvent', e);
 	}
 	public function popCombo(combo:Int) {
+		if (!ratingGroup.alive) return;
+		
 		var tempCombo:Int = combo;
 		var nums:Array<Int> = [];
 		while (tempCombo >= 1) {
@@ -771,7 +789,8 @@ class PlayState extends FunkinState {
 	public function popRating(ratingString:String, scale:Float = .7, beats:Float = 1) {
 		var rating:FunkinSprite = ratingGroup.recycle(FunkinSprite, () -> new FunkinSprite());
 		
-		@:privateAccess ratingGroup.preAdd(rating);
+		if (!ratingGroup.alive) return rating;
+		
 		rating.loadTexture(ratingString);
 		rating.scale.set(scale, scale);
 		rating.offset.set(rating.frameWidth * .5, rating.frameHeight * .5);

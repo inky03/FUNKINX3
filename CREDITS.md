@@ -25,7 +25,7 @@ NOTE: THIS WILL BE MOVED TO THE CREDITS STATE WHEN IT'S FINISHED, including link
 ## SPECIAL THANKS
 **funkin' crew** - made FRIDAY NIGHT FUNKIN'!! damn!! proprietary of most assets, borrowed parts of backend class implementations<br>
 **psych engine** - formats support, discord rpc base, paths implementations, a lot of ideas generally<br>
-**codename engine** - chart format support<br>
+**codename engine** - chart format support, "play animation context"<br>
 **sword** - some useful pointers<br>
 **crowplexus** - some useful pointers (crash handler)<br>
 **unholywanderer04** - obligatory unholywanderer04 mention<br>

@@ -43,15 +43,15 @@ class ScoreHandler {
 	}
 	
 	public function applyScore(score:Score) {
-		this.hits += score.hits;
-		this.score += score.score;
-		this.misses += score.misses;
+		this.hits += score.hits ?? 0;
+		this.score += score.score ?? 0;
+		this.misses += score.misses ?? 0;
 		
 		if (score.rating != null)
 			countRating(score.rating);
-		if (score.accuracyMod >= 0)
+		if (score.accuracyMod != null)
 			addMod(score.accuracyMod);
-		if (score.breaksCombo) {
+		if (score.breaksCombo != null && score.breaksCombo) {
 			combo = 0;
 		} else {
 			combo += score.hits;

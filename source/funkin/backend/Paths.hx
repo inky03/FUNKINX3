@@ -83,26 +83,9 @@ class Paths {
 			
 			var path:String;
 			var allMods:Bool = (Mods.currentMod == null);
-			var priorize:Bool = (!allMods);
-			
-			if (!allMods && Mods.currentMod != '') { // current mod is high priority
-				var curMod:Mod = Mods.modByDirectory(Mods.currentMod);
-				
-				priorize = true;
-				if (curMod.doLoad) {
-					path = modPath(key, Mods.currentMod, library);
-					if (FileSystem.exists(path)) {
-						return path;
-					} else {
-						path = modPath(key, Mods.currentMod);
-						if (FileSystem.exists(path))
-							return path;
-					}
-				}	
-			}
 			
 			for (mod in Mods.get()) {
-				if (!mod.doLoad || !mod.enabled || (!allMods && !mod.global) || (priorize && mod.directory == Mods.currentMod))
+				if (!mod.doLoad || !mod.enabled || (!allMods && !mod.global && mod.directory != Mods.currentMod))
 					continue;
 				
 				path = modPath(key, mod.directory, library);
@@ -139,22 +122,10 @@ class Paths {
 				files.push({path: globalModPath(key), type: GLOBAL});
 			
 			var path:String;
-			var priorize:Bool = (!allMods);
-			
-			if (Mods.currentMod == null) {
-				allMods = true;
-				priorize = false;
-			} else if (Mods.currentMod != '') { // current mod is high priority
-				var curMod:Mod = Mods.modByDirectory(Mods.currentMod);
-				
-				priorize = true;
-				path = modPath(key, Mods.currentMod, library);
-				if (curMod.doLoad && FileSystem.exists(path))
-					files.push({mod: Mods.currentMod, path: path, type: MOD});
-			}
+			var allMods:Bool = (Mods.currentMod == null);
 			
 			for (mod in Mods.get()) {
-				if (!mod.doLoad || !mod.enabled || (!allMods && !mod.global) || (priorize && mod.directory == Mods.currentMod))
+				if (!mod.doLoad || !mod.enabled || (!allMods && !mod.global && mod.directory != Mods.currentMod))
 					continue;
 				
 				path = modPath(key, mod.directory, library);

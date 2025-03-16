@@ -2,6 +2,8 @@ package funkin.backend;
 
 import funkin.backend.FunkinSprite;
 
+import haxe.iterators.ArrayKeyValueIterator;
+
 typedef FunkinSpriteGroup = FunkinTypedSpriteGroup<FlxSprite>;
 class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteVars implements IZoomFactor extends FlxTypedSpriteGroup<T> {
 	public var zoomFactor(default, set):Float = 1;
@@ -85,4 +87,6 @@ class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteVars implements IZoo
 		}
 		return initialZoom = value;
 	}
+	
+	public inline function keyValueIterator():ArrayKeyValueIterator<T> { return new ArrayKeyValueIterator(members); }
 }

@@ -97,15 +97,15 @@ class Scoring {
 	}
 }
 
-@:structInit class Score { // TODO: move to typedef?
-	public var rating:Null<String> = null;
-	public var hitWindow:HitWindow = null;
-	public var breaksCombo:Bool = false;
-	public var accuracyMod:Float = -1;
-	public var healthMod:Float = 1;
-	public var score:Float = 0;
-	public var misses:Int = 0;
-	public var hits:Int = 0;
+typedef Score = {
+	var ?rating:String;
+	var ?hitWindow:HitWindow;
+	var ?accuracyMod:Float;
+	var ?breaksCombo:Bool;
+	var ?healthMod:Float;
+	var ?score:Float;
+	var ?misses:Int;
+	var ?hits:Int;
 }
 
 enum abstract ScoringSystem(String) to String {

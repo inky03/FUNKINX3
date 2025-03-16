@@ -75,7 +75,7 @@ import funkin.objects.play.Strumline;
 					note.score = scoring;
 				}
 				
-				if (doSplash && (scoring.hitWindow == null || scoring.hitWindow.splash))
+				if (doSplash && (scoring?.hitWindow == null || scoring.hitWindow.splash))
 					splash = lane.splash();
 				
 				if (playAnimation && targetCharacter != null) {
@@ -92,7 +92,7 @@ import funkin.objects.play.Strumline;
 					lane.held = true;
 					lane.heldNote = note;
 				} else if (animateReceptor && !lane.cpu) {
-					lane.receptor.grayBeat = note.beatTime + 1;
+					lane.receptor.grayBeat = note.beatTime + .5;
 				}
 			case PRESSED:
 				if (note != null) {
@@ -139,7 +139,7 @@ import funkin.objects.play.Strumline;
 						scoring.score = scoreHandler.holdScorePerSecond * secondDiff;
 					
 					if (inGame)
-						game.health += scoring.healthMod * note.healthGainPerSecond;
+						game.health += (scoring.healthMod ?? 1) * note.healthGainPerSecond;
 					
 					applyScore(scoreHandler, scoring);
 					
@@ -225,7 +225,7 @@ import funkin.objects.play.Strumline;
 					}
 					
 					if (inGame)
-						game.health -= note.healthLoss * scoring.healthMod;
+						game.health -= note.healthLoss * (scoring.healthMod ?? 1);
 					
 					applyScore(scoreHandler, scoring);
 				}

@@ -28,6 +28,7 @@ class Strumline extends FunkinSpriteGroup {
 	public var scrollSpeed(default, set):Float;
 	public var oneWay(default, set):Bool = true;
 	public var allowInput(default, set):Bool = true;
+	public var noteClass(default, set):Class<Note> = Note;
 	public var hitWindow(default, set):Float = Scoring.safeFrames / 60 * 1000;
 	
 	//oh dear
@@ -36,6 +37,7 @@ class Strumline extends FunkinSpriteGroup {
 	public function set_direction(newDir:Float) { for (lane in lanes) lane.direction = newDir; return direction = newDir; }
 	public function set_hitWindow(newWindow:Float) { for (lane in lanes) lane.hitWindow = newWindow; return hitWindow = newWindow; }
 	public function set_allowInput(isAllowed:Bool) { for (lane in lanes) lane.allowInput = isAllowed; return allowInput = isAllowed; }
+	public function set_noteClass(newClass:Class<Note>) { for (lane in lanes) lane.noteClass = newClass; return noteClass = newClass; }
 	public function set_scrollSpeed(newSpeed:Float) { for (lane in lanes) lane.scrollSpeed = newSpeed; return scrollSpeed = newSpeed; }
 	public function set_laneSpacing(newSpacing:Float) {
 		var i:Int = 0;
@@ -114,7 +116,7 @@ class Strumline extends FunkinSpriteGroup {
 	public override function get_width() return strumlineWidth;
 	public override function get_height() return strumlineHeight;
 	
-	public function new(laneCount:Int = 4, direction:Float = 90, scrollSpeed:Float = 1) {
+	public function new(laneCount:Int = 4, direction:Float = 90, scrollSpeed:Float = 1, ?noteClass:Class<Note>) {
 		super();
 		this.lanes = new FunkinTypedSpriteGroup();
 		this.add(lanes);
@@ -122,6 +124,7 @@ class Strumline extends FunkinSpriteGroup {
 		this.laneCount = laneCount;
 		this.direction = direction;
 		this.scrollSpeed = scrollSpeed;
+		this.noteClass = noteClass ?? Note;
 	}
 	public function fadeIn() {
 		var i:Int = 0;
@@ -138,8 +141,9 @@ class Strumline extends FunkinSpriteGroup {
 		}
 		visible = true;
 	}
+	public function drawSelf() { super.draw(); }
 	public override function draw() {
-		super.draw();
+		drawSelf();
 		for (lane in lanes) { // draw on top
 			if (!lane.selfDraw)
 				@:privateAccess lane.drawThing(true);
@@ -210,14 +214,16 @@ class Strumline extends FunkinSpriteGroup {
 		}
 	}
 	
-	public function queueNote(note:ChartNote, ?laneIndex:Int):ChartNote {
-		laneIndex ??= note.laneIndex;
-		laneIndex = FlxMath.wrap(laneIndex, 0, lanes.length - 1);
-		var lane:Lane = getLane(laneIndex);
+	public function getNoteLane(note:ChartNote):Lane {
+		return getLane(note.laneIndex % laneCount);
+	}
+	public inline function queueNote(note:ChartNote, ?laneIndex:Int, sort:Bool = false, checkExists:Bool = true):ChartNote {
+		var lane:Lane = (laneIndex == null ? getNoteLane(note) : getLane(laneIndex));
 		if (lane != null) {
-			lane.queueNote(note);
+			lane.queueNote(note, sort, checkExists);
 			return note;
 		}
+		
 		return null;
 	}
 	public function dequeueNote(note:ChartNote) {
@@ -233,7 +239,7 @@ class Strumline extends FunkinSpriteGroup {
 			lane.resetLane();
 	}
 	
-	public function getLane(noteData:Int) return lanes.members[noteData];
+	public inline function getLane(index:Int):Lane { return lanes.members[index]; }
 	
 	public function fireInput(key:flixel.input.keyboard.FlxKey, pressed:Bool) {
 		var fired:Bool = false;
