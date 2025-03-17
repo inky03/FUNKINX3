@@ -273,9 +273,14 @@ class Character extends FunkinSprite implements ICharacter {
 		}
 		
 		if (animationExists(anim)) {
-			specialAnim = false;
-			playAnimationSteps(anim, forced, steps, reversed, frame);
-			specialAnim = true;
+			var animWasDone:Bool = isAnimationFinished();
+			playAnimation(anim, forced, reversed, frame);
+			
+			var sameAnim:Bool = (currentAnimation == anim);
+			if (forced || !sameAnim || animWasDone) {
+				timeAnimSteps(steps ?? singForSteps);
+				specialAnim = true;
+			}
 		}
 	}
 	public function playAnimationSoft(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {

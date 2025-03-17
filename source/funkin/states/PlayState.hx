@@ -793,6 +793,7 @@ class PlayState extends FunkinState {
 		
 		rating.loadTexture(ratingString);
 		rating.scale.set(scale, scale);
+		rating.setPosition(ratingGroup.x, ratingGroup.y);
 		rating.offset.set(rating.frameWidth * .5, rating.frameHeight * .5);
 		
 		rating.revive();
