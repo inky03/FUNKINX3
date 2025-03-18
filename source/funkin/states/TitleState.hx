@@ -45,7 +45,7 @@ class TitleState extends FunkinState {
 		super.create();
 		
 		preload();
-		currentIntroText = FlxG.random.getObject(introTexts) ?? ['funkin', 'FOREVER'];
+		currentIntroText = FlxG.random.getObject(introTexts) ?? ['FUNKIN', 'FOREVER'];
 		
 		beatHit.add(beatHitEvent);
 		
