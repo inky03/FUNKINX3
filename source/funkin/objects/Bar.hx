@@ -11,16 +11,18 @@ class Bar extends FunkinSpriteGroup {
 	
 	public var targetPercent:Float = 100;
 	public var percent(default, set):Float;
-	public var percentLerp:Float = .15 * 60;
+	public var percentLerp:Null<Float> = .15 * 60;
 	public var valueFunc:Bar -> Float = null;
 	
 	public var bounds:BarBounds = {min: 0, max: 1};
 	public var barRect:FlxRect = new FlxRect(4, 4);
-	public var barCenter:FlxPoint = new FlxPoint();
+	public var barCenter(get, null):FlxPoint;
 	
 	public var leftToRight(default, set):Bool = true;
 	
-	public function new(x:Float = 0, y:Float = 0, valueFunction:Bar -> Float = null, overlayImage:String = 'healthBar') {
+	var _barPoint:FlxPoint = FlxPoint.get();
+	
+	public function new(x:Float = 0, y:Float = 0, valueFunction:Bar -> Float = null, overlayImage:String = 'healthBar', ?newBounds:BarBounds) {
 		super(x, y);
 		overlay = new FunkinSprite().loadTexture(overlayImage);
 		leftBar = new FunkinSprite().makeGraphic(Std.int(overlay.width), Std.int(overlay.height), -1);
@@ -31,11 +33,12 @@ class Bar extends FunkinSpriteGroup {
 		add(leftBar);
 		add(rightBar);
 		valueFunc = valueFunction;
+		if (newBounds != null)
+			bounds = newBounds;
 		
-		barRect.width = leftBar.width - barRect.x * 2;
 		barRect.height = leftBar.height - barRect.y * 2;
-		percent = updateTargetPercent();
-		updateBars();
+		barRect.width = leftBar.width - barRect.x * 2;
+		snapToPercent();
 		setColors();
 	}
 	public function loadTexture(overlayImage:String = 'healthBar'):Bar {
@@ -59,19 +62,26 @@ class Bar extends FunkinSpriteGroup {
 		rightBar.color = rightColor;
 		return this;
 	}
+	public function snapToPercent():Bar {
+		percent = updateTargetPercent();
+		updateBars();
+		return this;
+	}
 	
 	public override function update(elapsed:Float) {
 		super.update(elapsed);
 		updateTargetPercent();
-		if (percentLerp >= 0) {
+		if (percentLerp != null && percentLerp >= 0) {
 			percent = Util.smoothLerp(percent, targetPercent, percentLerp * elapsed);
 		} else {
 			percent = targetPercent;
 		}
-		updateBarCenter();
 	}
 	
-	function set_percent(newPercent:Float) {
+	function get_barCenter():FlxPoint {
+		return _barPoint.set(leftBar.x + leftBar.clipRect.x + leftBar.clipRect.width, leftBar.y + leftBar.height * .5);
+	}
+	function set_percent(newPercent:Float):Float {
 		if (percent != newPercent) {
 			percent = newPercent;
 			updateBars();
@@ -120,10 +130,5 @@ class Bar extends FunkinSpriteGroup {
 		rightBar.clipRect.height = leftBar.clipRect.height = barRect.height;
 		rightBar.clipRect = rightBar.clipRect;
 		leftBar.clipRect = leftBar.clipRect;
-		
-		updateBarCenter();
-	}
-	inline function updateBarCenter() {
-		barCenter.set(leftBar.x + leftBar.clipRect.x + leftBar.clipRect.width, leftBar.y + leftBar.height * .5);
 	}
 }

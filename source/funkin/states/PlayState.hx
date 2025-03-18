@@ -154,13 +154,12 @@ class PlayState extends FunkinState {
 		add(strumlineGroup);
 		ratingGroup = new FunkinTypedSpriteGroup();
 		
-		var scrollDir:Float = (Options.data.downscroll ? 270 : 90);
 		var strumlineBound:Float = (FlxG.width - 300) * .5;
 		var strumlineY:Float = 50;
 		
 		keybinds = Options.data.keybinds['4k'];
 		
-		opponentStrumline = new Strumline(4, scrollDir, chart.scrollSpeed);
+		opponentStrumline = new Strumline(4, 90, chart.scrollSpeed);
 		opponentStrumline.fitToSize(strumlineBound, opponentStrumline.height * .7);
 		opponentStrumline.noteEvent.add(opponentNoteEvent);
 		opponentStrumline.setPosition(50, strumlineY);
@@ -168,7 +167,7 @@ class PlayState extends FunkinState {
 		opponentStrumline.cpu = true;
 		opponentStrumline.allowInput = false;
 		
-		playerStrumline = new Strumline(4, scrollDir, chart.scrollSpeed);
+		playerStrumline = new Strumline(4, 90, chart.scrollSpeed);
 		playerStrumline.fitToSize(strumlineBound, playerStrumline.height * .7);
 		playerStrumline.setPosition(FlxG.width - playerStrumline.width - 50 - 75, strumlineY);
 		playerStrumline.noteEvent.add(playerNoteEvent);
@@ -275,8 +274,7 @@ class PlayState extends FunkinState {
 		}
 		
 		// TODO: figure out how to display the correct icons in simple mode maybe? they just display the placeholder face
-		healthBar = new Bar(0, FlxG.height - 50, (_) -> health, 'healthBar');
-		healthBar.bounds.max = maxHealth;
+		healthBar = new Bar(0, FlxG.height - 50, (_) -> health, 'healthBar', {min: 0, max: maxHealth});
 		healthBar.y -= healthBar.height;
 		healthBar.screenCenter(X);
 		healthBar.zIndex = 10;
@@ -325,8 +323,10 @@ class PlayState extends FunkinState {
 		for (event in chart.events)
 			dispatchSongEvent({type: PUSH_EVENT, chartEvent: event});
 		
-		if (downscroll)
+		if (downscroll) {
+			playerStrumline.direction = opponentStrumline.direction = 270;
 			flipUI();
+		}
 		
 		hscripts.run('createPost');
 		

@@ -177,6 +177,7 @@ class Note extends FunkinSprite {
 		lost = goodHit = held = consumed = preventDespawn = ignore = false;
 		followAngle = canHit = visible = true;
 		holdTime = hitTime = -1;
+		spriteOffset.set();
 		tailOffset.set();
 		multAlpha = 1;
 		clipDistance = 0;

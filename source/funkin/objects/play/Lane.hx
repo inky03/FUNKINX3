@@ -230,7 +230,7 @@ class Lane extends FunkinSpriteGroup {
 		var splash:NoteSplash = noteSplashes.recycle(NoteSplash, () -> new NoteSplash(noteData), true);
 		preAdd(splash);
 		splash.alpha = alpha * .7;
-		splash.shader = splashRGB.shader;
+		splashRGB.copy(splash.rgbShader);
 		splash.splashOnReceptor(receptor);
 		return splash;
 	}
@@ -334,10 +334,10 @@ class Lane extends FunkinSpriteGroup {
 		note.scale.copyFrom(receptor.scale);
 		note.rgbShader = rgbShader.copy(note.rgbShader);
 		note.updateHitbox();
-		updateNote(note);
 		
 		notes.insert(pos, note);
 		_noteEvent(basicEvent(SPAWNED, note));
+		updateNote(note);
 		
 		return note;
 	}
@@ -387,32 +387,36 @@ class Receptor extends FunkinSprite {
 	public var lane:Lane;
 	public var noteData:Int;
 	public var rgbShader:RGBSwap;
-	public var missColor:Array<FlxColor>;
-	public var glowColor:Array<FlxColor>;
 	public var rgbEnabled(default, set):Bool;
-	public var autoReset:Bool = false;
+	
 	public var grayBeat:Null<Float>;
+	public var autoReset:Bool = false;
+	
+	public var canUpdateShader:Bool = true;
+	public var missColor:Array<FlxColor> = [];
+	public var glowColor:Array<FlxColor> = [];
 	
 	public function new(x:Float, y:Float, data:Int) {
 		super(x, y);
 		loadAtlas('notes');
 		
 		this.noteData = data;
-
-		rgbShader = new RGBSwap();
-		rgbShader.green = 0xffffff;
-		rgbShader.red = Note.directionColors[data][0];
-		rgbShader.blue = Note.directionColors[data][1];
-		glowColor = [rgbShader.red, rgbShader.blue];
-		missColor = [makeGrayColor(rgbShader.red), FlxColor.fromRGB(32, 30, 49)];
-
+		
+		rgbShader = new RGBSwap(Note.directionColors[data][0], FlxColor.WHITE, Note.directionColors[data][1]);
+		computeRGBColors();
+		
 		loadAtlas('notes');
 		reloadAnimations();
-
+		
 		onAnimationComplete.add((anim:String) -> {
 			if (anim != 'static' && autoReset && (lane == null || !lane.held))
 				playAnimation('static', true);
 		});
+	}
+	
+	public function computeRGBColors() {
+		glowColor = [rgbShader.red, rgbShader.green, rgbShader.blue];
+		missColor = [makeGrayColor(rgbShader.red), FlxColor.WHITE, FlxColor.fromRGB(32, 30, 49)];
 	}
 
 	public function reloadAnimations() {
@@ -432,13 +436,14 @@ class Receptor extends FunkinSprite {
 	}
 	
 	public override function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
-		if (anim == 'static') {
-			rgbEnabled = false;
-		} else {
-			var baseColor:Array<FlxColor> = (anim == 'press' ? missColor : glowColor);
-			rgbShader.blue = baseColor[1];
-			rgbShader.red = baseColor[0];
-			rgbEnabled = true;
+		if (canUpdateShader) {
+			if (anim == 'static') {
+				rgbEnabled = false;
+			} else {
+				var baseColor:Array<FlxColor> = (anim == 'press' ? missColor : glowColor);
+				rgbShader.set(baseColor[0], baseColor[1], baseColor[2]);
+				rgbEnabled = true;
+			}
 		}
 		if (anim != 'confirm')
 			grayBeat = null;
@@ -467,10 +472,14 @@ class Receptor extends FunkinSprite {
 
 class NoteSplash extends FunkinSprite {
 	public var noteData:Int;
+	public var rgbShader:RGBSwap;
 
 	public function new(data:Int) {
 		super();
 		loadAtlas('noteSplashes');
+		
+		rgbShader = new RGBSwap();
+		shader = rgbShader.shader;
 		
 		this.noteData = data;
 		var dirName:String = Note.directionNames[data];

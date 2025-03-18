@@ -195,8 +195,13 @@ import funkin.objects.play.Strumline;
 					targetCharacter.playAnimationSteps('sing${game.singAnimations[lane.noteData]}miss', true);
 				}
 				
-				applyExtraWindow(15);
-				scoring ??= scoreHandler?.judgeNoteGhost();
+				if (applyRating) {
+					applyExtraWindow(15);
+					scoring ??= scoreHandler?.judgeNoteGhost();
+					
+					if (inGame)
+						game.health += (scoring.healthMod ?? -.01);
+				}
 				
 				applyScore(scoreHandler, scoring);
 			case LOST:

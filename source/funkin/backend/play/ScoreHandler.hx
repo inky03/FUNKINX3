@@ -70,7 +70,7 @@ class ScoreHandler {
 		}
 	}
 	public function judgeNoteGhost():Score {
-		return {score: -10};
+		return {score: -10, healthMod: -.01};
 	}
 	public function judgeNoteMiss(note:funkin.objects.play.Note):Score {
 		return switch (system) {

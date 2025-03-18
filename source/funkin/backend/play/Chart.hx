@@ -168,20 +168,27 @@ class Chart {
 		}
 		return this.songLength;
 	}
-	public function clearStackedNotes(minDifference:Float = FlxMath.EPSILON) {
-		var previousNote:ChartNote = null;
+	public function clearStackedNotes(minDifference:Float = 6) {
+		var previousNotes:Array<Array<ChartNote>> = [];
 		var caught:Int = 0;
 		var i:Int = notes.length;
 		
 		while (i > 0) {
-			var note:ChartNote = notes[i --];
+			var note:ChartNote = notes[-- i];
 			
-			if (previousNote != null && Math.abs(note.msTime - previousNote.msTime) < minDifference &&
-				previousNote.kind == note.kind && previousNote.laneIndex == note.laneIndex && previousNote.strumlineIndex == note.strumlineIndex) {
+			var lane:Int = note.laneIndex;
+			var strumline:Int = note.strumlineIndex;
+			
+			while (previousNotes.length <= strumline) previousNotes.push([]);
+			while (previousNotes[strumline].length <= lane) previousNotes[strumline].push(null);
+			var prevNote:ChartNote = previousNotes[strumline][lane];
+			
+			if (prevNote != null && Math.abs(note.msTime - prevNote.msTime) < minDifference &&
+				prevNote.kind == note.kind && prevNote.laneIndex == lane && prevNote.strumlineIndex == strumline) {
 				notes.remove(note);
 				caught ++;
 			}
-			previousNote = note;
+			previousNotes[strumline][lane] = note;
 		}
 		
 		if (caught > 0)
@@ -190,11 +197,11 @@ class Chart {
 	
 	// TODO: these could just not be static
 	// suffix is for playable characters
-	static function loadLegacyChart(path:String, difficulty:String = 'normal', suffix:String = '', keyCount:Int = 4) { // move to moonchart format???
+	static function loadLegacyChart(path:String, difficulty:String = 'normal', suffix:String = '', ?keyCount:Int) { // move to moonchart format???
 		difficulty = difficulty.toLowerCase();
 		Log.minor('loading legacy FNF song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 		
-		var song = new Chart(path, keyCount);
+		var song = new Chart(path);
 		song.json = loadLegacyJson(path, difficulty);
 		song.difficulty = difficulty;
 		
@@ -256,6 +263,8 @@ class Chart {
 			song.initialBpm = song.json.bpm;
 			song.tempoChanges = [new TempoChange(-4, song.initialBpm, new TimeSignature())];
 			song.scrollSpeed = songSpeed;
+			
+			song.keyCount = (song.json.mania == null ? (song.json.keys ?? keyCount ?? song.keyCount) : (song.json.mania + 4));
 			
 			var ms:Float = 0;
 			var beat:Float = 0;
@@ -329,16 +338,16 @@ class Chart {
 					if (!Std.isOfType(noteKind, String)) noteKind = '';
 					var strumlineIndex:Int = 0;
 					if (fromSong) {
-						strumlineIndex = Std.int(noteData / keyCount);
+						strumlineIndex = Std.int(noteData / song.keyCount);
 						if (section.mustHitSection)
 							strumlineIndex += (strumlineIndex % 2 == 0 ? 1 : -1);
 					} else { // assume psych 1.0
-						strumlineIndex = Std.int(noteData / keyCount);
+						strumlineIndex = Std.int(noteData / song.keyCount);
 						if (strumlineIndex < 2) // how silly
 							strumlineIndex = 1 - strumlineIndex;
 					}
 					
-					song.notes.push({strumlineIndex: strumlineIndex, msTime: noteTime, laneIndex: noteData % keyCount, msLength: noteLength, kind: noteKind});
+					song.notes.push({strumlineIndex: strumlineIndex, msTime: noteTime, laneIndex: noteData % song.keyCount, msLength: noteLength, kind: noteKind});
 				}
 			}
 			song.sort();
