@@ -101,11 +101,12 @@ class Note extends FunkinSprite {
 	
 	public var laneIndex:Int = 0;
 	public var strumlineIndex:Int = 0;
+	public var texture(get, set):String;
 	public var kind(default, set):String = '';
 	@:deprecated('noteKind is deprecated, use kind instead!') public var noteKind(get, set):String;
 	@:deprecated('noteData is deprecated, use laneIndex instead!') public var noteData(get, set):Int;
 	@:deprecated('player is deprecated, use strumlineIndex instead!') public var player(get, never):Bool;
-
+	
 	public var endMs(get, never):Float;
 	public var endBeat(get, never):Float;
 	public var msTime(default, set):Float = 0;
@@ -113,6 +114,8 @@ class Note extends FunkinSprite {
 	public var msLength(default, set):Float = 0;
 	public var beatLength(default, set):Float = 0;
 	public var isHoldNote(default, null):Bool = false;
+	
+	var _texture:String = '';
 	
 	function get_noteData():Int { return laneIndex; }
 	function set_noteData(value:Int):Int { return laneIndex = value; }
@@ -181,13 +184,12 @@ class Note extends FunkinSprite {
 		tailOffset.set();
 		multAlpha = 1;
 		clipDistance = 0;
+		
+		texture = 'notes';
 		if (tail != null) {
-			tail.loadAtlas('notes');
+			tail.texture = texture;
 			tail.reload();
 		}
-		
-		loadAtlas('notes');
-		reloadAnimations();
 	}
 	public function updateTail():Void {
 		isHoldNote = (msLength > 0);
@@ -204,6 +206,22 @@ class Note extends FunkinSprite {
 		return chartNote ?? {laneIndex: laneIndex, msTime: msTime, kind: kind, msLength: msLength, strumlineIndex: strumlineIndex};
 	}
 	
+	public override function loadAtlas(path:String, ?library:String, renderType:SpriteRenderType = SPARROW):Note {
+		super.loadAtlas(path, library, renderType);
+		_texture = path;
+		return this;
+	}
+	function reloadTexture(texture:String) {
+		loadAtlas(texture);
+		reloadAnimations();
+	}
+	function get_texture():String { return _texture; }
+	function set_texture(newTexture:String):String {
+		if (texture == newTexture) return newTexture;
+		
+		reloadTexture(newTexture);
+		return newTexture;
+	}
 	function set_kind(newKind:String) {
 		return kind = newKind;
 	}
@@ -286,6 +304,7 @@ class Note extends FunkinSprite {
 
 class NoteTail extends FunkinSprite {
 	public var parent(default, set):Note;
+	public var texture(get, set):String;
 	public var laneIndex:Int;
 	
 	public var multAlpha:Float = .6;
@@ -295,6 +314,7 @@ class NoteTail extends FunkinSprite {
 	public var holdScale(default, null):FlxPoint;
 	public var tailScale(default, null):FlxPoint;
 	
+	var _texture:String = '';
 	var _tileMatrix:FlxMatrix = new FlxMatrix();
 	
 	public function new(parent:Note) {
@@ -314,6 +334,22 @@ class NoteTail extends FunkinSprite {
 		super.destroy();
 	}
 	
+	public override function loadAtlas(path:String, ?library:String, renderType:SpriteRenderType = SPARROW):NoteTail {
+		super.loadAtlas(path, library, renderType);
+		_texture = path;
+		return this;
+	}
+	function reloadTexture(texture:String) {
+		loadAtlas(texture);
+		reloadAnimations();
+	}
+	function get_texture():String { return _texture; }
+	function set_texture(newTexture:String):String {
+		if (texture == newTexture) return newTexture;
+		
+		reloadTexture(newTexture);
+		return newTexture;
+	}
 	function set_parent(note:Note):Note {
 		if (parent == note) return note;
 		
@@ -322,7 +358,6 @@ class NoteTail extends FunkinSprite {
 	}
 	
 	public function reload() {
-		reloadAnimations();
 		sustainClip = 0;
 	}
 	public function reloadAnimations() {
