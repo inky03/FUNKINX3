@@ -284,6 +284,9 @@ class FunkinAnimateAnim extends FlxAnim {
 	public function exists(name:String):Bool {
 		return (animsMap.exists(name) || (symbolDictionary != null && symbolDictionary.exists(name)));
 	}
+	public function remove(name:String):Void {
+		animsMap.remove(name);
+	}
 	public function rename(oldName:String, newName:String):Void {
 		var anim:SymbolStuff = animsMap.get(oldName);
 		if (anim == null) {

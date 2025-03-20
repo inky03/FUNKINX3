@@ -9,28 +9,32 @@ using Lambda;
 typedef CharacterOrString = flixel.util.typeLimit.OneOfTwo<Character, String>;
 typedef CharacterOrGroup = flixel.util.typeLimit.OneOfTwo<Character, CharacterGroup>;
 
-class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements ICharacter { // TODO: implement interface so currently CharacterGroup type fields can be both group and character instead?
+class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements ICharacter {
+	public var onAnimationFrame:FlxTypedSignal<Int -> String -> Void> = new FlxTypedSignal();
 	public var onAnimationComplete:FlxTypedSignal<String -> Void> = new FlxTypedSignal();
-	public var onAnimationFrame:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
+	public var onAnimationLoop:FlxTypedSignal<String -> Void> = new FlxTypedSignal();
+	public var anim(get, never):FunkinSpriteAnimHandler;
 	
 	public var bop(default, set):Bool = true;
+	public var held(default, set):Bool = false;
 	public var side(default, set):CharacterSide;
 	public var animReset(default, set):Float = 0;
+	public var cameraOffset(get, never):FlxPoint;
 	public var idleSuffix(default, set):String = '';
 	public var animSuffix(default, set):String = '';
 	public var specialAnim(default, set):Bool = false;
 	public var conductorInUse(default, set):Conductor;
+	public var idleAfterAnim(default, set):Bool = true;
 	public var stageCameraOffset(default, null):FlxCallbackPoint;
 	public var onCharacterChanged:FlxTypedSignal<String -> Character -> Void> = new FlxTypedSignal();
-	@:isVar public var cameraOffset(get, never):FlxPoint;
 	
 	public var volume(default, set):Float = 1;
 	public var character(default, set):String;
 	public var current(default, set):Character = null;
 	
-	@:isVar public var healthIcon(get, never):String;
-	@:isVar public var healthIconData(get, never):ModernCharacterHealthIconData;
-	@:isVar public var currentAnimation(get, never):String;
+	public var healthIcon(get, never):String;
+	public var healthIconData(get, never):ModernCharacterHealthIconData;
+	public var currentAnimation(get, never):String;
 	
 	public var fallbackCharacter:Null<String>;
 	var fallbackChara:Null<String>;
@@ -80,6 +84,9 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 		}
 		return side = newSide;
 	}
+	function get_anim():FunkinSpriteAnimHandler {
+		return current?.anim;
+	}
 	function get_healthIcon():String {
 		return current?.healthIcon;
 	}
@@ -115,7 +122,21 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 			if (chara == null) continue;
 			chara.bop = value;
 		}
-		return specialAnim = value;
+		return bop = value;
+	}
+	function set_held(value:Bool):Bool {
+		for (chara in members) {
+			if (chara == null) continue;
+			chara.held = value;
+		}
+		return held = value;
+	}
+	function set_idleAfterAnim(value:Bool):Bool {
+		for (chara in members) {
+			if (chara == null) continue;
+			chara.idleAfterAnim = value;
+		}
+		return idleAfterAnim = value;
 	}
 	function set_animReset(value:Float):Float {
 		if (current != null)
@@ -162,6 +183,7 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 	function get_currentAnimation():String {
 		return (current?.currentAnimation);
 	}
+	
 	override function set_zIndex(newZ:Int):Int {
 		for (chara in members) {
 			if (chara == null) continue;

@@ -23,6 +23,7 @@ class Lane extends FunkinSpriteGroup {
 	
 	public var held(default, set):Bool = false;
 	public var heldNote:Note = null;
+	public var pressed:Bool = false;
 	
 	public var noteData:Int;
 	public var oneWay:Bool = true;
@@ -56,8 +57,10 @@ class Lane extends FunkinSpriteGroup {
 	}
 	public function set_held(newHeld:Bool) {
 		if (held == newHeld) return newHeld;
+		
 		if (newHeld) popCover();
 		else noteCover.kill();
+		
 		return held = newHeld;
 	}
 	public function set_cpu(isCpu:Bool) {

@@ -123,19 +123,27 @@ class Note extends FunkinSprite {
 	function set_noteKind(newKind:String):String { return kind = newKind; }
 	function get_noteKind():String { return kind; }
 	
-	public override function destroy() {
+	public override function destroy():Void {
 		tailOffset.put();
 		if (tail != null)
 			tail.destroy();
 		super.destroy();
 		tail = null;
 	}
-	public override function draw() {
+	public override function draw():Void {
 		if (isHoldNote && tail != null)
 			tail.draw();
 		
 		if (!goodHit)
 			super.draw();
+	}
+	public override function kill():Void {
+		super.kill();
+		tail?.kill();
+	}
+	public override function revive():Void {
+		super.revive();
+		tail?.revive();
 	}
 	
 	public function new(songNote:ChartNote, ?conductor:Conductor) {

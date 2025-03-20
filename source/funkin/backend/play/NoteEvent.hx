@@ -7,6 +7,8 @@ import funkin.objects.play.Lane;
 import funkin.backend.play.Scoring;
 import funkin.objects.play.Strumline;
 
+using StringTools;
+
 @:structInit class NoteEvent implements IPlayEvent { // TODO: EVENT RECYCLER
 	public var type(default, null):NoteEventType;
 	public var cancelled:Bool = false;
@@ -49,8 +51,10 @@ import funkin.objects.play.Strumline;
 			case HIT:
 				if (game.genericVocals != null)
 					game.genericVocals.volume = 1;
-				if (targetCharacter != null)
+				if (targetCharacter != null) {
 					targetCharacter.volume = 1;
+					targetCharacter.held = true;
+				}
 
 				note.hitTime = note.holdTime = lane.conductorInUse.songPosition;
 
@@ -95,6 +99,8 @@ import funkin.objects.play.Strumline;
 					lane.receptor.grayBeat = note.beatTime + .5;
 				}
 			case PRESSED:
+				lane.pressed = true;
+				
 				if (note != null) {
 					lane.hitNote(note);
 				} else {
@@ -105,8 +111,23 @@ import funkin.objects.play.Strumline;
 				
 				if (released && note == null) {
 					lane.held = false;
+					lane.pressed = false;
+					
 					if (animateReceptor)
 						receptor.playAnimation('static');
+					
+					if (targetCharacter != null) {
+						var canUnhold:Bool = true;
+						
+						if (strumline != null) {
+							for (lane in strumline.lanes)
+								canUnhold = canUnhold && !lane.pressed;
+						}
+						
+						if (canUnhold)
+							targetCharacter.held = false;
+					}
+					
 					return;
 				}
 				
@@ -195,8 +216,8 @@ import funkin.objects.play.Strumline;
 					targetCharacter.playAnimationSteps('sing${game.singAnimations[lane.noteData]}miss', true);
 				}
 				
+				applyExtraWindow(15);
 				if (applyRating) {
-					applyExtraWindow(15);
 					scoring ??= scoreHandler?.judgeNoteGhost();
 					
 					if (inGame)

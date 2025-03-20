@@ -9,13 +9,13 @@ using StringTools;
 class Character extends FunkinSprite implements ICharacter {
 	public var bopFrequency:Int = 2;
 	public var bop(default, set):Bool = true;
-	public var flipSingAnimations:Bool = false;
+	public var held(default, set):Bool = false;
 	public var animReset(default, set):Float = 0;
 	public var singForSteps(default, set):Float = 4;
 	public var specialAnim(default, set):Bool = false;
+	public var idleAfterAnim(default, set):Bool = true; // like held but for special anim
 	public var conductorInUse(default, set):Conductor = FunkinState.getCurrentConductor();
 	public var scaleMultiplier:Float = 1;
-	public var idleAfterAnim:Bool = true;
 	public var sway:Bool = false;
 	
 	public var hasDropAnimations(get, never):Bool;
@@ -27,6 +27,7 @@ class Character extends FunkinSprite implements ICharacter {
 	var binSide:CharacterSide;
 	var dataSide:CharacterSide;
 	var characterGroup:CharacterGroup;
+	public var flipSingAnimations:Bool = false;
 	public var side(default, set):CharacterSide;
 	public var classicFlip(default, set):Bool = false;
 	
@@ -57,6 +58,10 @@ class Character extends FunkinSprite implements ICharacter {
 	
 	public function new(x:Float, y:Float, ?character:String, side:CharacterSide = IDGAF, ?fallback:String, runScripts:Bool = true) {
 		super(x, y);
+		
+		anim.onFrame.add((number:Int, anim:String) -> characterGroup?.onAnimationFrame.dispatch(number, anim));
+		anim.onComplete.add((anim:String) -> characterGroup?.onAnimationComplete.dispatch(anim));
+		anim.onLoop.add((anim:String) -> characterGroup?.onAnimationLoop.dispatch(anim));
 		
 		hscripts = new HScripts([this], ['this' => this, 'super' => this]);
 		
@@ -215,18 +220,17 @@ class Character extends FunkinSprite implements ICharacter {
 		super.update(elapsed);
 		if (animReset > 0) {
 			animReset -= elapsed;
-			if (animReset <= 0 && !specialAnim && idleAfterAnim) {
+			if (animReset <= 0 && !specialAnim && idleAfterAnim && !held) {
 				animReset = 0;
-				dance();
+				dance(true);
 			}
 		}
 		if (specialAnim) {
 			if (isAnimationFinished() && animReset <= 0 && idleAfterAnim) {
 				specialAnim = false;
 				animReset = 0;
-				if (singForSteps <= 0) {
-					dance();
-				}
+				if (singForSteps <= 0)
+					dance(true);
 			}
 		}
 	}
@@ -323,7 +327,7 @@ class Character extends FunkinSprite implements ICharacter {
 		if (safeH != 'dance' && functionOverridden('dance'))
 			return cast safeCall('dance', [beat, forced], Bool, false);
 		
-		if (!forced && (animReset > 0 || bopFrequency <= 0 || !bop || specialAnim))
+		if (!forced && (animReset > 0 || bopFrequency <= 0 || !bop || specialAnim || held))
 			return false;
 		
 		if (sway) {
@@ -348,22 +352,18 @@ class Character extends FunkinSprite implements ICharacter {
 		if (isAnimate) return flipAnim(animate.funkAnim.name);
 		else return flipAnim(animation.name);
 	}
-	override function _onAnimationComplete(?anim:String) {
-		onAnimationComplete.dispatch(currentAnimation ?? '');
-		if (characterGroup != null && this == characterGroup.current)
-			characterGroup.onAnimationComplete.dispatch(currentAnimation ?? '');
-	}
-	override function _onAnimationFrame(frame:Int) {
-		onAnimationFrame.dispatch(frame);
-		if (characterGroup != null && this == characterGroup.current)
-			characterGroup.onAnimationFrame.dispatch(frame);
+	function set_held(value:Bool):Bool {
+		if (!value && animReset <= 0 && !specialAnim)
+			dance(true);
+		return held = value;
 	}
 	function set_bop(value:Bool):Bool { return bop = value; }
 	function set_animReset(value:Float):Float { return animReset = value; }
 	function set_specialAnim(value:Bool):Bool { return specialAnim = value; }
 	function set_idleSuffix(value:String):String { return idleSuffix = value; }
 	function set_animSuffix(value:String):String { return animSuffix = value; }
-	function set_singForSteps(value:Float):Float { return singForSteps = value; };
+	function set_idleAfterAnim(value:Bool):Bool { return idleAfterAnim = value; }
+	function set_singForSteps(value:Float):Float { return singForSteps = value; }
 	function set_conductorInUse(conductor:Conductor):Conductor { return conductorInUse = conductor; }
 	
 	function safeCall(func:String, ?args:Array<Dynamic>, ?expectedReturn:Dynamic, ?defaultVal:Dynamic):Dynamic {
@@ -641,10 +641,12 @@ class Character extends FunkinSprite implements ICharacter {
 	}
 }
 interface ICharacter extends IBopper extends IFunkinSpriteAnim {
+	public var held(default, set):Bool;
 	public var volume(default, set):Float;
 	public var animReset(default, set):Float;
 	public var specialAnim(default, set):Bool;
 	public var animSuffix(default, set):String;
+	public var idleAfterAnim(default, set):Bool;
 	public var side(default, set):CharacterSide;
 	public var character(default, set):Null<String>;
 	public var conductorInUse(default, set):Conductor;
