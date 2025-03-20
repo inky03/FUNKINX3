@@ -57,11 +57,14 @@ import flixel.graphics.frames.FlxFrame;
 class Note extends FunkinSprite {
 	public static var directionNames:Array<String> = ['left', 'down', 'up', 'right'];
 	public static var directionColors:Array<Array<FlxColor>> = [
-		[FlxColor.fromRGB(194, 75, 153), FlxColor.fromRGB(60, 31, 86)],
-		[FlxColor.fromRGB(0, 255, 255), FlxColor.fromRGB(21, 66, 183)],
-		[FlxColor.fromRGB(18, 250, 5), FlxColor.fromRGB(10, 68, 71)],
-		[FlxColor.fromRGB(249, 57, 63), FlxColor.fromRGB(101, 16, 56)],
+		[FlxColor.fromRGB(194, 75, 153), FlxColor.WHITE, FlxColor.fromRGB(60, 31, 86)],
+		[FlxColor.fromRGB(0, 255, 255), FlxColor.WHITE, FlxColor.fromRGB(21, 66, 183)],
+		[FlxColor.fromRGB(18, 250, 5), FlxColor.WHITE, FlxColor.fromRGB(10, 68, 71)],
+		[FlxColor.fromRGB(249, 57, 63), FlxColor.WHITE, FlxColor.fromRGB(101, 16, 56)],
 	];
+	public static inline function getColors(data:Int):Array<FlxColor> { return directionColors[FlxMath.wrap(data, 0, directionColors.length - 1)]; }
+	public static inline function getDirection(data:Int):String { return directionNames[FlxMath.wrap(data, 0, directionNames.length - 1)]; }
+	
 	public var conductorInUse:Conductor; // mostly charting stuff
 	
 	public var tail:NoteTail;
@@ -205,7 +208,7 @@ class Note extends FunkinSprite {
 			tail = new NoteTail(this);
 	}
 	public function reloadAnimations() {
-		var dirName:String = directionNames[laneIndex];
+		var dirName:String = getDirection(laneIndex);
 		addAnimation('hit-$laneIndex', '$dirName note', 24, false);
 		playAnimation('hit-$laneIndex', true);
 		updateHitbox();
@@ -369,7 +372,7 @@ class NoteTail extends FunkinSprite {
 		sustainClip = 0;
 	}
 	public function reloadAnimations() {
-		var dirName:String = Note.directionNames[laneIndex];
+		var dirName:String = Note.getDirection(laneIndex);
 		addAnimation('tail-$laneIndex', '$dirName hold tail', 24, false);
 		addAnimation('hold-$laneIndex', '$dirName hold piece', 24, false);
 		playAnimation('hold-$laneIndex', true);

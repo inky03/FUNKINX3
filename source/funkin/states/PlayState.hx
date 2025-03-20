@@ -159,7 +159,7 @@ class PlayState extends FunkinState {
 		
 		keybinds = Options.data.keybinds['4k'];
 		
-		opponentStrumline = new Strumline(4, 90, chart.scrollSpeed);
+		opponentStrumline = new Strumline(chart.keyCount, 90, chart.scrollSpeed);
 		opponentStrumline.fitToSize(strumlineBound, opponentStrumline.height * .7);
 		opponentStrumline.noteEvent.add(opponentNoteEvent);
 		opponentStrumline.setPosition(50, strumlineY);
@@ -167,7 +167,7 @@ class PlayState extends FunkinState {
 		opponentStrumline.cpu = true;
 		opponentStrumline.allowInput = false;
 		
-		playerStrumline = new Strumline(4, 90, chart.scrollSpeed);
+		playerStrumline = new Strumline(chart.keyCount, 90, chart.scrollSpeed);
 		playerStrumline.fitToSize(strumlineBound, playerStrumline.height * .7);
 		playerStrumline.setPosition(FlxG.width - playerStrumline.width - 50 - 75, strumlineY);
 		playerStrumline.noteEvent.add(playerNoteEvent);
@@ -220,6 +220,9 @@ class PlayState extends FunkinState {
 			player3 = stage.getCharacter('gf');
 			
 			focusOnCharacter((player3 ?? player1).current);
+			
+			playerStrumline.character = player1;
+			opponentStrumline.character = player2;
 		} else {
 			camFocusTarget.setPosition(FlxG.width * .5, FlxG.height * .5);
 			simpleBG = new FunkinSprite().loadTexture('mainmenu/bgGreen');
@@ -744,7 +747,6 @@ class PlayState extends FunkinState {
 	}
 
 	public function playerNoteEvent(e:NoteEvent) {
-		e.targetCharacter = player1;
 		e.doSplash = true;
 		e.doSpark = true;
 		
@@ -758,7 +760,6 @@ class PlayState extends FunkinState {
 		dispatchPlayEvent('playerNoteEvent', e);
 	}
 	public function opponentNoteEvent(e:NoteEvent) {
-		e.targetCharacter = player2;
 		e.applyRating = false;
 		e.playSound = false;
 		e.doSplash = false;

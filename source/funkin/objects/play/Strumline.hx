@@ -1,5 +1,6 @@
 package funkin.objects.play;
 
+import funkin.objects.Character;
 import funkin.objects.play.Note;
 import funkin.backend.play.Scoring;
 import funkin.backend.play.NoteEvent;
@@ -28,18 +29,20 @@ class Strumline extends FunkinSpriteGroup {
 	public var scrollSpeed(default, set):Float;
 	public var oneWay(default, set):Bool = true;
 	public var allowInput(default, set):Bool = true;
+	public var character(default, set):ICharacter = null;
 	public var noteClass(default, set):Class<Note> = Note;
 	public var hitWindow(default, set):Float = Scoring.safeFrames / 60 * 1000;
 	
 	//oh dear
-	public function set_cpu(isCpu:Bool) { for (lane in lanes) lane.cpu = isCpu; return cpu = isCpu; }
-	public function set_oneWay(isOneWay:Bool) { for (lane in lanes) lane.oneWay = isOneWay; return oneWay = isOneWay; }
-	public function set_direction(newDir:Float) { for (lane in lanes) lane.direction = newDir; return direction = newDir; }
-	public function set_hitWindow(newWindow:Float) { for (lane in lanes) lane.hitWindow = newWindow; return hitWindow = newWindow; }
-	public function set_allowInput(isAllowed:Bool) { for (lane in lanes) lane.allowInput = isAllowed; return allowInput = isAllowed; }
-	public function set_noteClass(newClass:Class<Note>) { for (lane in lanes) lane.noteClass = newClass; return noteClass = newClass; }
-	public function set_scrollSpeed(newSpeed:Float) { for (lane in lanes) lane.scrollSpeed = newSpeed; return scrollSpeed = newSpeed; }
-	public function set_laneSpacing(newSpacing:Float) {
+	function set_cpu(isCpu:Bool) { for (lane in lanes) lane.cpu = isCpu; return cpu = isCpu; }
+	function set_oneWay(isOneWay:Bool) { for (lane in lanes) lane.oneWay = isOneWay; return oneWay = isOneWay; }
+	function set_direction(newDir:Float) { for (lane in lanes) lane.direction = newDir; return direction = newDir; }
+	function set_hitWindow(newWindow:Float) { for (lane in lanes) lane.hitWindow = newWindow; return hitWindow = newWindow; }
+	function set_allowInput(isAllowed:Bool) { for (lane in lanes) lane.allowInput = isAllowed; return allowInput = isAllowed; }
+	function set_character(newChara:ICharacter) { for (lane in lanes) lane.character = newChara; return character = newChara; }
+	function set_noteClass(newClass:Class<Note>) { for (lane in lanes) lane.noteClass = newClass; return noteClass = newClass; }
+	function set_scrollSpeed(newSpeed:Float) { for (lane in lanes) lane.scrollSpeed = newSpeed; return scrollSpeed = newSpeed; }
+	function set_laneSpacing(newSpacing:Float) {
 		var i:Int = 0;
 		var diff:Float = newSpacing - laneSpacing;
 		for (lane in lanes) {
@@ -49,16 +52,23 @@ class Strumline extends FunkinSpriteGroup {
 		}
 		return laneSpacing = newSpacing;
 	}
-	public function set_laneCount(newCount:Int) {
+	function set_laneCount(newCount:Int) {
 		while (lanes.length > 0 && lanes.length > newCount) {
-			var lane = lanes.members[lanes.length - 1];
-			lanes.remove(lane, true);
+			var lane:Lane = lanes.members.shift();
 			lane.destroy();
 		}
 		for (i in laneCount...newCount) {
-			var lane:Lane = new Lane(i * laneSpacing * scale.x, 0, i);
+			var lane:Lane = new Lane(i * laneSpacing * scale.x, 0, i, direction, scrollSpeed);
+			
+			lane.allowInput = allowInput;
+			lane.noteClass = noteClass;
+			lane.hitWindow = hitWindow;
+			lane.character = character;
 			lane.strumline = this;
 			lane.selfDraw = false;
+			lane.oneWay = oneWay;
+			lane.cpu = cpu;
+			
 			lanes.add(lane);
 		}
 		return laneCount = newCount;
@@ -120,11 +130,20 @@ class Strumline extends FunkinSpriteGroup {
 		super();
 		this.lanes = new FunkinTypedSpriteGroup();
 		this.add(lanes);
+		
 		this.allowInput = true;
-		this.laneCount = laneCount;
 		this.direction = direction;
 		this.scrollSpeed = scrollSpeed;
 		this.noteClass = noteClass ?? Note;
+		
+		this.laneCount = laneCount;
+	}
+	public function resetLanePositions():Void {
+		for (i => lane in lanes) {
+			lane.setPosition(x + i * laneSpacing * scale.x, y);
+			lane.startX = lane.x;
+			lane.startY = lane.y;
+		}
 	}
 	public function fadeIn() {
 		var i:Int = 0;

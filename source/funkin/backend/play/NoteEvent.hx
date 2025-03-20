@@ -47,6 +47,8 @@ using StringTools;
 			scoreHandler ??= game.scoring;
 		}
 		
+		targetCharacter ??= lane.character;
+		
 		switch (type) {
 			case HIT:
 				if (game.genericVocals != null)
@@ -83,7 +85,8 @@ using StringTools;
 					splash = lane.splash();
 				
 				if (playAnimation && targetCharacter != null) {
-					var anim:String = 'sing${game.singAnimations[note.laneIndex]}';
+					var wrapIndex:Int = FlxMath.wrap(note.laneIndex, 0, game.singAnimations.length - 1);
+					var anim:String = 'sing${game.singAnimations[wrapIndex]}';
 					var suffixAnim:String = anim + animSuffix;
 					if (targetCharacter.animationExists(suffixAnim + targetCharacter.animSuffix))
 						targetCharacter.playAnimationSteps(suffixAnim, true);
@@ -170,7 +173,8 @@ using StringTools;
 				}
 				
 				if (playAnimation && targetCharacter != null) {
-					var anim:String = 'sing${game.singAnimations[note.laneIndex]}';
+					var wrapIndex:Int = FlxMath.wrap(note.laneIndex, 0, game.singAnimations.length - 1);
+					var anim:String = 'sing${game.singAnimations[wrapIndex]}';
 					var suffixAnim:String = anim + animSuffix + targetCharacter.animSuffix;
 					if ((!targetCharacter.specialAnim || targetCharacter.currentAnimation == suffixAnim) && targetCharacter.animationExists(suffixAnim))
 						targetCharacter.timeAnimSteps();
@@ -232,8 +236,8 @@ using StringTools;
 				if (targetCharacter != null) {
 					targetCharacter.volume = 0;
 					if (playAnimation) {
-						targetCharacter.specialAnim = false;
-						targetCharacter.playAnimationSteps('sing${game.singAnimations[note.laneIndex]}miss', true);
+						var wrapIndex:Int = FlxMath.wrap(note.laneIndex, 0, game.singAnimations.length - 1);
+						targetCharacter.playAnimationSteps('sing${game.singAnimations[wrapIndex]}miss', true);
 					}
 				}
 				

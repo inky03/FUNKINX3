@@ -353,8 +353,11 @@ class Character extends FunkinSprite implements ICharacter {
 		else return flipAnim(animation.name);
 	}
 	function set_held(value:Bool):Bool {
+		if (held == value) return value;
+		
 		if (!value && animReset <= 0 && !specialAnim)
 			dance(true);
+		
 		return held = value;
 	}
 	function set_bop(value:Bool):Bool { return bop = value; }

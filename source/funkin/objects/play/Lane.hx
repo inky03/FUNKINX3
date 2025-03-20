@@ -2,6 +2,7 @@ package funkin.objects.play;
 
 import haxe.Constraints;
 import funkin.shaders.RGBSwap;
+import funkin.objects.Character;
 import funkin.objects.play.Note;
 import funkin.backend.play.Scoring;
 import funkin.backend.play.NoteEvent;
@@ -34,6 +35,7 @@ class Lane extends FunkinSpriteGroup {
 	public var hitWindow:Float = Scoring.safeFrames / 60 * 1000;
 	public var conductorInUse:Conductor = FunkinState.getCurrentConductor();
 	public var inputKeys:Array<FlxKey> = [];
+	public var character:ICharacter = null;
 	public var strumline:Strumline;
 	
 	public var cpu(default, set):Bool = false;
@@ -69,19 +71,21 @@ class Lane extends FunkinSpriteGroup {
 			receptor.autoReset = isCpu;
 		return cpu = isCpu;
 	}
-	public function new(x:Float, y:Float, data:Int) {
+	public function new(x:Float, y:Float, data:Int, dir:Float = 90, speed:Float = 1) {
 		super(x, y);
 		
 		startX = x;
 		startY = y;
+		direction = dir;
+		scrollSpeed = speed;
 		
 		inputFilter = (note:Note) -> {
 			var time:Float = note.msTime - conductorInUse.songPosition;
 			return (time <= note.hitWindow + extraWindow) && (time >= -note.hitWindow);
 		};
 		
-		var splashColors:Array<FlxColor> = NoteSplash.makeSplashColors(Note.directionColors[data][0]);
-		rgbShader = new RGBSwap(Note.directionColors[data][0], FlxColor.WHITE, Note.directionColors[data][1]);
+		var splashColors:Array<FlxColor> = NoteSplash.makeSplashColors(Note.getColors(data)[0]);
+		rgbShader = new RGBSwap(Note.getColors(data)[0], Note.getColors(data)[1], Note.getColors(data)[2]);
 		splashRGB = new RGBSwap(splashColors[0], FlxColor.WHITE, splashColors[1]);
 		
 		noteCover = new NoteCover(data);
@@ -405,7 +409,7 @@ class Receptor extends FunkinSprite {
 		
 		this.noteData = data;
 		
-		rgbShader = new RGBSwap(Note.directionColors[data][0], FlxColor.WHITE, Note.directionColors[data][1]);
+		rgbShader = new RGBSwap(Note.getColors(data)[0], Note.getColors(data)[1], Note.getColors(data)[2]);
 		computeRGBColors();
 		
 		loadAtlas('notes');
@@ -424,7 +428,7 @@ class Receptor extends FunkinSprite {
 
 	public function reloadAnimations() {
 		animation.destroyAnimations();
-		var dirName:String = Note.directionNames[noteData];
+		var dirName:String = Note.getDirection(noteData);
 		addAnimation('static', '$dirName receptor', 24, true);
 		addAnimation('confirm', '$dirName confirm', 24, false);
 		addAnimation('press', '$dirName press', 24, false);
@@ -485,7 +489,7 @@ class NoteSplash extends FunkinSprite {
 		shader = rgbShader.shader;
 		
 		this.noteData = data;
-		var dirName:String = Note.directionNames[data];
+		var dirName:String = Note.getDirection(data);
 		addAnimation('splash1', 'notesplash $dirName 1', 24, false);
 		addAnimation('splash2', 'notesplash $dirName 2', 24, false);
 		onAnimationComplete.add((anim:String) -> { kill(); });
@@ -528,7 +532,7 @@ class NoteCover extends FunkinSprite {
 		super();
 		loadAtlas('noteCovers');
 		
-		var dir:String = Note.directionNames[data];
+		var dir:String = Note.getDirection(data);
 		if (!hasAnimationPrefix('hold cover start $dir')) dir = '';
 		addAnimation('start', 'hold cover start $dir'.trim(), 24, false);
 		addAnimation('loop', 'hold cover loop $dir'.trim(), 24, true);
@@ -554,7 +558,7 @@ class NoteSpark extends FunkinSprite {
 		super(data);
 		loadAtlas('noteCovers');
 		
-		var dir:String = Note.directionNames[data];
+		var dir:String = Note.getDirection(data);
 		if (!hasAnimationPrefix('hold cover $dir')) dir = '';
 		addAnimation('spark', 'hold cover spark ${dir}'.trim(), 24, false);
 		onAnimationComplete.add((anim:String) -> { kill(); });
