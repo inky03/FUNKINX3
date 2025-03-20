@@ -143,7 +143,7 @@ function setState(state) {
 var MIN_BLINK_DELAY:Int = 3;
 var MAX_BLINK_DELAY:Int = 7;
 var blinkCountdown:Int = MIN_BLINK_DELAY;
-function dance(beat:Int = 0, forced:Bool = false) {
+function dance(?beat:Int = 0, ?forced:Bool = false) {
 	var stopDance:Bool = true;
 	
 	switch (getVar('state')) {
