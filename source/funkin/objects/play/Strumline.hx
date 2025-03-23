@@ -4,6 +4,7 @@ import funkin.objects.Character;
 import funkin.objects.play.Note;
 import funkin.backend.play.Scoring;
 import funkin.backend.play.NoteEvent;
+import funkin.backend.play.NoteStyle;
 
 import flixel.util.FlxAxes;
 import flixel.input.keyboard.FlxKey;
@@ -26,6 +27,7 @@ class Strumline extends FunkinSpriteGroup {
 	public var cpu(default, set):Bool; // todo: macro..?
 	public var laneCount(default, set):Int;
 	public var direction(default, set):Float;
+	public var style(default, set):NoteStyle;
 	public var scrollSpeed(default, set):Float;
 	public var oneWay(default, set):Bool = true;
 	public var allowInput(default, set):Bool = true;
@@ -36,6 +38,7 @@ class Strumline extends FunkinSpriteGroup {
 	//oh dear
 	function set_cpu(isCpu:Bool) { for (lane in lanes) lane.cpu = isCpu; return cpu = isCpu; }
 	function set_oneWay(isOneWay:Bool) { for (lane in lanes) lane.oneWay = isOneWay; return oneWay = isOneWay; }
+	function set_style(newStyle:NoteStyle) { if (style == newStyle) return newStyle; loadStyle(newStyle); return style = newStyle; }
 	function set_direction(newDir:Float) { for (lane in lanes) lane.direction = newDir; return direction = newDir; }
 	function set_hitWindow(newWindow:Float) { for (lane in lanes) lane.hitWindow = newWindow; return hitWindow = newWindow; }
 	function set_allowInput(isAllowed:Bool) { for (lane in lanes) lane.allowInput = isAllowed; return allowInput = isAllowed; }
@@ -43,13 +46,7 @@ class Strumline extends FunkinSpriteGroup {
 	function set_noteClass(newClass:Class<Note>) { for (lane in lanes) lane.noteClass = newClass; return noteClass = newClass; }
 	function set_scrollSpeed(newSpeed:Float) { for (lane in lanes) lane.scrollSpeed = newSpeed; return scrollSpeed = newSpeed; }
 	function set_laneSpacing(newSpacing:Float) {
-		var i:Int = 0;
-		var diff:Float = newSpacing - laneSpacing;
-		for (lane in lanes) {
-			lane.startX += i * diff;
-			lane.x += i * diff;
-			i ++;
-		}
+		recalculateLaneSpacing(newSpacing, laneSpacing);
 		return laneSpacing = newSpacing;
 	}
 	function set_laneCount(newCount:Int) {
@@ -58,7 +55,7 @@ class Strumline extends FunkinSpriteGroup {
 			lane.destroy();
 		}
 		for (i in laneCount...newCount) {
-			var lane:Lane = new Lane(i * laneSpacing * scale.x, 0, i, direction, scrollSpeed);
+			var lane:Lane = new Lane(i * laneSpacing * scale.x, 0, i, direction, scrollSpeed, style);
 			
 			lane.allowInput = allowInput;
 			lane.noteClass = noteClass;
@@ -126,10 +123,12 @@ class Strumline extends FunkinSpriteGroup {
 	public override function get_width() return strumlineWidth;
 	public override function get_height() return strumlineHeight;
 	
-	public function new(laneCount:Int = 4, direction:Float = 90, scrollSpeed:Float = 1, ?noteClass:Class<Note>) {
+	public function new(laneCount:Int = 4, direction:Float = 90, scrollSpeed:Float = 1, ?style:NoteStyleAsset = 'funkin', ?noteClass:Class<Note>) {
 		super();
 		this.lanes = new FunkinTypedSpriteGroup();
 		this.add(lanes);
+		
+		style = NoteStyle.fetch(style);
 		
 		this.allowInput = true;
 		this.direction = direction;
@@ -137,6 +136,23 @@ class Strumline extends FunkinSpriteGroup {
 		this.noteClass = noteClass ?? Note;
 		
 		this.laneCount = laneCount;
+	}
+	public function loadStyle(newStyle:NoteStyleAsset) {
+		var style:NoteStyle = NoteStyle.fetch(newStyle);
+		
+		laneSpacing = (style?.data.general.laneSpacing ?? laneSpacing);
+		
+		for (lane in lanes)
+			lane.style = style;
+	}
+	public function recalculateLaneSpacing(newSpacing:Float, oldSpacing:Float) {
+		var i:Int = 0;
+		var diff:Float = newSpacing - oldSpacing;
+		for (lane in lanes) {
+			lane.startX += i * diff * scale.x;
+			lane.x += i * diff * scale.x;
+			i ++;
+		}
 	}
 	public function resetLanePositions():Void {
 		for (i => lane in lanes) {
@@ -201,13 +217,13 @@ class Strumline extends FunkinSpriteGroup {
 				default:
 					//shrug
 			}
+			// TODO: better way... ??
+			recalculateLaneSpacing(laneSpacing * ratio, laneSpacing);
+			scale.set(ratio, ratio);
 			for (lane in lanes) {
-				lane.receptor.scale.x *= ratio;
-				lane.receptor.scale.y *= ratio;
 				lane.receptor.updateHitbox();
-				lane.receptor.spriteOffset.set(0, 0);
+				lane.receptor.spriteOffset.set();
 			}
-			laneSpacing *= ratio;
 		}
 	}
 	public function center(axes:FlxAxes = XY) { //do Not inline that.

@@ -47,6 +47,8 @@ class FunkinState extends FlxSubState implements funkin.backend.FunkinSprite.ISp
 		super();
 		conductorInUse = Conductor.global;
 		hscripts = new HScripts([this], ['this' => this]);
+		
+		persistentUpdate = true;
 	}
 	
 	override public function create() {
@@ -186,5 +188,11 @@ class FunkinState extends FlxSubState implements funkin.backend.FunkinSprite.ISp
 		if (Std.isOfType(FlxG.state, FunkinState))
 			return cast(FlxG.state, FunkinState).conductorInUse;
 		return Conductor.global;
+	}
+	public static function getCurrentSubState():FlxState {
+		var state:FlxState = FlxG.state;
+		while (state.subState != null)
+			state = state.subState;
+		return state;
 	}
 }

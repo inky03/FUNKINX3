@@ -6,14 +6,16 @@ import funkin.objects.Character;
 import funkin.objects.play.Note;
 import funkin.backend.play.Scoring;
 import funkin.backend.play.NoteEvent;
+import funkin.backend.play.NoteStyle;
 import funkin.backend.rhythm.Conductor;
 
 import flixel.input.keyboard.FlxKey;
 import flixel.util.FlxSignal.FlxTypedSignal;
 import flixel.graphics.frames.FlxFramesCollection;
 
-using StringTools;
 using Lambda;
+using StringTools;
+using funkin.backend.play.NoteStyle.NoteStyleUtil;
 
 class Lane extends FunkinSpriteGroup {
 	public var rgbShader:RGBSwap;
@@ -29,6 +31,7 @@ class Lane extends FunkinSpriteGroup {
 	public var noteData:Int;
 	public var oneWay:Bool = true;
 	public var noteClass:Class<Note> = Note;
+	public var style(default, set):NoteStyle;
 	public var scrollSpeed(default, set):Float = 1;
 	public var direction:Float = 90;
 	public var spawnRadius:Float;
@@ -71,31 +74,31 @@ class Lane extends FunkinSpriteGroup {
 			receptor.autoReset = isCpu;
 		return cpu = isCpu;
 	}
-	public function new(x:Float, y:Float, data:Int, dir:Float = 90, speed:Float = 1) {
+	public function new(x:Float, y:Float, data:Int, dir:Float = 90, speed:Float = 1, ?style:NoteStyleAsset = 'funkin') {
 		super(x, y);
+		
+		rgbShader = new RGBSwap();
+		splashRGB = new RGBSwap();
 		
 		startX = x;
 		startY = y;
+		noteData = data;
 		direction = dir;
 		scrollSpeed = speed;
+		this.style = NoteStyle.fetch(style);
 		
 		inputFilter = (note:Note) -> {
 			var time:Float = note.msTime - conductorInUse.songPosition;
 			return (time <= note.hitWindow + extraWindow) && (time >= -note.hitWindow);
 		};
 		
-		var splashColors:Array<FlxColor> = NoteSplash.makeSplashColors(Note.getColors(data)[0]);
-		rgbShader = new RGBSwap(Note.getColors(data)[0], Note.getColors(data)[1], Note.getColors(data)[2]);
-		splashRGB = new RGBSwap(splashColors[0], FlxColor.WHITE, splashColors[1]);
-		
-		noteCover = new NoteCover(data);
-		receptor = new Receptor(0, 0, data);
+		noteCover = new NoteCover(data, style);
+		receptor = new Receptor(0, 0, data, style);
 		notes = new FunkinTypedSpriteGroup();
 		noteSparks = new FunkinTypedSpriteGroup(0, 0, 5);
 		noteSplashes = new FunkinTypedSpriteGroup(0, 0, 5);
 		spawnRadius = Note.distanceToMS(FlxG.height, scrollSpeed);
 		receptor.lane = this; //lol
-		this.noteData = data;
 		this.add(receptor);
 		for (mem in [notes, noteCover, noteSparks, noteSplashes]) {
 			topMembers.push(mem); // render conditionally
@@ -227,16 +230,17 @@ class Lane extends FunkinSpriteGroup {
 	}
 	public function resetLane() {
 		clearNotes();
-		receptor?.playAnimation('static');
+		receptor.playAnimation('static');
 		noteCover.kill();
 		heldNote = null;
 		held = false;
 	}
 	
 	public function splash():NoteSplash {
-		var splash:NoteSplash = noteSplashes.recycle(NoteSplash, () -> new NoteSplash(noteData), true);
+		var splash:NoteSplash = noteSplashes.recycle(NoteSplash, () -> new NoteSplash(noteData, style), true);
 		preAdd(splash);
 		splash.alpha = alpha * .7;
+		splash.scale.copyFrom(scale);
 		splashRGB.copy(splash.rgbShader);
 		splash.splashOnReceptor(receptor);
 		return splash;
@@ -246,10 +250,11 @@ class Lane extends FunkinSpriteGroup {
 		return noteCover;
 	}
 	public function spark():NoteSpark {
-		var spark:NoteSpark = noteSparks.recycle(NoteSpark, () -> new NoteSpark(noteData), true);
+		var spark:NoteSpark = noteSparks.recycle(NoteSpark, () -> new NoteSpark(noteData, style), true);
 		preAdd(spark);
 		spark.alpha = alpha;
-		spark.shader = splashRGB.shader;
+		spark.scale.copyFrom(scale);
+		splashRGB.copy(spark.rgbShader);
 		spark.sparkOnReceptor(receptor);
 		return spark;
 	}
@@ -291,7 +296,7 @@ class Lane extends FunkinSpriteGroup {
 		var songPos:Float = conductorInUse.songPosition;
 		if ((cpu || (held && note.goodHit)) && songPos >= note.msTime && !note.lost && note.canHit) {
 			if (!note.goodHit)
-				hitNote(note, false);
+				_noteEvent(basicEvent(PRESSED, note));
 			
 			if (songPos >= note.endMs)
 				note.consumed = killingNote = true;
@@ -300,6 +305,7 @@ class Lane extends FunkinSpriteGroup {
 			
 			if (killingNote) {
 				_noteEvent(basicEvent(RELEASED, note));
+				if (cpu) _noteEvent(basicEvent(RELEASED));
 				killNote(note);
 				return;
 			}
@@ -337,7 +343,7 @@ class Lane extends FunkinSpriteGroup {
 		note.chartNote = songNote;
 		note.hitWindow = hitWindow;
 		
-		note.reload();
+		note.reload(style);
 		note.scale.copyFrom(receptor.scale);
 		note.rgbShader = rgbShader.copy(note.rgbShader);
 		note.updateHitbox();
@@ -365,9 +371,39 @@ class Lane extends FunkinSpriteGroup {
 		_noteEvent(basicEvent(DESPAWNED, note));
 	}
 	
-	public override function get_width()
+	function set_style(newStyle:NoteStyle):NoteStyle {
+		if (style == newStyle) return newStyle;
+		loadStyle(newStyle);
+		return style = newStyle;
+	}
+	public function loadStyle(newStyle:NoteStyleAsset) {
+		var style:NoteStyle = NoteStyle.fetch(newStyle);
+		
+		if (receptor != null)
+			receptor.style = style;
+		if (noteCover != null)
+			noteCover.style = style;
+		
+		var colors:Array<FlxColor> = NoteStyle.getDirectionColors(style, noteData);
+		rgbShader.set(colors[0], colors[1], colors[2]);
+		
+		var splashColors:Array<FlxColor> = NoteSplash.makeSplashColors(colors[0]);
+		splashRGB.set(splashColors[0], FlxColor.WHITE, splashColors[1]);
+	}
+	
+	public function getDirection(dir:Int):String {
+		return NoteStyle.getDirectionName(style, dir);
+	}
+	public function getSingAnimation(dir:Int):String {
+		return NoteStyle.getDirectionSing(style, dir);
+	}
+	public function getColors(dir:Int):Array<FlxColor> {
+		return NoteStyle.getDirectionColors(style, dir);
+	}
+	
+	override function get_width()
 		return receptor?.width ?? 0;
-	public override function get_height()
+	override function get_height()
 		return receptor?.height ?? 0;
 	
 	override function set_zoomFactor(value:Float):Float {
@@ -395,6 +431,7 @@ class Receptor extends FunkinSprite {
 	public var noteData:Int;
 	public var rgbShader:RGBSwap;
 	public var rgbEnabled(default, set):Bool;
+	public var style(default, set):NoteStyle;
 	
 	public var grayBeat:Null<Float>;
 	public var autoReset:Bool = false;
@@ -403,17 +440,15 @@ class Receptor extends FunkinSprite {
 	public var missColor:Array<FlxColor> = [];
 	public var glowColor:Array<FlxColor> = [];
 	
-	public function new(x:Float, y:Float, data:Int) {
+	public function new(x:Float, y:Float, data:Int, ?style:NoteStyleAsset = 'funkin') {
 		super(x, y);
 		loadAtlas('notes');
+		rgbShader = new RGBSwap();
 		
 		this.noteData = data;
+		this.style = NoteStyle.fetch(style);
 		
-		rgbShader = new RGBSwap(Note.getColors(data)[0], Note.getColors(data)[1], Note.getColors(data)[2]);
 		computeRGBColors();
-		
-		loadAtlas('notes');
-		reloadAnimations();
 		
 		onAnimationComplete.add((anim:String) -> {
 			if (anim != 'static' && autoReset && (lane == null || !lane.held))
@@ -424,16 +459,6 @@ class Receptor extends FunkinSprite {
 	public function computeRGBColors() {
 		glowColor = [rgbShader.red, rgbShader.green, rgbShader.blue];
 		missColor = [makeGrayColor(rgbShader.red), FlxColor.WHITE, FlxColor.fromRGB(32, 30, 49)];
-	}
-
-	public function reloadAnimations() {
-		animation.destroyAnimations();
-		var dirName:String = Note.getDirection(noteData);
-		addAnimation('static', '$dirName receptor', 24, true);
-		addAnimation('confirm', '$dirName confirm', 24, false);
-		addAnimation('press', '$dirName press', 24, false);
-		playAnimation('static', true);
-		updateHitbox();
 	}
 
 	public override function update(elapsed:Float) {
@@ -458,6 +483,23 @@ class Receptor extends FunkinSprite {
 		centerOffsets();
 		centerOrigin();
 	}
+	
+	function set_style(newStyle:NoteStyle) {
+		if (style == newStyle) return newStyle;
+		loadStyle(newStyle);
+		return style = newStyle;
+	}
+	public function loadStyle(newStyle:NoteStyleAsset) {
+		var style:NoteStyle = NoteStyle.fetch(newStyle);
+		
+		var colors:Array<FlxColor> = NoteStyle.getDirectionColors(style, noteData);
+		rgbShader.set(colors[0], colors[1], colors[2]);
+		computeRGBColors();
+		
+		NoteStyleUtil.loadNoteStyleAnimations(this, style?.data?.receptors, style?.getDirectionName(noteData));
+		playAnimation('static', true);
+		updateHitbox();
+	}
 
 	public function set_rgbEnabled(newE:Bool) {
 		shader = (newE ? rgbShader.shader : null);
@@ -480,19 +522,38 @@ class Receptor extends FunkinSprite {
 class NoteSplash extends FunkinSprite {
 	public var noteData:Int;
 	public var rgbShader:RGBSwap;
+	public var style(default, set):NoteStyle;
+	
+	public var animationVariants:Int = 1;
+	public var frameRateRange:Array<Int>;
 
-	public function new(data:Int) {
+	public function new(data:Int, ?style:NoteStyleAsset = 'funkin') {
 		super();
-		loadAtlas('noteSplashes');
 		
 		rgbShader = new RGBSwap();
 		shader = rgbShader.shader;
 		
 		this.noteData = data;
+		this.style = NoteStyle.fetch(style);
+		
 		var dirName:String = Note.getDirection(data);
 		addAnimation('splash1', 'notesplash $dirName 1', 24, false);
 		addAnimation('splash2', 'notesplash $dirName 2', 24, false);
-		onAnimationComplete.add((anim:String) -> { kill(); });
+		onAnimationComplete.add((anim:String) -> kill());
+	}
+	
+	function set_style(newStyle:NoteStyle) {
+		if (style == newStyle) return newStyle;
+		loadStyle(newStyle);
+		return style = newStyle;
+	}
+	public function loadStyle(newStyle:NoteStyleAsset) {
+		var style:NoteStyle = NoteStyle.fetch(newStyle);
+		
+		NoteStyleUtil.loadNoteStyleAnimations(this, style?.data?.noteSplashes, style?.getDirectionName(noteData));
+		animationVariants = style?.data?.noteSplashes.variants ?? 1;
+		playAnimation('splash-1', true);
+		updateHitbox();
 	}
 	
 	public function splashOnReceptor(receptor:Receptor) { //lol
@@ -500,10 +561,23 @@ class NoteSplash extends FunkinSprite {
 		splash();
 	}
 	public function splash() {
-		playAnimation('splash${FlxG.random.int(1, 2)}', true);
-		animation.curAnim.frameRate = FlxG.random.int(22, 26);
+		var splashAnim:String = 'splash-${FlxG.random.int(1, animationVariants)}';
+		
+		var range:Array<Int> = frameRateRange;
+		if (range == null) {
+			var animation:NoteStyleAnimData = style?.getAssetAnimation(style.data.noteSplashes, splashAnim);
+			if (animation != null) {
+				if (animation.frameRateRange != null)
+					range = animation.frameRateRange;
+			}
+		}
+		
+		if (range != null)
+			animation.curAnim.frameRate = FlxG.random.int(range[0], range[1]);
+		
+		playAnimation(splashAnim, true);
 		updateHitbox();
-		spriteOffset.set(width * .5, height * .5);
+		offset.set(frameWidth * .5, frameHeight * .5);
 	}
 
 	public static function makeSplashColors(baseFill:FlxColor):Array<FlxColor> {
@@ -527,18 +601,37 @@ class NoteSplash extends FunkinSprite {
 	}
 }
 
-class NoteCover extends FunkinSprite {
-	public function new(data:Int) {
+class NoteCover extends FunkinSprite { // TODO: change to only use NoteSpark? (and recycle like notesplashes)
+	public var noteData:Int;
+	
+	public var rgbShader:RGBSwap;
+	public var style(default, set):NoteStyle;
+	
+	public function new(data:Int, ?style:NoteStyleAsset) {
 		super();
-		loadAtlas('noteCovers');
 		
-		var dir:String = Note.getDirection(data);
-		if (!hasAnimationPrefix('hold cover start $dir')) dir = '';
-		addAnimation('start', 'hold cover start $dir'.trim(), 24, false);
-		addAnimation('loop', 'hold cover loop $dir'.trim(), 24, true);
-		onAnimationComplete.add((anim:String) -> { playAnimation('loop'); });
+		rgbShader = new RGBSwap();
+		shader = rgbShader.shader;
+		
+		this.noteData = data;
+		this.style = NoteStyle.fetch(style);
+		
+		onAnimationComplete.add((anim:String) -> playAnimation('loop'));
 		
 		kill();
+	}
+	
+	function set_style(newStyle:NoteStyle) {
+		if (style == newStyle) return newStyle;
+		loadStyle(newStyle);
+		return style = newStyle;
+	}
+	public function loadStyle(newStyle:NoteStyleAsset) {
+		var style:NoteStyle = NoteStyle.fetch(newStyle);
+		
+		NoteStyleUtil.loadNoteStyleAnimations(this, style?.data?.noteCovers, style?.getDirectionName(noteData));
+		playAnimation('start', true);
+		updateHitbox();
 	}
 	
 	public function popOnReceptor(receptor:Receptor) {
@@ -549,19 +642,39 @@ class NoteCover extends FunkinSprite {
 		playAnimation('start', true);
 		revive();
 		updateHitbox();
-		spriteOffset.set(width * .5 + 10, height * .5 - 46);
+		offset.set(frameWidth * .5, frameHeight * .5);
 	}
 }
 
 class NoteSpark extends FunkinSprite {
-	public function new(data:Int) {
+	public var noteData:Int;
+	
+	public var rgbShader:RGBSwap;
+	public var style(default, set):NoteStyle;
+	
+	public function new(data:Int, ?style:NoteStyleAsset) {
 		super(data);
-		loadAtlas('noteCovers');
 		
-		var dir:String = Note.getDirection(data);
-		if (!hasAnimationPrefix('hold cover $dir')) dir = '';
-		addAnimation('spark', 'hold cover spark ${dir}'.trim(), 24, false);
-		onAnimationComplete.add((anim:String) -> { kill(); });
+		rgbShader = new RGBSwap();
+		shader = rgbShader.shader;
+		
+		this.noteData = data;
+		this.style = NoteStyle.fetch(style);
+		
+		onAnimationComplete.add((anim:String) -> kill());
+	}
+	
+	function set_style(newStyle:NoteStyle) {
+		if (style == newStyle) return newStyle;
+		loadStyle(newStyle);
+		return style = newStyle;
+	}
+	public function loadStyle(newStyle:NoteStyleAsset) {
+		var style:NoteStyle = NoteStyle.fetch(newStyle);
+		
+		NoteStyleUtil.loadNoteStyleAnimations(this, style?.data?.noteCovers, style?.getDirectionName(noteData));
+		playAnimation('spark', true);
+		updateHitbox();
 	}
 	
 	public function sparkOnReceptor(receptor:Receptor) {
@@ -571,6 +684,6 @@ class NoteSpark extends FunkinSprite {
 	public function spark() {
 		playAnimation('spark', true);
 		updateHitbox();
-		spriteOffset.set(width * .5 + 10, height * .5 - 46);
+		offset.set(frameWidth * .5, frameHeight * .5);
 	}
 }

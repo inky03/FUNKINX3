@@ -68,7 +68,7 @@ using StringTools;
 					scoring ??= scoreHandler?.judgeNoteHit(note, (lane.cpu ? 0 : note.msTime - lane.conductorInUse.songPosition));
 					
 					if (popRating) {
-						var rating:FunkinSprite = game.popRating(scoring.rating);
+						var rating:FunkinSprite = game.popRating('gameplay/funkin/${scoring.rating}');
 						rating.velocity.y = -FlxG.random.int(140, 175);
 						rating.velocity.x = FlxG.random.int(0, 10);
 						rating.acceleration.y = 550;
@@ -85,8 +85,7 @@ using StringTools;
 					splash = lane.splash();
 				
 				if (playAnimation && targetCharacter != null) {
-					var wrapIndex:Int = FlxMath.wrap(note.laneIndex, 0, game.singAnimations.length - 1);
-					var anim:String = 'sing${game.singAnimations[wrapIndex]}';
+					var anim:String = lane.getSingAnimation(note.laneIndex);
 					var suffixAnim:String = anim + animSuffix;
 					if (targetCharacter.animationExists(suffixAnim + targetCharacter.animSuffix))
 						targetCharacter.playAnimationSteps(suffixAnim, true);
@@ -116,7 +115,7 @@ using StringTools;
 					lane.held = false;
 					lane.pressed = false;
 					
-					if (animateReceptor)
+					if (animateReceptor && !lane.cpu)
 						receptor.playAnimation('static');
 					
 					if (targetCharacter != null) {
@@ -173,8 +172,7 @@ using StringTools;
 				}
 				
 				if (playAnimation && targetCharacter != null) {
-					var wrapIndex:Int = FlxMath.wrap(note.laneIndex, 0, game.singAnimations.length - 1);
-					var anim:String = 'sing${game.singAnimations[wrapIndex]}';
+					var anim:String = lane.getSingAnimation(note.laneIndex);
 					var suffixAnim:String = anim + animSuffix + targetCharacter.animSuffix;
 					if ((!targetCharacter.specialAnim || targetCharacter.currentAnimation == suffixAnim) && targetCharacter.animationExists(suffixAnim))
 						targetCharacter.timeAnimSteps();
@@ -205,6 +203,9 @@ using StringTools;
 							FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/hitsoundFail'), .7);
 					}
 					
+					if (lane.cpu && targetCharacter != null)
+						targetCharacter.held = false;
+					
 					note.held = false;
 					lane.killNote(note);
 				}
@@ -217,7 +218,7 @@ using StringTools;
 				}
 				if (playAnimation && targetCharacter != null) {
 					targetCharacter.specialAnim = false;
-					targetCharacter.playAnimationSteps('sing${game.singAnimations[lane.noteData]}miss', true);
+					targetCharacter.playAnimationSteps('${lane.getSingAnimation(lane.noteData)}miss', true);
 				}
 				
 				applyExtraWindow(15);
@@ -235,10 +236,8 @@ using StringTools;
 				
 				if (targetCharacter != null) {
 					targetCharacter.volume = 0;
-					if (playAnimation) {
-						var wrapIndex:Int = FlxMath.wrap(note.laneIndex, 0, game.singAnimations.length - 1);
-						targetCharacter.playAnimationSteps('sing${game.singAnimations[wrapIndex]}miss', true);
-					}
+					if (playAnimation)
+						targetCharacter.playAnimationSteps('${lane.getSingAnimation(note.laneIndex)}miss', true);
 				}
 				
 				if (playSound)
@@ -248,7 +247,7 @@ using StringTools;
 					scoring ??= scoreHandler?.judgeNoteMiss(note);
 					
 					if (popRating && inGame) {
-						var rating:FunkinSprite = game.popRating('sadmiss');
+						var rating:FunkinSprite = game.popRating('gameplay/funkin/sadmiss');
 						rating.velocity.y = -FlxG.random.int(80, 95);
 						rating.velocity.x = FlxG.random.int(-6, 6);
 						rating.acceleration.y = 240;

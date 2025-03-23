@@ -5,10 +5,13 @@ import funkin.objects.play.Lane;
 import funkin.backend.play.Scoring;
 import funkin.backend.rhythm.Event;
 import funkin.backend.FunkinSprite;
+import funkin.backend.play.NoteStyle;
 import funkin.objects.CharacterGroup;
 
 import flixel.math.FlxMatrix;
 import flixel.graphics.frames.FlxFrame;
+
+using funkin.backend.play.NoteStyle.NoteStyleUtil;
 
 @:structInit class ChartNote implements ISpriteVars implements ITimeSortable {
 	public var laneIndex:Int;
@@ -104,7 +107,7 @@ class Note extends FunkinSprite {
 	
 	public var laneIndex:Int = 0;
 	public var strumlineIndex:Int = 0;
-	public var texture(get, set):String;
+	public var style(default, set):NoteStyle;
 	public var kind(default, set):String = '';
 	@:deprecated('noteKind is deprecated, use kind instead!') public var noteKind(get, set):String;
 	@:deprecated('noteData is deprecated, use laneIndex instead!') public var noteData(get, set):Int;
@@ -117,8 +120,6 @@ class Note extends FunkinSprite {
 	public var msLength(default, set):Float = 0;
 	public var beatLength(default, set):Float = 0;
 	public var isHoldNote(default, null):Bool = false;
-	
-	var _texture:String = '';
 	
 	function get_noteData():Int { return laneIndex; }
 	function set_noteData(value:Int):Int { return laneIndex = value; }
@@ -156,7 +157,6 @@ class Note extends FunkinSprite {
 		this.tailOffset = FlxPoint.get();
 		
 		this.chartNote = songNote;
-		reload();
 	}
 	public function set_chartNote(songNote:ChartNote):ChartNote {
 		if (songNote != null) {
@@ -184,7 +184,7 @@ class Note extends FunkinSprite {
 		chartNote.strumlineIndex = strumlineIndex;
 	}
 	
-	public function reload():Void {
+	public function reload(?style:NoteStyle):Void {
 		healthLoss = 6.0 / 100;
 		healthGain = 1.5 / 100;
 		healthGainPerSecond = 7.5 / 100;
@@ -196,43 +196,19 @@ class Note extends FunkinSprite {
 		multAlpha = 1;
 		clipDistance = 0;
 		
-		texture = 'notes';
-		if (tail != null) {
-			tail.texture = texture;
-			tail.reload();
-		}
+		this.style = style;
+		if (tail != null)
+			tail.reload(style);
 	}
 	public function updateTail():Void {
 		isHoldNote = (msLength > 0);
 		if (tail == null && isHoldNote)
 			tail = new NoteTail(this);
 	}
-	public function reloadAnimations() {
-		var dirName:String = getDirection(laneIndex);
-		addAnimation('hit-$laneIndex', '$dirName note', 24, false);
-		playAnimation('hit-$laneIndex', true);
-		updateHitbox();
-	}
 	public function toChartNote():ChartNote {
 		return chartNote ?? {laneIndex: laneIndex, msTime: msTime, kind: kind, msLength: msLength, strumlineIndex: strumlineIndex};
 	}
 	
-	public override function loadAtlas(path:String, ?library:String, renderType:SpriteRenderType = SPARROW):Note {
-		super.loadAtlas(path, library, renderType);
-		_texture = path;
-		return this;
-	}
-	function reloadTexture(texture:String) {
-		loadAtlas(texture);
-		reloadAnimations();
-	}
-	function get_texture():String { return _texture; }
-	function set_texture(newTexture:String):String {
-		if (texture == newTexture) return newTexture;
-		
-		reloadTexture(newTexture);
-		return newTexture;
-	}
 	function set_kind(newKind:String) {
 		return kind = newKind;
 	}
@@ -270,6 +246,19 @@ class Note extends FunkinSprite {
 		if (newShd == null && rgbShader != null && shader == rgbShader.shader)
 			shader = null;
 		return rgbShader = newShd;
+	}
+	
+	function set_style(newStyle:NoteStyle) {
+		if (style == newStyle) return newStyle;
+		loadStyle(newStyle);
+		return style = newStyle;
+	}
+	public function loadStyle(newStyle:NoteStyleAsset) {
+		var style:NoteStyle = NoteStyle.fetch(newStyle);
+		
+		NoteStyleUtil.loadNoteStyleAnimations(this, style?.data?.notes, style?.getDirectionName(laneIndex));
+		playAnimation('hit', true);
+		updateHitbox();
 	}
 	
 	public static function distanceToMS(distance:Float, scrollSpeed:Float)
@@ -315,7 +304,7 @@ class Note extends FunkinSprite {
 
 class NoteTail extends FunkinSprite {
 	public var parent(default, set):Note;
-	public var texture(get, set):String;
+	public var style(default, set):NoteStyle;
 	public var laneIndex:Int;
 	
 	public var multAlpha:Float = .6;
@@ -325,7 +314,6 @@ class NoteTail extends FunkinSprite {
 	public var holdScale(default, null):FlxPoint;
 	public var tailScale(default, null):FlxPoint;
 	
-	var _texture:String = '';
 	var _tileMatrix:FlxMatrix = new FlxMatrix();
 	
 	public function new(parent:Note) {
@@ -335,7 +323,6 @@ class NoteTail extends FunkinSprite {
 		tailScale = FlxPoint.get(1, 1);
 		
 		this.parent = parent;
-		this.reload();
 	}
 	public override function destroy() {
 		holdScale.put();
@@ -345,22 +332,6 @@ class NoteTail extends FunkinSprite {
 		super.destroy();
 	}
 	
-	public override function loadAtlas(path:String, ?library:String, renderType:SpriteRenderType = SPARROW):NoteTail {
-		super.loadAtlas(path, library, renderType);
-		_texture = path;
-		return this;
-	}
-	function reloadTexture(texture:String) {
-		loadAtlas(texture);
-		reloadAnimations();
-	}
-	function get_texture():String { return _texture; }
-	function set_texture(newTexture:String):String {
-		if (texture == newTexture) return newTexture;
-		
-		reloadTexture(newTexture);
-		return newTexture;
-	}
 	function set_parent(note:Note):Note {
 		if (parent == note) return note;
 		
@@ -368,14 +339,9 @@ class NoteTail extends FunkinSprite {
 		return parent = note;
 	}
 	
-	public function reload() {
+	public function reload(?style:NoteStyle) {
+		this.style = style;
 		sustainClip = 0;
-	}
-	public function reloadAnimations() {
-		var dirName:String = Note.getDirection(laneIndex);
-		addAnimation('tail-$laneIndex', '$dirName hold tail', 24, false);
-		addAnimation('hold-$laneIndex', '$dirName hold piece', 24, false);
-		playAnimation('hold-$laneIndex', true);
 	}
 	public override function draw() {
 		alpha = multAlpha;
@@ -390,6 +356,20 @@ class NoteTail extends FunkinSprite {
 		
 		super.draw();
 	}
+	
+	function set_style(newStyle:NoteStyle) {
+		if (style == newStyle) return newStyle;
+		loadStyle(newStyle);
+		return style = newStyle;
+	}
+	public function loadStyle(newStyle:NoteStyleAsset) {
+		var style:NoteStyle = NoteStyle.fetch(newStyle);
+		
+		NoteStyleUtil.loadNoteStyleAnimations(this, style?.data?.holds, style?.getDirectionName(laneIndex));
+		playAnimation('hold', true);
+		updateHitbox();
+	}
+	
 	// this is kinda mediocre tbh
 	public override function drawComplex(camera:FlxCamera) {
 		if (sustainHeight <= sustainClip)
@@ -401,7 +381,7 @@ class NoteTail extends FunkinSprite {
 		var bottom:Float = 0;
 		var doTail:Bool = true;
 		var sc:FlxPoint = tailScale;
-		playAnimation('tail-$laneIndex', true);
+		playAnimation('tail', true);
 		origin.set(frameWidth * .5);
 		cropFrame(top, bottom);
 		getDrawMatrix(sc);
@@ -441,7 +421,7 @@ class NoteTail extends FunkinSprite {
 				
 				bottom = 1;
 				doTail = false;
-				playAnimation('hold-$laneIndex', true);
+				playAnimation('hold', true);
 				absScale = Math.abs(scale.y * holdScale.y);
 				origin.set(frameWidth * .5);
 				cropFrame(top, bottom);

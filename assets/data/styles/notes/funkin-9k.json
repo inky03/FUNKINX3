@@ -1,0 +1,157 @@
+{
+  "version": "1.0.0",
+  "name": "Funkin' (4 Key)",
+  "author": "PhantomArcade",
+  "data": {
+    "general": {
+      "laneSpacing": 120,
+      "directions": [ // <prefix> <direction name> <suffix> <variantSuffix>
+        {
+          "name": "left",
+          "sing": "singLEFT",
+          "colorSave": "funkin-left",
+          "keybindSave": "funkin-0-9k",
+          "defaultColors": ["#C24B99", "#FFFFFF", "#3C1F56"]
+        },
+        {
+          "name": "down",
+          "sing": "singDOWN",
+          "colorSave": "funkin-down",
+          "keybindSave": "funkin-1-9k",
+          "defaultColors": ["#00FFFF", "#FFFFFF", "#1542B7"]
+        },
+        {
+          "name": "up",
+          "sing": "singUP",
+          "colorSave": "funkin-up",
+          "keybindSave": "funkin-2-9k",
+          "defaultColors": ["#12FA05", "#FFFFFF", "#0A4447"]
+        },
+        {
+          "name": "right",
+          "sing": "singRIGHT",
+          "colorSave": "funkin-right",
+          "keybindSave": "funkin-3-9k",
+          "defaultColors": ["#F9393F", "#FFFFFF", "#651038"]
+        },
+        {
+          "name": "up",
+          "sing": "singUP",
+          "colorSave": "funkin-diamond",
+          "keybindSave": "funkin-4-9k",
+          "defaultColors": ["#999999", "#FFFFFF", "#201E31"]
+        },
+        {
+          "name": "left",
+          "sing": "singLEFT",
+          "colorSave": "funkin-left-alt",
+          "keybindSave": "funkin-5-9k",
+          "defaultColors": ["#FFFF00", "#FFFFFF", "#993300"]
+        },
+        {
+          "name": "down",
+          "sing": "singDOWN",
+          "colorSave": "funkin-down-alt",
+          "keybindSave": "funkin-6-9k",
+          "defaultColors": ["#8B4AFF", "#FFFFFF", "#3B177D"]
+        },
+        {
+          "name": "up",
+          "sing": "singUP",
+          "colorSave": "funkin-up-alt",
+          "keybindSave": "funkin-7-9k",
+          "defaultColors": ["#FF0000", "#FFFFFF", "#660000"]
+        },
+        {
+          "name": "right",
+          "sing": "singRIGHT",
+          "colorSave": "funkin-right-alt",
+          "keybindSave": "funkin-8-9k",
+          "defaultColors": ["#0033FF", "#FFFFFF", "#000066"]
+        }
+      ]
+    },
+    "notes": {
+      "assetPath": "gameplay/funkin/notes",
+      "animations": [ // these animations will be added to all notes!
+        {
+          "name": "hit",
+          "suffix": "note",
+          "looped": true
+        }
+      ]
+    },
+    "receptors": {
+      "assetPath": "gameplay/funkin/notes",
+      "animations": [
+        {
+          "name": "static",
+          "suffix": "receptor",
+          "disableRGB": true,
+          "looped": true
+        },
+        {
+          "name": "confirm",
+          "suffix": "confirm"
+        },
+        {
+          "name": "press",
+          "suffix": "press"
+        }
+      ]
+    },
+    "holds": {
+      "assetPath": "gameplay/funkin/notes",
+      "animations": [
+        {
+          "name": "hold",
+          "suffix": "hold piece",
+          "looped": true
+        },
+        {
+          "name": "tail",
+          "suffix": "hold tail",
+          "looped": true
+        }
+      ]
+    },
+    "noteCovers": {
+      "assetPath": "gameplay/funkin/noteCovers",
+      "animations": [
+        {
+          "name": "start",
+          "prefix": "hold cover start",
+          "offsets": [10, -46]
+        },
+        {
+          "name": "loop",
+          "prefix": "hold cover loop",
+          "offsets": [10, -46]
+        }
+        {
+          "name": "spark",
+          "prefix": "hold cover spark",
+          "offsets": [10, -46]
+        }
+      ]
+    },
+    "noteSplashes": {
+      "assetPath": "gameplay/funkin/noteSplashes",
+      "variants": 2,
+      "animations": [
+        {
+          "name": "splash-1",
+          "prefix": "notesplash",
+          "suffix": "1",
+          "frameRateRange": [22, 26]
+        },
+        {
+          "name": "splash-2",
+          "prefix": "notesplash",
+          "suffix": "2",
+          "frameRateRange": [22, 26]
+        }
+      ]
+    }
+  }
+}

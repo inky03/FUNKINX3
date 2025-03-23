@@ -50,7 +50,7 @@ import funkin.backend.scripting.HScript;
 				var folder:String = 'funkin';
 				FunkinSound.playOnce(Paths.sound('gameplay/countdown/$folder/intro$countdown'));
 				
-				countdownSprite = game.popCountdown(countdown);
+				countdownSprite = game.popCountdown('gameplay/funkin/$countdown');
 			
 			case SONG_START:
 				game.music.play(true);

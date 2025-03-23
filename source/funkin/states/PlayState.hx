@@ -8,6 +8,7 @@ import funkin.backend.scripting.HScript;
 import funkin.backend.play.ScoreHandler;
 import funkin.backend.play.IPlayEvent;
 import funkin.backend.play.SongEvent;
+import funkin.backend.play.NoteStyle;
 import funkin.backend.play.NoteEvent;
 import funkin.backend.play.Scoring;
 import funkin.backend.play.Chart;
@@ -88,6 +89,8 @@ class PlayState extends FunkinState {
 	public var songStarted:Bool = false;
 	public var songFinished:Bool = false;
 	
+	public var noteStyle:NoteStyleAsset = 'funkin';
+	
 	public function new(chart:Chart, simple:Bool = false) {
 		PlayState.chart = chart ?? PlayState.chart ?? new Chart('');
 		PlayState.chart.instLoaded = false;
@@ -157,19 +160,18 @@ class PlayState extends FunkinState {
 		var strumlineBound:Float = (FlxG.width - 300) * .5;
 		var strumlineY:Float = 50;
 		
-		keybinds = Options.data.keybinds['4k'];
+		var mania:String = '${chart.keyCount}k';
+		keybinds = Options.data.keybinds[mania] ?? Options.data.keybinds['4k'];
+		if (NoteStyle.exists('$noteStyle-$mania'))
+			noteStyle = '$noteStyle-$mania';
 		
 		opponentStrumline = new Strumline(chart.keyCount, 90, chart.scrollSpeed);
-		opponentStrumline.fitToSize(strumlineBound, opponentStrumline.height * .7);
 		opponentStrumline.noteEvent.add(opponentNoteEvent);
-		opponentStrumline.setPosition(50, strumlineY);
 		opponentStrumline.zIndex = 40;
 		opponentStrumline.cpu = true;
 		opponentStrumline.allowInput = false;
 		
 		playerStrumline = new Strumline(chart.keyCount, 90, chart.scrollSpeed);
-		playerStrumline.fitToSize(strumlineBound, playerStrumline.height * .7);
-		playerStrumline.setPosition(FlxG.width - playerStrumline.width - 50 - 75, strumlineY);
 		playerStrumline.noteEvent.add(playerNoteEvent);
 		playerStrumline.assignKeybinds(keybinds);
 		playerStrumline.zIndex = 50;
@@ -208,6 +210,13 @@ class PlayState extends FunkinState {
 				}
 			}
 		}
+		
+		opponentStrumline.loadStyle(noteStyle);
+		playerStrumline.loadStyle(noteStyle);
+		opponentStrumline.fitToSize(strumlineBound, opponentStrumline.height * .7);
+		playerStrumline.fitToSize(strumlineBound, playerStrumline.height * .7);
+		opponentStrumline.setPosition(50, strumlineY);
+		playerStrumline.setPosition(FlxG.width - playerStrumline.width - 50 - 75, strumlineY);
 		
 		if (!simple) {
 			stage = new Stage(chart);
@@ -277,7 +286,7 @@ class PlayState extends FunkinState {
 		}
 		
 		// TODO: figure out how to display the correct icons in simple mode maybe? they just display the placeholder face
-		healthBar = new Bar(0, FlxG.height - 50, (_) -> health, 'healthBar', {min: 0, max: maxHealth});
+		healthBar = new Bar(0, FlxG.height - 50, (_) -> health, 'gameplay/healthBar', {min: 0, max: maxHealth});
 		healthBar.y -= healthBar.height;
 		healthBar.screenCenter(X);
 		healthBar.zIndex = 10;
@@ -780,7 +789,7 @@ class PlayState extends FunkinState {
 		
 		var xOffset:Float = -nums.length * .5 + .5;
 		for (i => num in nums) {
-			var popNum:FunkinSprite = popRating('num$num', .5, 2);
+			var popNum:FunkinSprite = popRating('gameplay/funkin/num$num', .5, 2);
 			popNum.setPosition(popNum.x + (i + xOffset) * 43, popNum.y + 80);
 			popNum.acceleration.y = FlxG.random.int(200, 300);
 			popNum.velocity.y = -FlxG.random.int(140, 160);
@@ -936,6 +945,7 @@ class PlayState extends FunkinState {
 	override public function destroy() {
 		Paths.library = '';
 		
+		funkin.backend.play.NoteStyle.wipe();
 		DiscordRPC.details = DiscordRPC.state = '';
 		DiscordRPC.presence.startTimestamp = DiscordRPC.presence.endTimestamp = 0;
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
