@@ -56,6 +56,7 @@ class HScript extends Iris {
 		'Character' => funkin.objects.Character,
 		'HealthIcon' => funkin.objects.HealthIcon,
 		'NoteEvent' => funkin.backend.play.NoteEvent,
+		'NoteStyle' => funkin.backend.play.NoteStyle,
 		'Strumline' => funkin.objects.play.Strumline,
 		'StageProp' => funkin.objects.Stage.StageProp,
 		'Conductor' => funkin.backend.rhythm.Conductor,

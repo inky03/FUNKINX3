@@ -89,7 +89,7 @@ class PlayState extends FunkinState {
 	public var songStarted:Bool = false;
 	public var songFinished:Bool = false;
 	
-	public var noteStyle:NoteStyleAsset = 'funkin';
+	public var noteStyle:NoteStyleAsset;
 	
 	public function new(chart:Chart, simple:Bool = false) {
 		PlayState.chart = chart ?? PlayState.chart ?? new Chart('');
@@ -159,6 +159,8 @@ class PlayState extends FunkinState {
 		
 		var strumlineBound:Float = (FlxG.width - 300) * .5;
 		var strumlineY:Float = 50;
+		
+		noteStyle = chart.noteStyle;
 		
 		var mania:String = '${chart.keyCount}k';
 		keybinds = Options.data.keybinds[mania] ?? Options.data.keybinds['4k'];
@@ -656,7 +658,7 @@ class PlayState extends FunkinState {
 		runAllHScript('${funcName}Pre', [e]);
 		
 		try e.dispatch()
-		catch (e:haxe.Exception) Log.error('error dispatching event -> ${e.message}');
+		catch (e:haxe.Exception) Log.error('error dispatching event -> ${e.details()}');
 		
 		runAllHScript(funcName, [e]);
 	}

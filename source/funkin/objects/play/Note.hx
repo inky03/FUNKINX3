@@ -71,7 +71,9 @@ class Note extends FunkinSprite {
 	public var conductorInUse:Conductor; // mostly charting stuff
 	
 	public var tail:NoteTail;
-	public var rgbShader(default, set):RGBSwap;
+	public var rgbShader:RGBSwap;
+	public var updateRGBShader:Bool = true;
+	public var rgbEnabled(default, set):Bool;
 	public var tailOffset(default, null):FlxPoint;
 	
 	public var lane:Lane;
@@ -91,6 +93,8 @@ class Note extends FunkinSprite {
 	public var held:Bool = false;
 	public var hitTime:Float = -1;
 	public var holdTime:Float = -1;
+	public var defaultAlpha:Float = 1;
+	public var defaultScale:Float = 1;
 	public var clipDistance:Float = 0;
 	public var scrollDistance:Float = 0;
 	
@@ -153,6 +157,9 @@ class Note extends FunkinSprite {
 	public function new(songNote:ChartNote, ?conductor:Conductor) {
 		super();
 		
+		rgbShader = new RGBSwap();
+		shader = rgbShader.shader;
+		
 		this.conductorInUse = conductor ?? FunkinState.getCurrentConductor();
 		this.tailOffset = FlxPoint.get();
 		
@@ -162,9 +169,9 @@ class Note extends FunkinSprite {
 		if (songNote != null) {
 			this.kind = songNote.kind;
 			this.msTime = songNote.msTime;
-			this.msLength = songNote.msLength;
 			this.laneIndex = songNote.laneIndex;
 			this.strumlineIndex = songNote.strumlineIndex;
+			this.msLength = songNote.msLength;
 			
 			this.extraData.clear();
 			if (songNote.extraData != null) {
@@ -240,25 +247,31 @@ class Note extends FunkinSprite {
 		return msTime + msLength;
 	function get_endBeat()
 		return beatTime + beatLength;
-	function set_rgbShader(newShd:RGBSwap):RGBSwap {
-		if (newShd != null)
-			shader = newShd.shader;
-		if (newShd == null && rgbShader != null && shader == rgbShader.shader)
-			shader = null;
-		return rgbShader = newShd;
-	}
 	
 	function set_style(newStyle:NoteStyle) {
 		if (style == newStyle) return newStyle;
+		
 		loadStyle(newStyle);
+		if (tail != null)
+			tail.style = newStyle;
+		
 		return style = newStyle;
+	}
+	public function set_rgbEnabled(newE:Bool) {
+		shader = (newE ? rgbShader.shader : null);
+		return rgbEnabled = newE;
 	}
 	public function loadStyle(newStyle:NoteStyleAsset) {
 		var style:NoteStyle = NoteStyle.fetch(newStyle);
+		var asset:NoteStyleAssetData = style?.data.notes;
 		
-		NoteStyleUtil.loadNoteStyleAnimations(this, style?.data?.notes, style?.getDirectionName(laneIndex));
+		NoteStyleUtil.loadNoteStyleAnimations(this, asset, style?.getDirectionName(laneIndex));
 		playAnimation('hit', true);
 		updateHitbox();
+		
+		defaultScale = asset?.scale ?? 1;
+		defaultAlpha = asset?.alpha ?? 1;
+		reloadAnimShader('hit', newStyle);
 	}
 	
 	public static function distanceToMS(distance:Float, scrollSpeed:Float)
@@ -275,41 +288,69 @@ class Note extends FunkinSprite {
 		var xP:Float = 0;
 		var yP:Float = scrollDistance;
 		var rad:Float = dir / 180 * Math.PI;
-		x = receptor.x + Math.sin(rad) * xP + Math.cos(rad) * yP;
-		y = receptor.y + Math.sin(rad) * yP + Math.cos(rad) * xP;
+		x = receptor.x + (receptor.width - width) * .5 + Math.sin(rad) * xP + Math.cos(rad) * yP;
+		y = receptor.y + (receptor.height - height) * .5 + Math.sin(rad) * yP + Math.cos(rad) * xP;
 		
 		if (followAlpha)
-			alpha = receptor.alpha * multAlpha;
+			alpha = receptor.alpha * multAlpha * defaultAlpha;
 		if (followVisible)
 			visible = receptor.visible;
 		if (followAngle)
 			angle = lane.receptor.angle;
 		
 		if (isHoldNote && tail != null) {
-			tail.scale.x = scale.x;
-			tail.scale.y = FlxMath.signOf(speed) * Math.abs(scale.x);
+			tail.scale.x = scale.x * tail.defaultScale;
+			tail.scale.y = FlxMath.signOf(speed) * Math.abs(scale.x) * tail.defaultScale;
 			tail.updateHitbox();
 			tail.offset.y = 0;
 			
 			var absDistance:Float = msToDistance(msTime - conductorInUse.songPosition, Math.abs(speed));
 			tail.sustainHeight = msToDistance(msLength, Math.abs(speed));
-			tail.setPosition(x - tailOffset.x + (width - tail.width) * .5, y - tailOffset.y + receptor.height * .5);
+			tail.setPosition(x - tailOffset.x + (width - tail.width) * .5, y - tailOffset.y + height * .5);
 			tail.angle = dir - 90;
 			
 			if (goodHit && absDistance < 0)
 				tail.sustainClip = -absDistance;
 		}
 	}
+	
+	public override function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
+		if (forced || this.anim.name != anim)
+			reloadAnimShader(anim, style);
+		
+		super.playAnimation(anim, forced, reversed, frame);
+	}
+	public function reloadAnimShader(anim:String, style:NoteStyle) {
+		if (updateRGBShader) {
+			var animData:NoteStyleAnimData = style?.getAssetAnimation(style?.data.notes, anim);
+			if (animData != null) {
+				if (animData.disableRGB) {
+					rgbEnabled = false;
+				} else {
+					var colors:Array<FlxColor> = style.getDirectionColorMod(laneIndex, animData.colorMod);
+					rgbShader.set(colors[0], colors[1], colors[2]);
+					rgbEnabled = true;
+				}
+			}
+		}
+	}
 }
 
 class NoteTail extends FunkinSprite {
+	public var rgbShader:RGBSwap;
+	public var updateRGBShader:Bool = true;
+	public var rgbEnabled(default, set):Bool;
+	
 	public var parent(default, set):Note;
 	public var style(default, set):NoteStyle;
 	public var laneIndex:Int;
 	
-	public var multAlpha:Float = .6;
+	public var multAlpha:Float = 1;
 	public var sustainClip:Float = 0;
 	public var sustainHeight:Float = 0;
+	
+	public var defaultScale:Float = 1;
+	public var defaultAlpha:Float = 1;
 	
 	public var holdScale(default, null):FlxPoint;
 	public var tailScale(default, null):FlxPoint;
@@ -319,9 +360,13 @@ class NoteTail extends FunkinSprite {
 	public function new(parent:Note) {
 		super();
 		
+		rgbShader = new RGBSwap();
+		shader = rgbShader.shader;
+		
 		holdScale = FlxPoint.get(1, 1);
 		tailScale = FlxPoint.get(1, 1);
 		
+		this.style = style;
 		this.parent = parent;
 	}
 	public override function destroy() {
@@ -333,8 +378,6 @@ class NoteTail extends FunkinSprite {
 	}
 	
 	function set_parent(note:Note):Note {
-		if (parent == note) return note;
-		
 		laneIndex = note.laneIndex;
 		return parent = note;
 	}
@@ -344,7 +387,7 @@ class NoteTail extends FunkinSprite {
 		sustainClip = 0;
 	}
 	public override function draw() {
-		alpha = multAlpha;
+		alpha = multAlpha * defaultAlpha;
 		if (parent != null) {
 			scrollFactor.copyFrom(parent.scrollFactor);
 			initialZoom = parent.initialZoom;
@@ -362,12 +405,20 @@ class NoteTail extends FunkinSprite {
 		loadStyle(newStyle);
 		return style = newStyle;
 	}
+	public function set_rgbEnabled(newE:Bool) {
+		shader = (newE ? rgbShader.shader : null);
+		return rgbEnabled = newE;
+	}
 	public function loadStyle(newStyle:NoteStyleAsset) {
 		var style:NoteStyle = NoteStyle.fetch(newStyle);
+		var asset:NoteStyleAssetData = style?.data.holds;
 		
-		NoteStyleUtil.loadNoteStyleAnimations(this, style?.data?.holds, style?.getDirectionName(laneIndex));
+		NoteStyleUtil.loadNoteStyleAnimations(this, asset, style?.getDirectionName(laneIndex));
 		playAnimation('hold', true);
 		updateHitbox();
+		
+		defaultScale = asset?.scale ?? 1;
+		defaultAlpha = asset?.alpha ?? 1;
 	}
 	
 	// this is kinda mediocre tbh
@@ -410,7 +461,7 @@ class NoteTail extends FunkinSprite {
 			}
 			
 			_tileMatrix.copyFrom(_matrix);
-			_tileMatrix.translate(-totalHeight * sin, totalHeight * cos * scaleSign);
+			_tileMatrix.translate(-totalHeight * sin, totalHeight * cos * scaleSign - top * scale.y * holdScale.y);
 			FunkinSprite.transformMatrixZoom(_tileMatrix, camera, zoomFactor, initialZoom);
 			camera.drawPixels(_frame, framePixels, _tileMatrix, colorTransform, blend, antialiasing, shader);
 			
@@ -481,5 +532,26 @@ class NoteTail extends FunkinSprite {
 	}
 	public override function isSimpleRender(?camera:FlxCamera):Bool {
 		return false; // lazy zzz
+	}
+	
+	public override function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
+		if (forced || this.anim.name != anim)
+			reloadAnimShader(anim, style);
+		
+		super.playAnimation(anim, forced, reversed, frame);
+	}
+	public function reloadAnimShader(anim:String, style:NoteStyle) {
+		if (updateRGBShader) {
+			var animData:NoteStyleAnimData = style?.getAssetAnimation(style?.data.holds, anim);
+			if (animData != null) {
+				if (animData.disableRGB) {
+					rgbEnabled = false;
+				} else {
+					var colors:Array<FlxColor> = style.getDirectionColorMod(laneIndex, animData.colorMod);
+					rgbShader.set(colors[0], colors[1], colors[2]);
+					rgbEnabled = true;
+				}
+			}
+		}
 	}
 }

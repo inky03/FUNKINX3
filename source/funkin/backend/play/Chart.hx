@@ -35,6 +35,7 @@ class Chart {
 	public var name:String = 'Unnamed';
 	public var artist:String = 'Unknown';
 	public var difficulty:String = '';
+	public var noteStyle:String = 'funkin';
 	public var format:ChartFormat = UNKNOWN;
 
 	public var chart:Any; //BasicFormat?
@@ -264,7 +265,8 @@ class Chart {
 			song.tempoChanges = [new TempoChange(-4, song.initialBpm, new TimeSignature())];
 			song.scrollSpeed = songSpeed;
 			
-			song.keyCount = (song.json.mania == null ? (song.json.keys ?? keyCount ?? song.keyCount) : (song.json.mania + 4));
+			song.keyCount = (song.json.keys ?? keyCount ?? song.keyCount);
+			song.noteStyle = song.json.noteStyle ?? 'funkin';
 			
 			var ms:Float = 0;
 			var beat:Float = 0;
@@ -439,6 +441,7 @@ class Chart {
 			song.player2 = meta.extraData['FNF_P2'] ?? 'dad';
 			song.player3 = meta.extraData['FNF_P3'] ?? 'gf';
 			song.stage = meta.extraData['FNF_STAGE'] ?? 'placeholder';
+			song.noteStyle = vslice.meta.playData?.noteStyle ?? 'funkin';
 			song.format = MODERN;
 
 			Log.info('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');

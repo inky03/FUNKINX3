@@ -66,6 +66,7 @@ class Strumline extends FunkinSpriteGroup {
 			lane.oneWay = oneWay;
 			lane.cpu = cpu;
 			
+			lane.scale.copyFrom(scale);
 			lanes.add(lane);
 		}
 		return laneCount = newCount;
@@ -220,10 +221,6 @@ class Strumline extends FunkinSpriteGroup {
 			// TODO: better way... ??
 			recalculateLaneSpacing(laneSpacing * ratio, laneSpacing);
 			scale.set(ratio, ratio);
-			for (lane in lanes) {
-				lane.receptor.updateHitbox();
-				lane.receptor.spriteOffset.set();
-			}
 		}
 	}
 	public function center(axes:FlxAxes = XY) { //do Not inline that.

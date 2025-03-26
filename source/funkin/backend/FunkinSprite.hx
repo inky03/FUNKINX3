@@ -190,7 +190,7 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 		return (zoomFactor == 1 && super.isSimpleRenderBlit(camera));
 	}
 	
-	function resetData() {
+	public function resetData() {
 		unloadAnimate();
 		offsets.clear();
 		animationList.clear();

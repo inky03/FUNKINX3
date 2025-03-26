@@ -33,6 +33,7 @@ using StringTools;
 	public var applyRating:Bool = false;
 	public var playAnimation:Bool = true;
 	public var animateReceptor:Bool = true;
+	public var singAnimation:Null<String> = null;
 	
 	var game:PlayState = null;
 	var inGame:Bool = false;
@@ -48,6 +49,7 @@ using StringTools;
 		}
 		
 		targetCharacter ??= lane.character;
+		singAnimation ??= lane.getSingAnimation();
 		
 		switch (type) {
 			case HIT:
@@ -82,11 +84,10 @@ using StringTools;
 				}
 				
 				if (doSplash && (scoring?.hitWindow == null || scoring.hitWindow.splash))
-					splash = lane.splash();
+					splash = lane.splash(note);
 				
 				if (playAnimation && targetCharacter != null) {
-					var anim:String = lane.getSingAnimation(note.laneIndex);
-					var suffixAnim:String = anim + animSuffix;
+					var suffixAnim:String = '$singAnimation$animSuffix';
 					if (targetCharacter.animationExists(suffixAnim + targetCharacter.animSuffix))
 						targetCharacter.playAnimationSteps(suffixAnim, true);
 				}
@@ -97,6 +98,7 @@ using StringTools;
 				if (note.isHoldNote) {
 					lane.held = true;
 					lane.heldNote = note;
+					spark = lane.popCover(note);
 				} else if (animateReceptor && !lane.cpu) {
 					lane.receptor.grayBeat = note.beatTime + .5;
 				}
@@ -172,8 +174,7 @@ using StringTools;
 				}
 				
 				if (playAnimation && targetCharacter != null) {
-					var anim:String = lane.getSingAnimation(note.laneIndex);
-					var suffixAnim:String = anim + animSuffix + targetCharacter.animSuffix;
+					var suffixAnim:String = '$singAnimation$animSuffix${targetCharacter.animSuffix}';
 					if ((!targetCharacter.specialAnim || targetCharacter.currentAnimation == suffixAnim) && targetCharacter.animationExists(suffixAnim))
 						targetCharacter.timeAnimSteps();
 				}
@@ -194,11 +195,11 @@ using StringTools;
 					}
 					
 					if (perfectRelease) {
-						if (doSpark)
-							spark = lane.spark();
+						spark = lane.spark(note, doSpark);
 						if (playSound)
 							FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/hitsoundTail'), .7);
 					} else {
+						spark = lane.spark(note, false);
 						if (playSound)
 							FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/hitsoundFail'), .7);
 					}
@@ -218,7 +219,7 @@ using StringTools;
 				}
 				if (playAnimation && targetCharacter != null) {
 					targetCharacter.specialAnim = false;
-					targetCharacter.playAnimationSteps('${lane.getSingAnimation(lane.noteData)}miss', true);
+					targetCharacter.playAnimationSteps('${singAnimation}miss', true);
 				}
 				
 				applyExtraWindow(15);
@@ -237,7 +238,7 @@ using StringTools;
 				if (targetCharacter != null) {
 					targetCharacter.volume = 0;
 					if (playAnimation)
-						targetCharacter.playAnimationSteps('${lane.getSingAnimation(note.laneIndex)}miss', true);
+						targetCharacter.playAnimationSteps('${singAnimation}miss', true);
 				}
 				
 				if (playSound)
