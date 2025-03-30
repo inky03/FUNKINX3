@@ -40,6 +40,8 @@ class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteVars implements IZoo
 			sprite.updateHitbox();
 		}
 	}
+	public inline function killMembers():Void { group.killMembers(); }
+	public inline function reviveMembers():Void { group.reviveMembers(); }
 	
 	public function sortZIndex() {
 		sort(Util.sortZIndex, FlxSort.ASCENDING);

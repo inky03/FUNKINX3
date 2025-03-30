@@ -721,7 +721,7 @@ class PlayState extends FunkinState {
 			var oldTime:Float = conductorInUse.songPosition;
 			var newTimeMaybe:Float = conductorInUse.syncTracker?.time ?? oldTime;
 			if (conductorInUse.syncTracker != null && conductorInUse.syncTracker.playing)
-				conductorInUse.songPosition = newTimeMaybe; // too rigged? (Math.abs(newTimeMaybe) < Math.abs(oldTime) ? newTimeMaybe : oldTime);
+				conductorInUse.songPosition = newTimeMaybe;
 			
 			var canFireInput:Bool = true;
 			if (keybind >= 0)

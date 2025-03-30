@@ -271,7 +271,7 @@ class Lane extends FunkinSpriteGroup {
 		}
 		return spark;
 	}
-	public function removeCovers():Void {
+	public function removeCovers():Void { // rename to removeSpakrs maybe :sob:
 		for (spark in noteSparks) {
 			if (spark.alive && !spark.sparking) {
 				spark.heldNote = null;
