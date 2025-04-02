@@ -47,6 +47,15 @@ class NoteStyle {
 		
 		return null;
 	}
+	public static function getPath(?style:NoteStyleAsset):String {
+		if (Std.isOfType(style, NoteStyle)) {
+			return cast(style, NoteStyle).path;
+		} else if (Std.isOfType(style, String)) {
+			return cast(style, String);
+		} else {
+			return '';
+		}
+	}
 	
 	public function new(path:String) {
 		this.path = path;

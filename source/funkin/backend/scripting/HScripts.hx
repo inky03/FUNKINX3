@@ -1,6 +1,7 @@
 package funkin.backend.scripting;
 
 using StringTools;
+using Lambda;
 
 typedef HScriptAsset = flixel.util.typeLimit.OneOfTwo<String, HScript>;
 class HScripts { // todo: make this a flxtypedgroup?
@@ -17,24 +18,18 @@ class HScripts { // todo: make this a flxtypedgroup?
 		if (Std.isOfType(test, HScript)) {
 			return activeScripts.contains(test) ? test : null;
 		} else {
-			for (hscript in activeScripts) {
-				if (hscript.scriptName == test)
-					return hscript;
-			}
-			return null;
+			return activeScripts.find((hscript:HScript) -> hscript.scriptName == test);
 		}
 	}
 	public function exists(test:HScriptAsset) return (find(test) != null);
 	public function findFromSuffix(test:String) {
-		for (hscript in activeScripts) {
-			if (hscript.scriptName.endsWith(test)) return hscript;
-		}
-		return null;
+		return activeScripts.find((hscript:HScript) -> hscript.scriptName.endsWith(test));
 	}
 	public function add(hscript:HScript):Void {
 		if (!activeScripts.contains(hscript)) activeScripts.push(hscript);
 	}
-	public function destroy(hscript:HScript):Void {
+	public function destroy(?hscript:HScript):Void {
+		if (hscript == null) return;
 		if (activeScripts.contains(hscript))
 			activeScripts.remove(hscript);
 		hscript.destroy();
@@ -97,13 +92,13 @@ class HScripts { // todo: make this a flxtypedgroup?
 			return null;
 		}
 	}
-	public function loadFromFile(file:String, unique:Bool = false):Null<HScript> {
-		if (exists(file) && !unique) {
+	public function loadFromFile(file:String, unique:Bool = false, ?newName:String):Null<HScript> {
+		if (exists(newName ?? file) && !unique) {
 			Log.warning('hscript @ "$file" is already active!');
 			return find(file);
 		}
-
-		var name:String = getScriptName(file, unique, true);
+		
+		var name:String = getScriptName(newName ?? file, unique, true);
 		var code:String;
 		if (FileSystem.exists(file)) {
 			code = File.getContent(file);
@@ -111,7 +106,7 @@ class HScripts { // todo: make this a flxtypedgroup?
 			Log.error('hscript @ "$file" wasn\'t found...');
 			code = '';
 		}
-
+		
 		var hs:HScript = new HScript(name, code, interceptArray, defaultVars);
 		if (hs.compiled) {
 			Log.info('hscript @ "$file" loaded successfully!');

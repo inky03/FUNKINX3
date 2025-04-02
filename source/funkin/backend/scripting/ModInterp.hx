@@ -4,6 +4,8 @@ import crowplexus.iris.Iris;
 import crowplexus.hscript.Expr;
 import crowplexus.hscript.Tools;
 
+import funkin.backend.FunkinSprite;
+
 class ModInterp extends crowplexus.hscript.Interp {
 	public var hscript:HScript;
 	
@@ -62,6 +64,14 @@ class ModInterp extends crowplexus.hscript.Interp {
 		if (o == null)
 			error(EInvalidAccess(f));
 		
+		if (variables.get('experimentalVars') == true) {
+			if (Std.isOfType(o, ISpriteVars)) {
+				var spr:ISpriteVars = cast o;
+				if (o.hasVar(f))
+					return o.getVar(f);
+			}
+		}
+		
 		#if hl
 		if (Type.typeof(o) == Type.ValueType.TObject && Reflect.hasField(o, '__evalues__')) { // hashlink enums
 			try {
@@ -75,6 +85,7 @@ class ModInterp extends crowplexus.hscript.Interp {
 			error(EInvalidAccess(f));
 		}
 		#end
+		
 		return Reflect.getProperty(o, f);
 	}
 	override function makeIterator(v:Dynamic):Iterator<Dynamic> {

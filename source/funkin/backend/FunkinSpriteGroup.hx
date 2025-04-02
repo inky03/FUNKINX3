@@ -63,6 +63,18 @@ class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteVars implements IZoo
 		}
 		return obj;
 	}
+	public inline function moveToTop(sprite:T):T {
+		if (!members.contains(sprite)) return add(sprite);
+		members.remove(sprite);
+		members.push(sprite);
+		return sprite;
+	}
+	public inline function moveToBottom(sprite:T):T {
+		if (!members.contains(sprite)) return insert(0, sprite);
+		members.remove(sprite);
+		members.unshift(sprite);
+		return sprite;
+	}
 	
 	override function preAdd(sprite:T):Void {
 		super.preAdd(sprite);

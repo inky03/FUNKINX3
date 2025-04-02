@@ -89,7 +89,7 @@ class Character extends FunkinSprite implements ICharacter {
 	public function startScripts() {
 		var scriptPath:String = Paths.getPath('scripts/characters/$loadedCharacter.hx');
 		if (scriptPath != null)
-			hscripts.loadFromFile(scriptPath);
+			hscripts.loadFromFile(scriptPath, '($loadedCharacter) Character Script');
 	}
 	
 	public static function getPathSuffix(basePath:String = '', baseSuffix:String = '', chara:String = ''):String {

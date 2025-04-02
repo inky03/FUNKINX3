@@ -45,7 +45,7 @@ class Lane extends FunkinSpriteGroup {
 	public var allowInput:Bool = true;
 	public var inputFilter:Note -> Bool;
 	public var noteEvent:FlxTypedSignal<NoteEvent -> Void> = new FlxTypedSignal();
-	var extraWindow:Float = 0; // antimash mechanic
+	public var extraWindow:Float = 0; // antimash mechanic
 	
 	public var receptor:Receptor;
 	public var notes:FunkinTypedSpriteGroup<Note>;
@@ -59,14 +59,19 @@ class Lane extends FunkinSpriteGroup {
 	public var selfDraw:Bool = false;
 	public var topMembers:Array<FlxSprite> = [];
 	
-	public function set_scrollSpeed(newSpeed:Float) {
+	public var songPosition(get, never):Float;
+	
+	function set_scrollSpeed(newSpeed:Float) {
 		return scrollSpeed = newSpeed;
 	}
-	public function set_cpu(isCpu:Bool) {
+	function set_cpu(isCpu:Bool) {
 		if (cpu == isCpu) return isCpu;
 		if (receptor != null)
 			receptor.autoReset = isCpu;
 		return cpu = isCpu;
+	}
+	inline function get_songPosition():Float {
+		return conductorInUse.songPosition;
 	}
 	public function new(x:Float, y:Float, data:Int, dir:Float = 90, speed:Float = 1, ?style:NoteStyleAsset = 'funkin') {
 		super(x, y);
@@ -196,10 +201,10 @@ class Lane extends FunkinSpriteGroup {
 		}
 		return true;
 	}
-	public function ghostTapped()
-		_noteEvent(basicEvent(GHOST));
-	public function basicEvent(type:NoteEventType, ?note:Note):NoteEvent
-		return {lane: this, strumline: strumline, receptor: receptor, note: note, type: type};
+	public function ghostTapped(?position:Float)
+		_noteEvent(basicEvent(GHOST, null, position));
+	public function basicEvent(type:NoteEventType, ?note:Note, ?position:Float):NoteEvent
+		return {lane: this, strumline: strumline, receptor: receptor, note: note, type: type, songPosition: position ?? songPosition};
 	function _noteEvent(event:NoteEvent) {
 		strumline?.noteEvent.dispatch(event);
 		noteEvent.dispatch(event);
@@ -213,10 +218,8 @@ class Lane extends FunkinSpriteGroup {
 			
 			if (!valid)
 				continue;
-			if (hittableOnly) {
-				if (hittableOnly && (!note.canHit || note.goodHit))
-					continue;
-			}
+			if (hittableOnly && (!note.canHit || note.goodHit))
+				continue;
 			if (highNote == null || (note.hitPriority > highNote.hitPriority || (note.hitPriority == highNote.hitPriority && note.msTime < highNote.msTime)))
 				highNote = note;
 		}
@@ -244,21 +247,25 @@ class Lane extends FunkinSpriteGroup {
 	
 	public function splash(?note:Note):NoteSplash {
 		var splash:NoteSplash = noteSplashes.recycle(NoteSplash, () -> new NoteSplash(noteData, style), true);
-		preAdd(splash);
+		
+		noteSplashes.moveToTop(splash);
 		splash.style = note?.style ?? style;
 		splash.popOnReceptor(receptor);
 		splash.alpha = alpha * splash.defaultAlpha;
 		splash.scale.set(scale.x * splash.defaultScale, scale.y * splash.defaultScale);
+		
 		return splash;
 	}
 	public function popCover(?note:Note):NoteSpark {
 		var spark:NoteSpark = noteSparks.recycle(NoteSpark, () -> new NoteSpark(noteData, style), true);
-		preAdd(spark);
+		
+		noteSparks.moveToTop(spark);
 		spark.style = note?.style ?? style;
 		spark.heldNote = note;
 		spark.popOnReceptor(receptor);
 		spark.alpha = alpha * spark.defaultAlpha;
 		spark.scale.set(scale.x * spark.defaultScale, scale.y * spark.defaultScale);
+		
 		return spark;
 	}
 	public function spark(?note:Note, animate:Bool = true):NoteSpark {
@@ -314,19 +321,21 @@ class Lane extends FunkinSpriteGroup {
 			return;
 		
 		var killingNote:Bool = false;
-		var songPos:Float = conductorInUse.songPosition;
-		if ((cpu || (held && note.goodHit)) && songPos >= note.msTime && !note.lost && note.canHit) {
+		if ((cpu || (held && note.goodHit)) && songPosition >= note.msTime && !note.lost && note.canHit) {
 			if (!note.goodHit)
-				_noteEvent(basicEvent(PRESSED, note));
+				_noteEvent(basicEvent(PRESSED, note, cpu ? note.msTime : songPosition));
 			
-			if (songPos >= note.endMs)
+			if (songPosition >= note.endMs)
 				note.consumed = killingNote = true;
 			
 			_noteEvent(basicEvent(HELD, note));
 			
 			if (killingNote) {
-				_noteEvent(basicEvent(RELEASED, note));
-				if (cpu) _noteEvent(basicEvent(RELEASED));
+				var releaseTime:Null<Float> = (cpu ? note.endMs : songPosition);
+				
+				_noteEvent(basicEvent(RELEASED, note, releaseTime));
+				if (cpu) _noteEvent(basicEvent(RELEASED, null, releaseTime));
+				
 				killNote(note);
 				return;
 			}
@@ -334,16 +343,16 @@ class Lane extends FunkinSpriteGroup {
 		
 		var canDespawn:Bool = !note.preventDespawn;
 		if (note.lost || note.goodHit) {
-			if (canDespawn && (note.endMs - conductorInUse.songPosition) < -spawnRadius)
+			if (canDespawn && (note.endMs - songPosition) < -spawnRadius)
 				killNote(note, !oneWay);
 		} else {
-			if (conductorInUse.songPosition - hitWindow > note.msTime) {
+			if (songPosition - hitWindow > note.msTime) {
 				note.lost = true;
 				_noteEvent(basicEvent(LOST, note));
 			}
 		}
 		
-		if (!oneWay && (note.msTime - conductorInUse.songPosition) > spawnRadius)
+		if (!oneWay && (note.msTime - songPosition) > spawnRadius)
 			killNote(note, true);
 	}
 	public function findNoteByChartNote(songNote:ChartNote):Note {
@@ -356,10 +365,10 @@ class Lane extends FunkinSpriteGroup {
 			return Type.createInstance(cls ?? noteClass, [songNote, conductorInUse]);
 		}
 	}
-	public function insertNote(songNote:ChartNote, pos:Int = 0):Note {
+	public function insertNote(songNote:ChartNote):Note {
 		var note:Note = generateNote(noteClass, songNote);
+		notes.moveToBottom(note);
 		
-		preAdd(note);
 		note.lane = this;
 		note.chartNote = songNote;
 		note.hitWindow = hitWindow;
@@ -368,16 +377,15 @@ class Lane extends FunkinSpriteGroup {
 		note.scale.set(scale.x * note.defaultScale, scale.y * note.defaultScale);
 		note.updateHitbox();
 		
-		notes.insert(pos, note);
 		_noteEvent(basicEvent(SPAWNED, note));
 		updateNote(note);
 		
 		return note;
 	}
-	public dynamic function hitNote(note:Note, kill:Bool = true) {
+	public dynamic function hitNote(note:Note, kill:Bool = true, ?position:Float) {
 		note.goodHit = true;
 		
-		var event:NoteEvent = basicEvent(HIT, note);
+		var event:NoteEvent = basicEvent(HIT, note, position);
 		_noteEvent(event);
 		
 		if (kill && !note.isHoldNote && !note.ignore && !event.cancelled)

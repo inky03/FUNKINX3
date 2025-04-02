@@ -89,7 +89,28 @@ class PlayState extends FunkinState {
 	public var songStarted:Bool = false;
 	public var songFinished:Bool = false;
 	
-	public var noteStyle:NoteStyleAsset;
+	public var noteStyle(default, set):NoteStyleAsset;
+	
+	function set_noteStyle(newStyle:NoteStyleAsset):NoteStyleAsset {
+		if (noteStyle == newStyle) return newStyle;
+		
+		var stylePath:String = NoteStyle.getPath(noteStyle);
+		hscripts.destroy(hscripts.find('Note Style Script ($stylePath)'));
+		
+		bootStyleScript(newStyle, 'notes');
+		
+		for (strumline in strumlineGroup)
+			strumline.loadStyle(newStyle);
+		
+		return noteStyle = newStyle;
+	}
+	function bootStyleScript(style:NoteStyleAsset, folder:String = 'notes') {
+		var stylePath:String = NoteStyle.getPath(style);
+		var styleScriptPath:Null<String> = Paths.getPath('scripts/styles/$folder/$stylePath.hx');
+		
+		if (styleScriptPath != null)
+			hscripts.loadFromFile(styleScriptPath, '($stylePath) Note Style Script');
+	}
 	
 	public function new(chart:Chart, simple:Bool = false) {
 		PlayState.chart = chart ?? PlayState.chart ?? new Chart('');
@@ -160,12 +181,14 @@ class PlayState extends FunkinState {
 		var strumlineBound:Float = (FlxG.width - 300) * .5;
 		var strumlineY:Float = 50;
 		
-		noteStyle = chart.noteStyle;
-		
+		var chartStyle:String = chart.noteStyle;
 		var mania:String = '${chart.keyCount}k';
 		keybinds = Options.data.keybinds[mania] ?? Options.data.keybinds['4k'];
-		if (NoteStyle.exists('$noteStyle-$mania'))
-			noteStyle = '$noteStyle-$mania';
+		if (NoteStyle.exists('$chartStyle-$mania')) {
+			noteStyle = '$chartStyle-$mania';
+		} else {
+			noteStyle = chartStyle;
+		}
 		
 		opponentStrumline = new Strumline(chart.keyCount, 90, chart.scrollSpeed);
 		opponentStrumline.noteEvent.add(opponentNoteEvent);
@@ -213,8 +236,9 @@ class PlayState extends FunkinState {
 			}
 		}
 		
-		opponentStrumline.loadStyle(noteStyle);
-		playerStrumline.loadStyle(noteStyle);
+		for (strumline in strumlineGroup)
+			strumline.loadStyle(noteStyle);
+		
 		opponentStrumline.fitToSize(strumlineBound, opponentStrumline.height * .7);
 		playerStrumline.fitToSize(strumlineBound, playerStrumline.height * .7);
 		opponentStrumline.setPosition(50, strumlineY);
@@ -758,6 +782,8 @@ class PlayState extends FunkinState {
 	}
 
 	public function playerNoteEvent(e:NoteEvent) {
+		e.setup();
+		
 		e.doSplash = true;
 		e.doSpark = true;
 		
@@ -771,6 +797,8 @@ class PlayState extends FunkinState {
 		dispatchPlayEvent('playerNoteEvent', e);
 	}
 	public function opponentNoteEvent(e:NoteEvent) {
+		e.setup();
+		
 		e.applyRating = false;
 		e.playSound = false;
 		e.doSplash = false;
@@ -803,16 +831,16 @@ class PlayState extends FunkinState {
 		
 		if (!ratingGroup.alive) return rating;
 		
+		rating.alpha = 1;
 		rating.loadTexture(ratingString);
 		rating.scale.set(scale, scale);
 		rating.setPosition(ratingGroup.x, ratingGroup.y);
 		rating.offset.set(rating.frameWidth * .5, rating.frameHeight * .5);
 		
 		rating.revive();
-		FlxTween.tween(rating, {alpha: 0}, .2, {onComplete: (tween:FlxTween) -> {
-			ratingGroup.remove(rating, true);
-			rating.kill();
-		}, startDelay: conductorInUse.crochet * .001 * beats});
+		ratingGroup.moveToTop(rating);
+		FlxTween.cancelTweensOf(rating);
+		FlxTween.tween(rating, {alpha: 0}, .2, {onComplete: (_) -> rating.kill(), startDelay: conductorInUse.crochet * .001 * beats});
 		return rating;
 	}
 	

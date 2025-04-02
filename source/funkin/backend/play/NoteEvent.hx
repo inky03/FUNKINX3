@@ -18,6 +18,7 @@ using StringTools;
 	public var receptor:Receptor;
 	public var strumline:Strumline;
 	public var animSuffix:String = '';
+	public var songPosition:Float = 0;
 
 	public var spark:NoteSpark = null;
 	public var splash:NoteSplash = null;
@@ -39,9 +40,7 @@ using StringTools;
 	var inGame:Bool = false;
 	
 	public function cancel() cancelled = true;
-	public function dispatch() { // hahaaa
-		if (cancelled) return;
-		
+	public inline function setup() {
 		inGame = Std.isOfType(FlxG.state, PlayState);
 		if (inGame) {
 			game = cast FlxG.state;
@@ -50,6 +49,9 @@ using StringTools;
 		
 		targetCharacter ??= lane.character;
 		singAnimation ??= lane.getSingAnimation();
+	}
+	public function dispatch() { // hahaaa
+		if (cancelled) return;
 		
 		switch (type) {
 			case HIT:
@@ -60,26 +62,27 @@ using StringTools;
 					targetCharacter.held = true;
 				}
 
-				note.hitTime = note.holdTime = lane.conductorInUse.songPosition;
+				note.hitTime = note.holdTime = songPosition;
 
 				if (playSound)
 					game.hitsound.play(true);
 				
 				if (applyRating) {
 					applyExtraWindow(6);
-					scoring ??= scoreHandler?.judgeNoteHit(note, (lane.cpu ? 0 : note.msTime - lane.conductorInUse.songPosition));
+					scoring ??= scoreHandler?.judgeNoteHit(note, note.msTime - songPosition);
 					
-					if (popRating) {
-						var rating:FunkinSprite = game.popRating('gameplay/funkin/${scoring.rating}');
-						rating.velocity.y = -FlxG.random.int(140, 175);
-						rating.velocity.x = FlxG.random.int(0, 10);
-						rating.acceleration.y = 550;
+					if (inGame) {
+						if (popRating) {
+							var rating:FunkinSprite = game.popRating('gameplay/funkin/${scoring.rating}');
+							rating.velocity.y = -FlxG.random.int(140, 175);
+							rating.velocity.x = FlxG.random.int(0, 10);
+							rating.acceleration.y = 550;
+						}
+						
+						game.health += note.healthGain * scoring.healthMod;
 					}
 					
-					if (inGame)
-						game.health += note.healthGain * scoring.healthMod;
-					
-					applyScore(scoreHandler, scoring);
+					applyScore(scoreHandler, scoring, game);
 					note.score = scoring;
 				}
 				
@@ -106,9 +109,9 @@ using StringTools;
 				lane.pressed = true;
 				
 				if (note != null) {
-					lane.hitNote(note);
+					lane.hitNote(note, true, songPosition);
 				} else {
-					lane.ghostTapped();
+					lane.ghostTapped(songPosition);
 				}
 			case HELD | RELEASED:
 				final released:Bool = (type == RELEASED);
@@ -136,15 +139,15 @@ using StringTools;
 				}
 				
 				var perfectRelease:Bool = true;
-				final songPos:Float = lane.conductorInUse.songPosition;
+				final songPos:Float = songPosition;
 				
-				perfect = (released && (lane.cpu || songPos >= note.endMs - Scoring.holdLeniencyMS));
+				perfect = (released && songPos >= note.endMs - Scoring.holdLeniencyMS);
 				
 				if (applyRating) {
 					perfectRelease = perfect;
 					
 					var prevHitTime:Float;
-					if (!note.held && (lane.cpu || note.holdTime <= note.msTime + Scoring.holdLeniencyMS)) {
+					if (!note.held && note.holdTime <= note.msTime + Scoring.holdLeniencyMS) {
 						prevHitTime = note.msTime;
 					} else {
 						prevHitTime = Math.max(note.holdTime, note.msTime);
@@ -166,7 +169,7 @@ using StringTools;
 					if (inGame)
 						game.health += (scoring.healthMod ?? 1) * note.healthGainPerSecond;
 					
-					applyScore(scoreHandler, scoring);
+					applyScore(scoreHandler, scoring, game);
 					
 					if (!released)
 						note.held = true;
@@ -185,13 +188,8 @@ using StringTools;
 					if (lane.heldNote == note) {
 						lane.held = false;
 						lane.heldNote = null;
-						if (animateReceptor) {
-							if (lane.cpu || !note.held) {
-								lane.receptor.playAnimation('static');
-							} else {
-								lane.receptor.playAnimation('press');
-							}
-						}
+						if (animateReceptor)
+							lane.receptor.playAnimation(lane.cpu ? 'static' : 'press');
 					}
 					
 					if (perfectRelease) {
@@ -230,7 +228,7 @@ using StringTools;
 						game.health += (scoring.healthMod ?? -.01);
 				}
 				
-				applyScore(scoreHandler, scoring);
+				applyScore(scoreHandler, scoring, game);
 			case LOST:
 				if (inGame && game.genericVocals != null)
 					game.genericVocals.volume = 0;
@@ -247,43 +245,40 @@ using StringTools;
 				if (applyRating) {
 					scoring ??= scoreHandler?.judgeNoteMiss(note);
 					
-					if (popRating && inGame) {
-						var rating:FunkinSprite = game.popRating('gameplay/funkin/sadmiss');
-						rating.velocity.y = -FlxG.random.int(80, 95);
-						rating.velocity.x = FlxG.random.int(-6, 6);
-						rating.acceleration.y = 240;
+					if (inGame) {
+						if (popRating) {
+							var rating:FunkinSprite = game.popRating('gameplay/funkin/sadmiss');
+							rating.velocity.y = -FlxG.random.int(80, 95);
+							rating.velocity.x = FlxG.random.int(-6, 6);
+							rating.acceleration.y = 240;
+						}
+						
+						game.health -= note.healthLoss * (scoring.healthMod ?? 1);
 					}
 					
-					if (inGame)
-						game.health -= note.healthLoss * (scoring.healthMod ?? 1);
-					
-					applyScore(scoreHandler, scoring);
+					applyScore(scoreHandler, scoring, game);
 				}
 			default:
 		}
 	}
-	function applyScore(handler:ScoreHandler, score:Score) {
+	inline function applyScore(handler:ScoreHandler, score:Score, playState:PlayState) {
 		if (handler == null || score == null || !applyRating) return;
 		
-		if (inGame) {
-			game.totalNotes += score.hits + score.misses;
-			game.totalHits += score.hits;
+		if (playState != null) {
+			playState.totalNotes += score.hits + score.misses;
+			playState.totalHits += score.hits;
 		}
 		
 		handler.applyScore(score);
-		
-		if (inGame)
-			game.updateScoreText();
+		playState?.updateScoreText();
 	}
-	function applyExtraWindow(window:Float) {
-		@:privateAccess {
-			var extraWin:Float = Math.min(lane.extraWindow + window, 200);
-			if (strumline != null) {
-				for (lane in strumline.lanes)
-					lane.extraWindow = extraWin;
-			} else {
+	inline function applyExtraWindow(window:Float) {
+		var extraWin:Float = Math.min(lane.extraWindow + window, 200);
+		if (strumline != null) {
+			for (lane in strumline.lanes)
 				lane.extraWindow = extraWin;
-			}
+		} else {
+			lane.extraWindow = extraWin;
 		}
 	}
 }

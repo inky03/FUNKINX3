@@ -71,7 +71,9 @@ class HScript extends Iris {
 		'FlxAxes' => HScriptFlxAxes,
 		'FlxColor' => HScriptFlxColor,
 		'BlendMode' => HScriptBlendMode,
-		'RuntimeShader' => HScriptRuntimeShader
+		'RuntimeShader' => HScriptRuntimeShader,
+		
+		'experimentalVars' => true
 	];
 	
 	public var interceptArray:Array<Dynamic> = null;

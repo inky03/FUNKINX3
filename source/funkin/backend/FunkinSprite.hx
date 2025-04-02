@@ -69,6 +69,7 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 		anim.onFrame.add((number:Int, anim:String) -> onAnimationFrame.dispatch(number, anim));
 		anim.onComplete.add((anim:String) -> onAnimationComplete.dispatch(anim));
 		anim.onLoop.add((anim:String) -> onAnimationLoop.dispatch(anim));
+		anim.attachedFunk = this;
 	}
 	public override function destroy() {
 		anim = FlxDestroyUtil.destroy(anim);
@@ -196,7 +197,6 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 		animationList.clear();
 		_loadedAtlases.resize(0);
 		anim.isAnimate = false;
-		anim.attachedFunk = null;
 		anim.attachedAnimate = null;
 	}
 	public function unloadAnimate() {
@@ -232,7 +232,6 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 			case PACKER: Paths.packerAtlas(path, library);
 			default: Paths.sparrowAtlas(path, library);
 		}
-		anim.attachedFunk = this;
 		this.renderType = renderType;
 		return this;
 	}
@@ -645,10 +644,11 @@ class FunkinSpriteAnimHandler implements IFlxDestroyable {
 			if (frameIndices == null || frameIndices.length == 0) {
 				spriteC.addByPrefix(name, prefix, fps, loop, flipX, flipY);
 			} else {
-				if (prefix == null)
+				if (prefix == null) {
 					spriteC.add(name, frameIndices, fps, loop, flipX, flipY);
-				else
+				} else {
 					spriteC.addByIndices(name, prefix, frameIndices, '', fps, loop, flipX, flipY);
+				}
 			}
 			
 			return spriteC.exists(name);

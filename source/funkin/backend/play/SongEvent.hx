@@ -253,7 +253,11 @@ class PlayStateEventHandler {
 					if (Std.isOfType(focus, CharacterGroup)) {
 						var chara:CharacterGroup = cast focus;
 						if (chara.animationExists(anim)) {
-							chara.playAnimationSpecial(anim, forced);
+							if (forced) {
+								chara.playAnimationSpecial(anim, true);
+							} else {
+								chara.playAnimation(anim, true);
+							}
 							chara.timeAnimSteps();
 						}
 					} else if (Std.isOfType(focus, FunkinSprite)) {

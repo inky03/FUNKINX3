@@ -299,8 +299,8 @@ class Note extends FunkinSprite {
 			angle = lane.receptor.angle;
 		
 		if (isHoldNote && tail != null) {
-			tail.scale.x = scale.x * tail.defaultScale;
-			tail.scale.y = FlxMath.signOf(speed) * Math.abs(scale.x) * tail.defaultScale;
+			tail.scale.x = scale.x / defaultScale * tail.defaultScale;
+			tail.scale.y = FlxMath.signOf(speed) * Math.abs(scale.x) / defaultScale * tail.defaultScale;
 			tail.updateHitbox();
 			tail.offset.y = 0;
 			
