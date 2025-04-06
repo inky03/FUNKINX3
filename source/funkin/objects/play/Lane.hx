@@ -429,10 +429,10 @@ class Lane extends FunkinSpriteGroup {
 		return NoteStyle.getDirectionColors(style, dir ?? noteData);
 	}
 	
-	override function get_width()
-		return receptor?.width ?? 0;
-	override function get_height()
-		return receptor?.height ?? 0;
+	override function findMinXHelper():Float { return receptor.x; }
+	override function findMaxXHelper():Float { return receptor.x + receptor.width; }
+	override function findMinYHelper():Float { return receptor.y; }
+	override function findMaxYHelper():Float { return receptor.y + receptor.height; }
 	
 	override function set_zoomFactor(value:Float):Float {
 		super.set_zoomFactor(value);

@@ -30,7 +30,7 @@ class CrashState extends FlxState {
 		
 		super.create();
 		
-		FlxG.sound.music.stop();
+		FlxG.sound.music?.stop();
 		Main.instance.removeChild(Main.debugDisplay);
 		
 		function loadCrashAsset(sprite:FunkinSprite, ?stack:Array<StackItem>) {

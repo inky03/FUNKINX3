@@ -72,45 +72,51 @@ class Strumline extends FunkinSpriteGroup {
 		return laneCount = newCount;
 	}
 	
-	//getters
-	function get_leftBound() {
-		var minX:Float = Math.POSITIVE_INFINITY;
-		for (lane in lanes) minX = Math.min(minX, lane.receptor.x);
-		return minX;
-	}
-	function get_rightBound() {
-		var maxX:Float = Math.NEGATIVE_INFINITY;
-		for (lane in lanes) maxX = Math.max(maxX, lane.receptor.x + lane.receptor.width);
-		return maxX;
-	}
-	function get_topBound() {
-		var minY:Float = Math.POSITIVE_INFINITY;
-		for (lane in lanes) minY = Math.min(minY, lane.receptor.y);
-		return minY;
-	}
-	function get_bottomBound() {
-		var maxY:Float = Math.NEGATIVE_INFINITY;
-		for (lane in lanes) maxY = Math.max(maxY, lane.receptor.y + lane.receptor.height);
-		return maxY;
-	}
-	function get_strumlineWidth() {
-		var minX:Float = Math.POSITIVE_INFINITY;
-		var maxX:Float = Math.NEGATIVE_INFINITY;
+	//more getters
+	function get_leftBound() { return findMinXHelper(); }
+	function get_rightBound() { return findMaxXHelper(); }
+	function get_topBound() { return findMinYHelper(); }
+	function get_bottomBound() { return findMaxYHelper(); }
+	function get_strumlineWidth() { return width; }
+	function get_strumlineHeight() { return height; }
+	
+	override function findMinX():Float { return (lanes.length > 0 ? findMinXHelper() : x); }
+	override function findMaxX():Float { return (lanes.length > 0 ? findMaxXHelper() : x); }
+	override function findMinY():Float { return (lanes.length > 0 ? findMinYHelper() : y); }
+	override function findMaxY():Float { return (lanes.length > 0 ? findMaxYHelper() : y); }
+	override function findMinXHelper():Float {
+		var value:Float = Math.POSITIVE_INFINITY;
 		for (lane in lanes) {
-			minX = Math.min(minX, lane.receptor.x);
-			maxX = Math.max(maxX, lane.receptor.x + lane.receptor.width);
+			var minX:Float = lane.receptor.x;
+			if (minX < value) value = minX;
 		}
-		return (maxX - minX);
+		return value;
 	}
-	function get_strumlineHeight() {
-		var minY:Float = Math.POSITIVE_INFINITY;
-		var maxY:Float = Math.NEGATIVE_INFINITY;
+	override function findMaxXHelper():Float {
+		var value:Float = Math.NEGATIVE_INFINITY;
 		for (lane in lanes) {
-			minY = Math.min(minY, lane.receptor.y);
-			maxY = Math.max(maxY, lane.receptor.y + lane.receptor.height);
+			var maxX:Float = lane.receptor.x + lane.receptor.width;
+			if (maxX > value) value = maxX;
 		}
-		return (maxY - minY);
+		return value;
 	}
+	override function findMinYHelper():Float {
+		var value:Float = Math.POSITIVE_INFINITY;
+		for (lane in lanes) {
+			var minY:Float = lane.receptor.y;
+			if (minY < value) value = minY;
+		}
+		return value;
+	}
+	override function findMaxYHelper():Float {
+		var value:Float = Math.NEGATIVE_INFINITY;
+		for (lane in lanes) {
+			var maxY:Float = lane.receptor.y + lane.receptor.height;
+			if (maxY > value) value = maxY;
+		}
+		return value;
+	}
+	
 	function get_receptorWidth() {
 		var width:Float = 0;
 		for (lane in lanes) width = Math.max(width, lane.receptor.width);
@@ -121,15 +127,11 @@ class Strumline extends FunkinSpriteGroup {
 		for (lane in lanes) height = Math.max(height, lane.receptor.height);
 		return height;
 	}
-	public override function get_width() return strumlineWidth;
-	public override function get_height() return strumlineHeight;
 	
 	public function new(laneCount:Int = 4, direction:Float = 90, scrollSpeed:Float = 1, ?style:NoteStyleAsset = 'funkin', ?noteClass:Class<Note>) {
 		super();
 		this.lanes = new FunkinTypedSpriteGroup();
 		this.add(lanes);
-		
-		style = NoteStyle.fetch(style);
 		
 		this.allowInput = true;
 		this.direction = direction;
@@ -137,6 +139,8 @@ class Strumline extends FunkinSpriteGroup {
 		this.noteClass = noteClass ?? Note;
 		
 		this.laneCount = laneCount;
+		
+		this.style = NoteStyle.fetch(style);
 	}
 	public function loadStyle(newStyle:NoteStyleAsset) {
 		var style:NoteStyle = NoteStyle.fetch(newStyle);

@@ -5,7 +5,7 @@ import funkin.backend.FunkinSprite;
 import haxe.iterators.ArrayKeyValueIterator;
 
 typedef FunkinSpriteGroup = FunkinTypedSpriteGroup<FlxSprite>;
-class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteVars implements IZoomFactor extends FlxTypedSpriteGroup<T> {
+class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteGroup implements ISpriteVars implements IZoomFactor extends FlxTypedSpriteGroup<T> {
 	public var zoomFactor(default, set):Float = 1;
 	public var initialZoom(default, set):Float = 1;
 	public var extraData:Map<String, Dynamic> = new Map();
@@ -103,4 +103,84 @@ class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteVars implements IZoo
 	}
 	
 	public inline function keyValueIterator():ArrayKeyValueIterator<T> { return new ArrayKeyValueIterator(members); }
+	
+	override function findMinXHelper():Float {
+		var value = Math.POSITIVE_INFINITY;
+		for (member in group.members) {
+			if (member == null) continue;
+			
+			var minX:Float;
+			if (Std.isOfType(member, ISpriteGroup)) {
+				minX = cast(member, ISpriteGroup).findMinX();
+			} else if (member.flixelType == SPRITEGROUP) {
+				minX = (cast member:FlxSpriteGroup).findMinX();
+			} else {
+				minX = member.x;
+			}
+			
+			if (minX < value) value = minX;
+		}
+		return value;
+	}
+	override function findMaxXHelper():Float {
+		var value = Math.NEGATIVE_INFINITY;
+		for (member in group.members) {
+			if (member == null) continue;
+			
+			var maxX:Float;
+			if (Std.isOfType(member, ISpriteGroup)) {
+				maxX = cast(member, ISpriteGroup).findMaxX();
+			} else if (member.flixelType == SPRITEGROUP) {
+				maxX = (cast member:FlxSpriteGroup).findMaxX();
+			} else {
+				maxX = member.x + member.width;
+			}
+			
+			if (maxX > value) value = maxX;
+		}
+		return value;
+	}
+	override function findMinYHelper():Float {
+		var value = Math.POSITIVE_INFINITY;
+		for (member in group.members) {
+			if (member == null) continue;
+			
+			var minY:Float;
+			if (Std.isOfType(member, ISpriteGroup) || Std.isOfType(member, FlxSpriteGroup)) {
+				minY = cast(member, ISpriteGroup).findMinY();
+			} else if (member.flixelType == SPRITEGROUP) {
+				minY = (cast member:FlxSpriteGroup).findMinY();
+			} else {
+				minY = member.y;
+			}
+			
+			if (minY < value) value = minY;
+		}
+		return value;
+	}
+	override function findMaxYHelper():Float {
+		var value = Math.NEGATIVE_INFINITY;
+		for (member in group.members) {
+			if (member == null) continue;
+			
+			var maxY:Float;
+			if (Std.isOfType(member, ISpriteGroup) || Std.isOfType(member, FlxSpriteGroup)) {
+				maxY = cast(member, ISpriteGroup).findMaxY();
+			} else if (member.flixelType == SPRITEGROUP) {
+				maxY = (cast member:FlxSpriteGroup).findMaxY();
+			} else {
+				maxY = member.y + member.height;
+			}
+			
+			if (maxY > value) value = maxY;
+		}
+		return value;
+	}
+}
+
+interface ISpriteGroup {
+	function findMinX():Float;
+	function findMaxX():Float;
+	function findMinY():Float;
+	function findMaxY():Float;
 }

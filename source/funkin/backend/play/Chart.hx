@@ -160,6 +160,14 @@ class Chart {
 		this.clearStackedNotes();
 		return this;
 	}
+	public function getStrumlineCount():Int {
+		var strumlines:Int = 2;
+		for (note in notes) {
+			if (strumlines < note.strumlineIndex)
+				strumlines = note.strumlineIndex;
+		}
+		return strumlines;
+	}
 	public function findSongLength() {
 		if (instLoaded) {
 			this.songLength = inst.length;
