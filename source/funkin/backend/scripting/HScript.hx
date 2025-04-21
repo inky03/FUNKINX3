@@ -82,10 +82,12 @@ class HScript extends Iris {
 	public var scriptString(default, set):String = '';
 	public var scriptPath:Null<String> = null;
 	public var scriptName:String = '';
+	public var objExists:Bool = true;
 	public var compiled:Bool = false;
 	public var failed:Bool = false;
 	public var active:Bool = true;
 	var executed:Bool = false;
+	var modParser:ModParser;
 	var modInterp:ModInterp;
 	
 	public static function init() {
@@ -97,9 +99,12 @@ class HScript extends Iris {
 	public function new(name:String, code:String, ?interceptArray:Array<Dynamic>, ?defaultVars:Map<String, Dynamic>) {
 		super('', new IrisConfig(name, false, false, []));
 		
+		parser = modParser = new ModParser();
 		interp = modInterp = new ModInterp();
 		modInterp.hscript = this;
 		preset();
+		
+		parser.allowTypes = parser.allowJSON = parser.allowMetadata = true;
 		
 		this.interceptArray = interceptArray;
 		this.defaultVars = defaultVars;
@@ -139,8 +144,8 @@ class HScript extends Iris {
 		Sys.println('$posPrefix $out');
 	}
 	
-	public function run(?func:String, ?args:Array<Any>, safe:Bool = true):Any {
-		if (!compiled || failed || !active) return null;
+	public function run(?func:String, ?args:Array<Any>, safe:Bool = true, forceRun:Bool = false):Any {
+		if (!compiled || failed || (!active && !forceRun)) return null;
 		try {
 			if (func != null) {
 				if (!executed) execute();
@@ -167,9 +172,24 @@ class HScript extends Iris {
 			return null;
 		}
 	}
+	public function kill() {
+		if (active) {
+			run('kill', true, true);
+			active = false;
+		}
+	}
+	public function revive() {
+		if (!active) {
+			run('revive', true, true);
+			active = true;
+		}
+	}
 	public override function destroy() {
-		run('destroy');
-		super.destroy();
+		if (objExists) {
+			run('destroy', true, true);
+			objExists = false;
+			super.destroy();
+		}
 	}
 	public override function preset() {
 		super.preset();

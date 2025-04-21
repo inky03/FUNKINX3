@@ -95,7 +95,7 @@ class PlayState extends FunkinState {
 		if (noteStyle == newStyle) return newStyle;
 		
 		var stylePath:String = NoteStyle.getPath(noteStyle);
-		hscripts.destroy(hscripts.find('Note Style Script ($stylePath)'));
+		hscripts.find('(notes/$stylePath) Style Script')?.kill();
 		
 		bootStyleScript(newStyle, 'notes');
 		
@@ -108,8 +108,15 @@ class PlayState extends FunkinState {
 		var stylePath:String = NoteStyle.getPath(style);
 		var styleScriptPath:Null<String> = Paths.getPath('scripts/styles/$folder/$stylePath.hx');
 		
-		if (styleScriptPath != null)
-			hscripts.loadFromFile(styleScriptPath, '($stylePath) Note Style Script');
+		if (styleScriptPath != null) {
+			var scriptName:String = '($folder/$stylePath) Style Script';
+			var foundScript:HScript = hscripts.find(scriptName);
+			if (foundScript == null) {
+				hscripts.loadFromFile(styleScriptPath, scriptName, ['style' => NoteStyle.fetch(style)]);
+			} else {
+				foundScript.revive();
+			}
+		}
 	}
 	
 	public function new(chart:Chart, simple:Bool = false) {
@@ -254,7 +261,7 @@ class PlayState extends FunkinState {
 			player2 = stage.getCharacter('dad');
 			player3 = stage.getCharacter('gf');
 			
-			focusOnCharacter((player3 ?? player1).current);
+			focusOnCharacter((player3 ?? player1)?.current);
 			
 			playerStrumline.character = player1;
 			opponentStrumline.character = player2;
@@ -452,7 +459,7 @@ class PlayState extends FunkinState {
 			FlxG.switchState(FreeplayState.new);
 			return;
 		} else if (FlxG.keys.justPressed.SEVEN) {
-			// FlxG.switchState(() -> new CharterState(chart));
+			FlxG.switchState(() -> new CharterState(chart));
 			return;
 		}
 		
@@ -832,6 +839,8 @@ class PlayState extends FunkinState {
 		if (!ratingGroup.alive) return rating;
 		
 		rating.alpha = 1;
+		rating.cameras = null;
+		rating.visible = true;
 		rating.loadTexture(ratingString);
 		rating.scale.set(scale, scale);
 		rating.setPosition(ratingGroup.x, ratingGroup.y);

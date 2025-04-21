@@ -46,6 +46,8 @@ class Lane extends FunkinSpriteGroup {
 	public var inputFilter:Note -> Bool;
 	public var noteEvent:FlxTypedSignal<NoteEvent -> Void> = new FlxTypedSignal();
 	public var extraWindow:Float = 0; // antimash mechanic
+	var queueComputeLimit:Int = 500;
+	var spawnLimit:Int = 75;
 	
 	public var receptor:Receptor;
 	public var notes:FunkinTypedSpriteGroup<Note>;
@@ -132,7 +134,8 @@ class Lane extends FunkinSpriteGroup {
 	public function updateQueue() {
 		var i:Int = 0;
 		var early:Bool;
-		var limit:Int = 50;
+		var limit:Int = queueComputeLimit;
+		
 		while (i < queue.length) {
 			var note:ChartNote = queue[i];
 			if (note == null) {
@@ -140,22 +143,24 @@ class Lane extends FunkinSpriteGroup {
 				queue.remove(note);
 				continue;
 			}
+			
 			early = (note.msTime - conductorInUse.songPosition > Math.max(spawnRadius, hitWindow));
 			if (!early && (oneWay || (note.msTime + note.msLength - conductorInUse.songPosition) >= -spawnRadius)) {
 				queue.remove(note);
 				insertNote(note);
-				limit --;
-				if (limit < 0) break;
-			} else
+				if (notes.countLiving() >= spawnLimit || --limit < 0) break;
+			} else {
 				i ++;
-			if (early && oneWay) break;
+			}
+			
+			if (early && oneWay)
+				break;
 		}
 	}
 	public function updateNotes() {
 		var i:Int = notes.length;
 		while (i > 0) {
-			i --;
-			var note:Note = notes.members[i];
+			var note:Note = notes.members[-- i];
 			if (note == null || !note.alive) continue;
 			updateNote(note);
 		}
@@ -186,6 +191,12 @@ class Lane extends FunkinSpriteGroup {
 		for (note in notes) {
 			if (note.alive && note.chartNote != null)
 				func(note.chartNote);
+		}
+	}
+	public function forEachActiveNote(func:Note -> Void) {
+		for (note in notes) {
+			if (note.alive)
+				func(note);
 		}
 	}
 	
@@ -249,7 +260,7 @@ class Lane extends FunkinSpriteGroup {
 		var splash:NoteSplash = noteSplashes.recycle(NoteSplash, () -> new NoteSplash(noteData, style), true);
 		
 		noteSplashes.moveToTop(splash);
-		splash.style = note?.style ?? style;
+		splash.reload(note?.style ?? style);
 		splash.popOnReceptor(receptor);
 		splash.alpha = alpha * splash.defaultAlpha;
 		splash.scale.set(scale.x * splash.defaultScale, scale.y * splash.defaultScale);
@@ -260,7 +271,7 @@ class Lane extends FunkinSpriteGroup {
 		var spark:NoteSpark = noteSparks.recycle(NoteSpark, () -> new NoteSpark(noteData, style), true);
 		
 		noteSparks.moveToTop(spark);
-		spark.style = note?.style ?? style;
+		spark.reload(note?.style ?? style);
 		spark.heldNote = note;
 		spark.popOnReceptor(receptor);
 		spark.alpha = alpha * spark.defaultAlpha;
@@ -401,8 +412,9 @@ class Lane extends FunkinSpriteGroup {
 	
 	function set_style(newStyle:NoteStyle):NoteStyle {
 		if (style == newStyle) return newStyle;
+		style = newStyle;
 		loadStyle(newStyle);
-		return style = newStyle;
+		return newStyle;
 	}
 	public function loadStyle(newStyle:NoteStyleAsset) {
 		var style:NoteStyle = NoteStyle.fetch(newStyle);
@@ -511,19 +523,18 @@ class Receptor extends FunkinSprite {
 	
 	function set_style(newStyle:NoteStyle) {
 		if (style == newStyle) return newStyle;
+		style = newStyle;
 		loadStyle(newStyle);
-		return style = newStyle;
+		return newStyle;
 	}
 	public function loadStyle(newStyle:NoteStyleAsset) {
 		var style:NoteStyle = NoteStyle.fetch(newStyle);
 		
-		updateRGBShader = !(style?.data.general.disableRGB ?? false);
-		
 		NoteStyleUtil.loadNoteStyleAnimations(this, style?.data?.receptors, style?.getDirectionName(noteData));
+		updateRGBShader = !(style?.data.general.disableRGB ?? false);
+		defaultScale = style?.data?.receptors?.scale ?? 1;
 		playAnimation('static', true);
 		updateHitbox();
-		
-		defaultScale = style?.data?.receptors?.scale ?? 1;
 	}
 	
 	public function set_rgbEnabled(newE:Bool) {
@@ -577,8 +588,9 @@ class NoteSplash extends FunkinSprite {
 	
 	function set_style(newStyle:NoteStyle) {
 		if (style == newStyle) return newStyle;
+		style = newStyle;
 		loadStyle(newStyle);
-		return style = newStyle;
+		return newStyle;
 	}
 	public function loadStyle(newStyle:NoteStyleAsset) {
 		var style:NoteStyle = NoteStyle.fetch(newStyle);
@@ -593,6 +605,11 @@ class NoteSplash extends FunkinSprite {
 		
 		defaultScale = asset?.scale ?? 1;
 		defaultAlpha = asset?.alpha ?? 1;
+	}
+	public function reload(style:NoteStyle) {
+		blend = NORMAL;
+		
+		this.style = style;
 	}
 	
 	public function popOnReceptor(receptor:Receptor) { //lol
@@ -683,18 +700,24 @@ class NoteSpark extends NoteSplash {
 	}
 	
 	public override function loadStyle(newStyle:NoteStyleAsset) {
+		var oldAnim:String = currentAnimation;
+		var oldFrame:Float = anim.curFrameFloat;
 		var style:NoteStyle = NoteStyle.fetch(newStyle);
 		
 		updateRGBShader = !(style?.data.general.disableRGB ?? false);
 		asset = style?.data.noteCovers;
 		
 		NoteStyleUtil.loadNoteStyleAnimations(this, asset, style?.getDirectionName(noteData));
-		playAnimation('start', true);
-		updateHitbox();
-		offset.set(frameWidth * .5, frameHeight * .5);
-		
 		defaultScale = asset?.scale ?? 1;
 		defaultAlpha = asset?.alpha ?? 1;
+		playAnimation('start', true);
+		updateHitbox();
+		
+		offset.set(frameWidth * .5, frameHeight * .5);
+		if (animationExists(oldAnim)) {
+			playAnimation(oldAnim, true);
+			anim.curFrameFloat = oldFrame;
+		}
 	}
 	
 	public override function pop():NoteSpark {

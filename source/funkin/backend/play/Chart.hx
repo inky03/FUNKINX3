@@ -177,7 +177,12 @@ class Chart {
 		}
 		return this.songLength;
 	}
-	public function clearStackedNotes(minDifference:Float = 6) {
+	public function clearStackedNotes(minDifference:Float = 6, suicide:Bool = false) {
+		if (notes.length >= 10000 && !suicide) {
+			Log.warning('chart contains TOO MANY notes (${notes.length} / 10000), won\'t check for note stacking');
+			return;
+		}
+		
 		var previousNotes:Array<Array<ChartNote>> = [];
 		var caught:Int = 0;
 		var i:Int = notes.length;

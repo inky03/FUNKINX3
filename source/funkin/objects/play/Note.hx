@@ -192,6 +192,7 @@ class Note extends FunkinSprite {
 	}
 	
 	public function reload(?style:NoteStyle):Void {
+		clipDistance = 0;
 		healthLoss = 6.0 / 100;
 		healthGain = 1.5 / 100;
 		healthGainPerSecond = 7.5 / 100;
@@ -201,7 +202,7 @@ class Note extends FunkinSprite {
 		spriteOffset.set();
 		tailOffset.set();
 		multAlpha = 1;
-		clipDistance = 0;
+		blend = NORMAL;
 		
 		this.style = style;
 		if (tail != null)
@@ -251,27 +252,31 @@ class Note extends FunkinSprite {
 	function set_style(newStyle:NoteStyle) {
 		if (style == newStyle) return newStyle;
 		
+		style = newStyle;
 		loadStyle(newStyle);
 		if (tail != null)
 			tail.style = newStyle;
 		
-		return style = newStyle;
+		return newStyle;
 	}
 	public function set_rgbEnabled(newE:Bool) {
 		shader = (newE ? rgbShader.shader : null);
 		return rgbEnabled = newE;
 	}
 	public function loadStyle(newStyle:NoteStyleAsset) {
+		var oldScale:Float = defaultScale;
 		var style:NoteStyle = NoteStyle.fetch(newStyle);
 		var asset:NoteStyleAssetData = style?.data.notes;
 		
 		NoteStyleUtil.loadNoteStyleAnimations(this, asset, style?.getDirectionName(laneIndex));
-		playAnimation('hit', true);
-		updateHitbox();
-		
 		defaultScale = asset?.scale ?? 1;
 		defaultAlpha = asset?.alpha ?? 1;
+		scale.x *= (defaultScale / oldScale);
+		scale.y *= (defaultScale / oldScale);
+		
 		reloadAnimShader('hit', newStyle);
+		playAnimation('hit', true);
+		updateHitbox();
 	}
 	
 	public static function distanceToMS(distance:Float, scrollSpeed:Float)
@@ -402,23 +407,27 @@ class NoteTail extends FunkinSprite {
 	
 	function set_style(newStyle:NoteStyle) {
 		if (style == newStyle) return newStyle;
+		style = newStyle;
 		loadStyle(newStyle);
-		return style = newStyle;
+		return newStyle;
 	}
 	public function set_rgbEnabled(newE:Bool) {
 		shader = (newE ? rgbShader.shader : null);
 		return rgbEnabled = newE;
 	}
 	public function loadStyle(newStyle:NoteStyleAsset) {
+		var oldScale:Float = defaultScale;
 		var style:NoteStyle = NoteStyle.fetch(newStyle);
 		var asset:NoteStyleAssetData = style?.data.holds;
 		
 		NoteStyleUtil.loadNoteStyleAnimations(this, asset, style?.getDirectionName(laneIndex));
-		playAnimation('hold', true);
-		updateHitbox();
-		
 		defaultScale = asset?.scale ?? 1;
 		defaultAlpha = asset?.alpha ?? 1;
+		scale.x *= (defaultScale / oldScale);
+		scale.y *= (defaultScale / oldScale);
+		
+		playAnimation('hold', true);
+		updateHitbox();
 	}
 	
 	// this is kinda mediocre tbh

@@ -507,7 +507,7 @@ class FunkinSpriteAnimHandler implements IFlxDestroyable {
 	inline function get_finished():Bool { return (isAnimate ? animateC.finished : curAnim?.finished) ?? false; }
 	inline function get_reversed():Bool { return (isAnimate ? animateC.reversed : curAnim?.reversed) ?? false; }
 	inline function get_timeScale():Float { return (isAnimate ? animateC.timeScale : spriteC?.timeScale) ?? 1; }
-	inline function get_curFrameFloat():Float {
+	function get_curFrameFloat():Float {
 		@:privateAccess {
 			if (isAnimate) {
 				if (animateC == null) return 0;
@@ -519,18 +519,28 @@ class FunkinSpriteAnimHandler implements IFlxDestroyable {
 			}
 		}
 	}
-	inline function set_curFrameFloat(newFrame:Float):Float {
+	function set_curFrameFloat(newFrame:Float):Float {
 		function fract(n:Float):Float { return n - Math.floor(n); }
 		
 		@:privateAccess {
 			if (isAnimate) {
 				if (animateC == null) return newFrame;
-				animateC.curFrame = Math.floor(newFrame);
-				animateC._tick = animateC.frameDelay * fract(newFrame);
+				if (newFrame < animateC.length) {
+					animateC.curFrame = Math.floor(newFrame);
+					animateC._tick = animateC.frameDelay * fract(newFrame);
+				} else {
+					animateC.curFrame = animateC.length;
+					animateC._tick = animateC.frameDelay;
+				}
 			} else {
 				if (curAnim == null) return newFrame;
-				curAnim.curFrame = Math.floor(newFrame);
-				curAnim._frameTimer = curAnim.getCurrentFrameDuration() * fract(newFrame);
+				if (newFrame < curAnim.numFrames) {
+					curAnim.curFrame = Math.floor(newFrame);
+					curAnim._frameTimer = curAnim.getCurrentFrameDuration() * fract(newFrame);
+				} else {
+					curAnim.curFrame = curAnim.numFrames;
+					curAnim._frameTimer = curAnim.getCurrentFrameDuration();
+				}
 			}
 		}
 		return newFrame;

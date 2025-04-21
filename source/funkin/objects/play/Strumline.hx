@@ -197,6 +197,10 @@ class Strumline extends FunkinSpriteGroup {
 		for (lane in lanes)
 			lane.forEachNote(func, includeQueued);
 	}
+	public function forEachActiveNote(func:Note -> Void) {
+		for (lane in lanes)
+			lane.forEachActiveNote(func);
+	}
 	public function getAllNotes() {
 		var notes:Array<ChartNote> = [];
 		for (lane in lanes) {

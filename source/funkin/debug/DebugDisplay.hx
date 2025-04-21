@@ -107,7 +107,7 @@ class PerfCounter extends TextField {
 		while (times[0] < currentTime - 1000) times.shift();
 		
 		currentFPS = Math.round((oldFPS + times.length) / 2);
-		mem = cast(openfl.system.System.totalMemory, UInt);
+		mem = getMemoryUsed();
 		
 		if (oldFPS != currentFPS || oldMem != mem) {
 			maxMem = Math.max(mem, maxMem);
@@ -122,5 +122,13 @@ class PerfCounter extends TextField {
 			curUnit++;
 		}
 		return FlxMath.roundDecimal(bytes, precision) + byteUnits[curUnit];
+	}
+	
+	public static function getMemoryUsed():#if cpp Float #else Int #end {
+		#if cpp
+		return cpp.vm.Gc.memInfo64(cpp.vm.Gc.MEM_INFO_CURRENT);
+		#else
+		return openfl.system.System.totalMemory;
+		#end
 	}
 }

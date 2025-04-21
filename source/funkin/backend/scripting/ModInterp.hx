@@ -3,10 +3,11 @@ package funkin.backend.scripting;
 import crowplexus.iris.Iris;
 import crowplexus.hscript.Expr;
 import crowplexus.hscript.Tools;
+import crowplexus.hscript.Interp;
 
 import funkin.backend.FunkinSprite;
 
-class ModInterp extends crowplexus.hscript.Interp {
+class ModInterp extends Interp {
 	public var hscript:HScript;
 	
 	override function setVar(name:String, v:Dynamic) {
@@ -168,6 +169,82 @@ class ModInterp extends crowplexus.hscript.Interp {
 		switch (eDef) {
 			case EImport(v, as):
 				return doImport(v, as);
+			case EFunction(params, fexpr, name, _):
+				var capturedLocals = duplicate(locals);
+				var minParams:Int = 0;
+				var me = this;
+				for (p in params) {
+					if (!p.opt)
+						minParams ++;
+				}
+				
+				var f = function(args: Array<Dynamic>) {
+					if (((args == null) ? 0 : args.length) != params.length) {
+						if (args.length < minParams) {
+							var str = "Invalid number of parameters. Got " + args.length + ", required " + minParams;
+							if (name != null)
+								str += " for function '" + name + "'";
+							error(ECustom(str));
+						}
+						// make sure mandatory args are forced
+						var args2 = [];
+						var extraParams = args.length - minParams;
+						var pos = 0;
+						for (p in params) {
+							if (p.opt) {
+								if (extraParams > 0) {
+									args2.push(args[pos++]);
+									extraParams--;
+								} else {
+									args2.push(expr(p.value));
+								}
+							} else {
+								args2.push(args[pos++]);
+							}
+						}
+						args = args2;
+					}
+					var old = me.locals, depth = me.depth;
+					me.depth ++;
+					me.locals = me.duplicate(capturedLocals);
+					for (i in 0...params.length)
+						me.locals.set(params[i].name, {r: args[i], const: false});
+					var r = null;
+					var oldDecl = declared.length;
+					if (inTry)
+						try {
+							r = me.exprReturn(fexpr);
+						} catch (e:Dynamic) {
+							me.locals = old;
+							me.depth = depth;
+							#if neko
+							neko.Lib.rethrow(e);
+							#else
+							throw e;
+							#end
+						}
+					else {
+						r = me.exprReturn(fexpr);
+					}
+					restore(oldDecl);
+					me.locals = old;
+					me.depth = depth;
+					return r;
+				};
+				var f = Reflect.makeVarArgs(f);
+				if (name != null) {
+					if (depth == 0) {
+						// global function
+						variables.set(name, f);
+					} else {
+						// function-in-function is a local function
+						declared.push({n: name, old: locals.get(name)});
+						var ref:LocalVar = {r: f, const: false};
+						locals.set(name, ref);
+						capturedLocals.set(name, ref); // allow self-recursion
+					}
+				}
+				return f;
 			default:
 		}
 		return super.expr(e);

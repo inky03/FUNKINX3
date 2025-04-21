@@ -146,7 +146,7 @@ class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteGroup implements ISp
 			if (member == null) continue;
 			
 			var minY:Float;
-			if (Std.isOfType(member, ISpriteGroup) || Std.isOfType(member, FlxSpriteGroup)) {
+			if (Std.isOfType(member, ISpriteGroup)) {
 				minY = cast(member, ISpriteGroup).findMinY();
 			} else if (member.flixelType == SPRITEGROUP) {
 				minY = (cast member:FlxSpriteGroup).findMinY();
@@ -164,7 +164,7 @@ class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteGroup implements ISp
 			if (member == null) continue;
 			
 			var maxY:Float;
-			if (Std.isOfType(member, ISpriteGroup) || Std.isOfType(member, FlxSpriteGroup)) {
+			if (Std.isOfType(member, ISpriteGroup)) {
 				maxY = cast(member, ISpriteGroup).findMaxY();
 			} else if (member.flixelType == SPRITEGROUP) {
 				maxY = (cast member:FlxSpriteGroup).findMaxY();

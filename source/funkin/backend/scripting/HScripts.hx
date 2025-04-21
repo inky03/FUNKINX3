@@ -14,15 +14,17 @@ class HScripts { // todo: make this a flxtypedgroup?
 		this.interceptArray = interceptArray;
 		this.defaultVars = defaultVars;
 	}
-	public function find(test:HScriptAsset) {
+	public function find(test:HScriptAsset):HScript {
 		if (Std.isOfType(test, HScript)) {
 			return activeScripts.contains(test) ? test : null;
 		} else {
 			return activeScripts.find((hscript:HScript) -> hscript.scriptName == test);
 		}
 	}
-	public function exists(test:HScriptAsset) return (find(test) != null);
-	public function findFromSuffix(test:String) {
+	public function exists(test:HScriptAsset):Bool {
+		return (find(test) != null);
+	}
+	public function findFromSuffix(test:String):HScript {
 		return activeScripts.find((hscript:HScript) -> hscript.scriptName.endsWith(test));
 	}
 	public function add(hscript:HScript):Void {
@@ -34,14 +36,21 @@ class HScripts { // todo: make this a flxtypedgroup?
 			activeScripts.remove(hscript);
 		hscript.destroy();
 	}
+	public function kill():Void {
+		for (hscript in activeScripts)
+			hscript.kill();
+	}
+	public function revive():Void {
+		for (hscript in activeScripts)
+			hscript.revive();
+	}
 	public function destroyAll():Void {
 		while (activeScripts.length > 0)
 			destroy(activeScripts[0]);
 	}
 	public function set(field:String, value:Any):Void {
-		for (hscript in activeScripts) {
+		for (hscript in activeScripts)
 			hscript.set(field, value);
-		}
 	}
 	public function run(?name:String, ?args:Array<Any>):Any {
 		var returnLocked:Bool = false;
@@ -63,7 +72,7 @@ class HScripts { // todo: make this a flxtypedgroup?
 		return returnValue;
 	}
 	
-	function getScriptName(name:String, unique:Bool = false, warn:Bool = false) {
+	function getScriptName(name:String, unique:Bool = false, warn:Bool = false):String {
 		var found:HScript = find(name);
 		if (found != null && unique) {
 			var n:Int = 1;
@@ -92,7 +101,7 @@ class HScripts { // todo: make this a flxtypedgroup?
 			return null;
 		}
 	}
-	public function loadFromFile(file:String, unique:Bool = false, ?newName:String):Null<HScript> {
+	public function loadFromFile(file:String, unique:Bool = false, ?newName:String, ?defaultVars:Map<String, Dynamic>):Null<HScript> {
 		if (exists(newName ?? file) && !unique) {
 			Log.warning('hscript @ "$file" is already active!');
 			return find(file);
@@ -107,7 +116,13 @@ class HScripts { // todo: make this a flxtypedgroup?
 			code = '';
 		}
 		
-		var hs:HScript = new HScript(name, code, interceptArray, defaultVars);
+		var defaultestVars:Map<String, Dynamic> = this.defaultVars;
+		if (defaultVars != null) {
+			defaultestVars = defaultVars.copy();
+			for (k => v in this.defaultVars)
+				defaultestVars.set(k, v);
+		}
+		var hs:HScript = new HScript(name, code, interceptArray, defaultestVars);
 		if (hs.compiled) {
 			Log.info('hscript @ "$file" loaded successfully!');
 			hs.run('create');
@@ -118,7 +133,7 @@ class HScripts { // todo: make this a flxtypedgroup?
 			return null;
 		}
 	}
-	public function loadFromFolder(path:String, allMods:Bool = false):Void {
+	public function loadFromFolder(path:String, allMods:Bool = false, ?defaultVars:Map<String, Dynamic>):Void {
 		var dirList:Array<String> = [Paths.sharedPath(path), Paths.globalModPath(path)];
 		
 		for (mod in Mods.getLocal(allMods)) {
@@ -129,17 +144,17 @@ class HScripts { // todo: make this a flxtypedgroup?
 				Log.minor('loading hscripts @ "$dir"');
 				for (file in FileSystem.readDirectory(dir)) {
 					if (!file.endsWith('.hx')) continue;
-					loadFromFile('$dir/$file');
+					loadFromFile('$dir/$file', defaultVars);
 				}
 			}
 		}
 	}
-	public function loadFromPaths(basePath:String, allMods:Bool = false, unique:Bool = false):Bool {
+	public function loadFromPaths(basePath:String, allMods:Bool = false, unique:Bool = false, ?defaultVars:Map<String, Dynamic>):Bool {
 		var found:Bool = false;
 		for (path in Paths.getPaths(basePath, true, allMods)) {
 			var scriptFile:String = path.path;
 			if (exists(scriptFile) && !unique) continue;
-			loadFromFile(scriptFile, unique);
+			loadFromFile(scriptFile, unique, defaultVars);
 			found = true;
 		}
 		return found;

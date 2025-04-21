@@ -260,7 +260,7 @@ class FreeplaySongText extends FlxSpriteGroup {
 	}
 }
 
-class FreeplayCapsule extends FlxSpriteGroup {
+class FreeplayCapsule extends FunkinSpriteGroup {
 	public var capsule:FunkinSprite;
 	public var bpmText:FunkinSprite;
 	public var weekType:FunkinSprite;

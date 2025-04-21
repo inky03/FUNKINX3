@@ -245,12 +245,13 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 		newChara.y += newChara.height * -1 + newChara.originOffset.y;
 		newChara.stageCameraOffset.copyFrom(off);
 		newChara.conductorInUse = conductorInUse;
+		newChara.alpha = invisible;
 		newChara.bop = bop;
 		off.put();
+		add(newChara);
 		newChara.startScripts();
 		
-		newChara.alpha = invisible;
-		return add(newChara);
+		return newChara;
 	}
 	public function unloadCharacter(?chara:CharacterOrString) {
 		var toDestroy:Character;

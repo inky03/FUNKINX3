@@ -30,45 +30,45 @@ class Stage extends FunkinSpriteGroup {
 	public function setup(?stageId:String, ?chartData:Chart) {
 		// right now only works with vslice stage jsons
 		chartData ??= chart;
-        if (stageId != null) {
-    		Log.minor('loading stage "$stageId"');
+		if (stageId != null) {
+			Log.minor('loading stage "$stageId"');
 
-    		var jsonPath:String = 'data/stages/$stageId.json';
-    		if (Paths.exists(jsonPath)) {
-    			var time:Float = Sys.time();
-    			try {
-    				var content:String = Paths.text(jsonPath);
-    				var jsonData:Dynamic = TJSON.parse(content);
-    				loadModernStageData(jsonData);
-    				json = jsonData;
-    				format = MODERN;
-    				stageValid = true;
-    				hasContent = true;
-    				Log.info('stage loaded successfully! (${FlxMath.roundDecimal(Sys.time() - time, 3)}s)');
-    			} catch (e:haxe.Exception) {
-    				format = NONE;
-    				Log.error('error while loading stage "$stageId"... -> ${e.details()}');
-    			}
-    		} else {
-    			Log.warning('stage "$stageId" not found...');
+			var jsonPath:String = 'data/stages/$stageId.json';
+			if (Paths.exists(jsonPath)) {
+				var time:Float = Sys.time();
+				try {
+					var content:String = Paths.text(jsonPath);
+					var jsonData:Dynamic = TJSON.parse(content);
+					loadModernStageData(jsonData);
+					json = jsonData;
+					format = MODERN;
+					stageValid = true;
+					hasContent = true;
+					Log.info('stage loaded successfully! (${FlxMath.roundDecimal(Sys.time() - time, 3)}s)');
+				} catch (e:haxe.Exception) {
+					format = NONE;
+					Log.error('error while loading stage "$stageId"... -> ${e.details()}');
+				}
+			} else {
+				Log.warning('stage "$stageId" not found...');
 				Log.minor('verify path:');
 				Log.minor('- $jsonPath');
-    		}
-        }
-        
-        // loads hscript file
-        var state:FunkinState = cast(FlxG.state, FunkinState);
-        var scriptPath:String = 'scripts/stages/$stageId.hx';
-        if (Paths.exists(scriptPath)) {
-            if (state != null)
-            	state.hscripts.loadFromPaths(scriptPath);
-            hasContent = true;
-        }
-        
-        if (state != null)
-        	state.hscripts.run('setupStage', [stageId, this]);
-        
-        if (!hasContent) {
+			}
+		}
+		
+		// loads hscript file
+		var state:FunkinState = cast(FlxG.state, FunkinState);
+		var scriptPath:String = 'scripts/stages/$stageId.hx';
+		if (Paths.exists(scriptPath)) {
+				if (state != null)
+					state.hscripts.loadFromPaths(scriptPath);
+				hasContent = true;
+		}
+		
+		if (state != null)
+			state.hscripts.run('setupStage', [stageId, this]);
+		
+		if (!stageValid) {
 			Log.warning('no stage content (json or script): loading fallback stage');
 			loadFallback();
 		}
@@ -165,8 +165,8 @@ class Stage extends FunkinSpriteGroup {
 			add(charaGroup);
 			charaGroup.zIndex = chara.zIndex;
 			charaGroup.stageCameraOffset.set(chara.cameraOffsets[0], chara.cameraOffsets[1]);
-            if (chara.scale != null) charaGroup.scale.set(chara.scale, chara.scale);
-            
+			if (chara.scale != null) charaGroup.scale.set(chara.scale, chara.scale);
+						
 			this.characters[name] = charaGroup;
 		}
 	}

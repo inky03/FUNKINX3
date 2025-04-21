@@ -242,6 +242,14 @@ class Character extends FunkinSprite implements ICharacter {
 		
 		super.draw();
 	}
+	public override function kill() {
+		hscripts.kill();
+		super.kill();
+	}
+	public override function revive() {
+		hscripts.revive();
+		super.revive();
+	}
 	public override function destroy() {
 		hscripts.destroyAll();
 		super.destroy();
@@ -330,10 +338,13 @@ class Character extends FunkinSprite implements ICharacter {
 		if (!forced && (animReset > 0 || bopFrequency <= 0 || !bop || specialAnim || held))
 			return false;
 		
-		if (sway) {
-			playAnimation((beat % 2 == 0 ? 'danceLeft' : 'danceRight') + idleSuffix, forced);
-		} else if (forced || beat % bopFrequency == 0) {
-			playAnimation('idle$idleSuffix', forced);
+		if (forced || beat % bopFrequency == 0) {
+			if (sway) {
+				var swayLeft:Bool = (beat % (bopFrequency * 2) == 0);
+				playAnimation((swayLeft ? 'danceLeft' : 'danceRight') + idleSuffix, forced);
+			} else {
+				playAnimation('idle$idleSuffix', forced);
+			}
 		}
 		
 		return true;
