@@ -85,6 +85,7 @@ class PlayState extends FunkinState {
 	public var godmode:Bool;
 	public var downscroll:Bool;
 	public var middlescroll:Bool;
+	public var audioOffset:Float;
 	
 	public var songStarted:Bool = false;
 	public var songFinished:Bool = false;
@@ -156,6 +157,7 @@ class PlayState extends FunkinState {
 		
 		hitsound = FunkinSound.load(Paths.sound('gameplay/hitsounds/hitsound'), .7);
 		music = new FunkinSoundGroup();
+		audioOffset = chart.audioOffset;
 		songName = chart.name;
 		
 		@:privateAccess FlxG.cameras.defaults.resize(0);
@@ -359,6 +361,7 @@ class PlayState extends FunkinState {
 			Paths.sound('gameplay/hitsounds/miss$i');
 		Paths.sound('gameplay/hitsounds/hitsoundTail');
 		Paths.sound('gameplay/hitsounds/hitsoundFail');
+		conductorInUse.audioOffset = audioOffset;
 		
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
@@ -478,7 +481,7 @@ class PlayState extends FunkinState {
 				for (event in chart.events)
 					events.push(event);
 				music.pause();
-				music.time = 0;
+				music.time = -audioOffset;
 				resetConductor();
 				beginCountdown();
 				resetScore();
@@ -603,8 +606,9 @@ class PlayState extends FunkinState {
 	public function syncMusic(forceSongpos:Bool = false, forceTrackTime:Bool = false) {
 		var syncBase:FlxSound = conductorInUse.syncTracker;
 		if (syncBase != null && syncBase.playing && !conductorInUse.paused) {
-			if ((forceSongpos && conductorInUse.songPosition < syncBase.time) || Math.abs(syncBase.time - conductorInUse.songPosition) > 75)
-				conductorInUse.songPosition = syncBase.time;
+			var offsetTime:Float = syncBase.time + conductorInUse.audioOffset;
+			if ((forceSongpos && conductorInUse.songPosition < offsetTime) || Math.abs(syncBase.time - offsetTime) > 75)
+				conductorInUse.songPosition = offsetTime;
 			if (forceTrackTime) {
 				if (Math.abs(music.getDisparity(syncBase.time)) > 75)
 					music.syncToBase();
@@ -633,7 +637,7 @@ class PlayState extends FunkinState {
 			return;
 		
 		if (music.playing) {
-			var beginTime:Float = Date.now().getTime() - music.time;
+			var beginTime:Float = Date.now().getTime() - music.time + audioOffset;
 			var endTime:Float = beginTime + chart.songLength;
 			DiscordRPC.presence.endTimestamp = Std.int(endTime * .001);
 			DiscordRPC.presence.startTimestamp = Std.int(beginTime * .001);

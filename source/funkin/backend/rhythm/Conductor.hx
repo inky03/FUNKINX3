@@ -28,6 +28,7 @@ class Conductor {
 	
 	public var metronome:Metronome;
 	public var syncTracker:FlxSound;
+	public var audioOffset:Float = 0;
 	public var maxDisparity:Float = 33.34;
 	public static var global(default, never):Conductor = new Conductor();
 	
@@ -44,8 +45,9 @@ class Conductor {
 		songPosition += Math.min(elapsedMS, 250) * timeScale;
 		if (syncTracker != null) {
 			timeScale = syncTracker.pitch;
-			if (syncTracker.playing && Math.abs(metronome.ms - syncTracker.time) > maxDisparity * timeScale)
-				songPosition = syncTracker.time;
+			var offsetTime:Float = syncTracker.time + audioOffset;
+			if (syncTracker.playing && Math.abs(metronome.ms - offsetTime) > maxDisparity * timeScale)
+				songPosition = offsetTime;
 		}
 		
 		if (dispatchEvents) {

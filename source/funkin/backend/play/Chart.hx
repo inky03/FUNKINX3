@@ -51,6 +51,7 @@ class Chart {
 	public var instLoaded:Bool;
 	public var inst:FunkinSound;
 	public var songLength:Float = 0;
+	public var audioOffset:Float = 0;
 	public var audioSuffix:String = '';
 
 	public var player1:String = 'bf';
@@ -275,6 +276,7 @@ class Chart {
 			}
 			song.name = song.json.song;
 			song.initialBpm = song.json.bpm;
+			song.audioOffset = song.json.offset ?? 0;
 			song.tempoChanges = [new TempoChange(-4, song.initialBpm, new TimeSignature())];
 			song.scrollSpeed = songSpeed;
 			

@@ -53,7 +53,7 @@ import funkin.backend.scripting.HScript;
 				countdownSprite = game.popCountdown('gameplay/funkin/$countdown');
 			
 			case SONG_START:
-				game.music.play(true);
+				game.music.play(true, -game.audioOffset);
 				game.syncMusic(true, true);
 				game.songStarted = true;
 			case SONG_FINISH:
