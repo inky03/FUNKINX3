@@ -107,8 +107,7 @@ class FunkinCamera extends FlxCamera {
 			target.getMidpoint(_point);
 			_point.addPoint(targetOffset);
 			_scrollTarget.set(_point.x - width * 0.5, _point.y - height * 0.5);
-		}
-		else {
+		} else {
 			var edge:Float;
 			var targetX:Float = target.x + targetOffset.x;
 			var targetY:Float = target.y + targetOffset.y;
@@ -126,9 +125,7 @@ class FunkinCamera extends FlxCamera {
 				
 				// without this we see weird behavior when switching to SCREEN_BY_SCREEN at arbitrary scroll positions
 				bindScrollPos(_scrollTarget);
-			}
-			else
-			{
+			} else {
 				edge = targetX - deadzone.x;
 				if (_scrollTarget.x > edge)
 					_scrollTarget.x = edge;
