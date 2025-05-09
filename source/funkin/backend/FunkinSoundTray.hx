@@ -50,7 +50,7 @@ class FunkinSoundTray extends flixel.system.ui.FlxSoundTray {
 	public function reloadSoundtrayGraphics() {
 		bg.bitmapData = Paths.bmd('soundtray/volumebox');
 		bgBar.bitmapData = Paths.bmd('soundtray/bars_bg');
-		_width = bg.bitmapData.width;
+		// _width = bg.bitmapData.width;
 		for (i => bar in _bars) {
 			var bmd:Null<BitmapData> = Paths.bmd('soundtray/bars_${i + 1}');
 			bar.x = ((bg.bitmapData?.width ?? 0) - (bmd?.width ?? 0)) * .5;

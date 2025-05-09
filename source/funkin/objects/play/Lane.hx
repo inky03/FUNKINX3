@@ -326,7 +326,7 @@ class Lane extends FunkinSpriteGroup {
 		queue.resize(0);
 	}
 	public function updateNote(note:Note) {
-		note.followLane(this, scrollSpeed);
+		note.followLane(this);
 		
 		if (note.ignore)
 			return;

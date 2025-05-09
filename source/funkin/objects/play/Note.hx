@@ -7,9 +7,11 @@ import funkin.backend.rhythm.Event;
 import funkin.backend.FunkinSprite;
 import funkin.backend.play.NoteStyle;
 import funkin.objects.CharacterGroup;
+import funkin.backend.FunkinStrip;
 
 import flixel.math.FlxMatrix;
 import flixel.graphics.frames.FlxFrame;
+import flixel.graphics.tile.FlxDrawTrianglesItem.DrawData;
 
 using funkin.backend.play.NoteStyle.NoteStyleUtil;
 
@@ -109,6 +111,8 @@ class Note extends FunkinSprite {
 	public var multAlpha:Float = 1;
 	public var ignore:Bool = false;
 	
+	public var isHoldTail(default, null):Bool = false;
+	
 	public var laneIndex:Int = 0;
 	public var strumlineIndex:Int = 0;
 	public var style(default, set):NoteStyle;
@@ -125,18 +129,24 @@ class Note extends FunkinSprite {
 	public var beatLength(default, set):Float = 0;
 	public var isHoldNote(default, null):Bool = false;
 	
+	public var getScrollDistance:(note:Note, lane:Lane, distance:Float) -> Float = null;
+	public var getScrollPosition:(note:Note, lane:Lane, distance:Float, ?point:FlxPoint) -> FlxPoint = null;
+	
 	function get_noteData():Int { return laneIndex; }
 	function set_noteData(value:Int):Int { return laneIndex = value; }
 	function get_player():Bool { return (strumlineIndex == 0); }
 	function set_noteKind(newKind:String):String { return kind = newKind; }
 	function get_noteKind():String { return kind; }
 	
+	var _scrollPoint:FlxPoint = FlxPoint.get();
+	
 	public override function destroy():Void {
+		_scrollPoint.put();
 		tailOffset.put();
-		if (tail != null)
-			tail.destroy();
-		super.destroy();
+		tail?.destroy();
 		tail = null;
+		
+		super.destroy();
 	}
 	public override function draw():Void {
 		if (isHoldNote && tail != null)
@@ -166,22 +176,26 @@ class Note extends FunkinSprite {
 		this.chartNote = songNote;
 	}
 	public function set_chartNote(songNote:ChartNote):ChartNote {
+		chartNote = songNote;
+		
 		if (songNote != null) {
 			this.kind = songNote.kind;
 			this.msTime = songNote.msTime;
 			this.laneIndex = songNote.laneIndex;
 			this.strumlineIndex = songNote.strumlineIndex;
-			this.msLength = songNote.msLength;
+			this.msLength = Math.max(songNote.msLength, 0);
 			
 			this.extraData.clear();
 			if (songNote.extraData != null) {
 				for (k => v in songNote.extraData)
 					setVar(k, v);
 			}
+			
+			if (tail != null)
+				tail.chartNote = songNote;
 		}
-		this.msLength = Math.max(this.msLength, 0);
 		
-		return this.chartNote = songNote;
+		return songNote;
 	}
 	public function updateChartNote():Void {
 		chartNote.kind = kind;
@@ -205,13 +219,17 @@ class Note extends FunkinSprite {
 		blend = NORMAL;
 		
 		this.style = style;
-		if (tail != null)
-			tail.reload(style);
+		tail?.reload(style);
 	}
 	public function updateTail():Void {
 		isHoldNote = (msLength > 0);
-		if (tail == null && isHoldNote)
-			tail = new NoteTail(this);
+		if (isHoldNote) {
+			if (tail == null) {
+				tail = new NoteTail(this);
+			} else {
+				tail.reloadNote(this);
+			}
+		}
 	}
 	public function toChartNote():ChartNote {
 		return chartNote ?? {laneIndex: laneIndex, msTime: msTime, kind: kind, msLength: msLength, strumlineIndex: strumlineIndex};
@@ -283,18 +301,23 @@ class Note extends FunkinSprite {
 		return distance / (.45 * scrollSpeed);
 	public static function msToDistance(ms:Float, scrollSpeed:Float)
 		return ms * (.45 * scrollSpeed);
-	public dynamic function followLane(lane:Lane, scrollSpeed:Float) {
+	public function followLane(lane:Lane) {
+		var timeDiff:Float = msTime - conductorInUse.songPosition;
 		var receptor:Receptor = lane.receptor;
-		var speed:Float = scrollSpeed * scrollMultiplier;
-		var dir:Float = lane.direction + directionOffset;
 		
-		scrollDistance = msToDistance(msTime - conductorInUse.songPosition, speed);
+		var scrollDistance:Float;
+		var scrollPosition:FlxPoint;
+		try {
+			scrollDistance = (getScrollDistance ?? getScrollDistanceGeneric)(this, lane, timeDiff);
+			scrollPosition = (getScrollPosition ?? getScrollPositionGeneric)(this, lane, scrollDistance);
+		} catch (e:haxe.Exception) {
+			Log.error('error while setting scroll distance or position -> ${e.details()}');
+			scrollDistance = getScrollDistanceGeneric(this, lane, timeDiff);
+			scrollPosition = getScrollPositionGeneric(this, lane, scrollDistance);
+		}
 		
-		var xP:Float = 0;
-		var yP:Float = scrollDistance;
-		var rad:Float = dir / 180 * Math.PI;
-		x = receptor.x + (receptor.width - width) * .5 + Math.sin(rad) * xP + Math.cos(rad) * yP;
-		y = receptor.y + (receptor.height - height) * .5 + Math.sin(rad) * yP + Math.cos(rad) * xP;
+		x = receptor.x + (receptor.width - width) * .5 + scrollPosition.x;
+		y = receptor.y + (receptor.height - height) * .5 + scrollPosition.y;
 		
 		if (followAlpha)
 			alpha = receptor.alpha * multAlpha * defaultAlpha;
@@ -304,19 +327,27 @@ class Note extends FunkinSprite {
 			angle = lane.receptor.angle;
 		
 		if (isHoldNote && tail != null) {
-			tail.scale.x = scale.x / defaultScale * tail.defaultScale;
-			tail.scale.y = FlxMath.signOf(speed) * Math.abs(scale.x) / defaultScale * tail.defaultScale;
+			if (goodHit) tail.clipToDistance = 0;
+			
+			var tailScale:Float = (scale.x / defaultScale * tail.defaultScale);
+			
+			tail.setPosition(receptor.x + receptor.width * .5, receptor.y + receptor.height * .5);
+			tail.scale.set(tailScale, tailScale);
+			tail.followLane(lane);
 			tail.updateHitbox();
-			tail.offset.y = 0;
-			
-			var absDistance:Float = msToDistance(msTime - conductorInUse.songPosition, Math.abs(speed));
-			tail.sustainHeight = msToDistance(msLength, Math.abs(speed));
-			tail.setPosition(x - tailOffset.x + (width - tail.width) * .5, y - tailOffset.y + height * .5);
-			tail.angle = dir - 90;
-			
-			if (goodHit && absDistance < 0)
-				tail.sustainClip = -absDistance;
 		}
+	}
+	
+	public static function getScrollDistanceGeneric(note:Note, lane:Lane, timeDiff:Float):Float {
+		return msToDistance(timeDiff, lane.scrollSpeed * note.scrollMultiplier);
+	}
+	public static function getScrollPositionGeneric(note:Note, lane:Lane, distance:Float, ?point:FlxPoint):FlxPoint {
+		point ??= note._scrollPoint;
+		
+		var dir:Float = lane.direction + note.directionOffset;
+		var rad:Float = (dir / 180 * Math.PI);
+		
+		return point.set(FlxMath.fastCos(rad) * distance, FlxMath.fastSin(rad) * distance);
 	}
 	
 	public override function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
@@ -341,29 +372,25 @@ class Note extends FunkinSprite {
 	}
 }
 
-class NoteTail extends FunkinSprite {
-	public var rgbShader:RGBSwap;
-	public var updateRGBShader:Bool = true;
-	public var rgbEnabled(default, set):Bool;
-	
+class NoteTail extends Note {
 	public var parent(default, set):Note;
-	public var style(default, set):NoteStyle;
-	public var laneIndex:Int;
 	
-	public var multAlpha:Float = 1;
-	public var sustainClip:Float = 0;
-	public var sustainHeight:Float = 0;
-	
-	public var defaultScale:Float = 1;
-	public var defaultAlpha:Float = 1;
+	public var renderTriangles:Bool = true; // TODO
+	public var clipToDistance:Null<Float> = null;
+	public var adaptiveDirection:Bool = true;
 	
 	public var holdScale(default, null):FlxPoint;
 	public var tailScale(default, null):FlxPoint;
 	
-	var _tileMatrix:FlxMatrix = new FlxMatrix();
+	var holdStrip:NoteTailStrip;
+	var tailStrip:NoteTailStrip;
+	
+	var _tailScrollPoint:FlxPoint = FlxPoint.get();
+	var drawData:Array<NoteTailDrawData> = [];
+	var drawItems:Int = 0;
 	
 	public function new(parent:Note) {
-		super();
+		super(parent?.chartNote);
 		
 		rgbShader = new RGBSwap();
 		shader = rgbShader.shader;
@@ -371,27 +398,52 @@ class NoteTail extends FunkinSprite {
 		holdScale = FlxPoint.get(1, 1);
 		tailScale = FlxPoint.get(1, 1);
 		
-		this.style = style;
+		holdStrip = new NoteTailStrip(this, 'hold');
+		tailStrip = new NoteTailStrip(this, 'tail');
+		
+		this.isHoldTail = true;
 		this.parent = parent;
 	}
 	public override function destroy() {
+		holdStrip?.destroy();
+		tailStrip?.destroy();
+		
 		holdScale.put();
 		tailScale.put();
+		_tailScrollPoint.put();
 		
-		_tileMatrix = null;
+		drawData = null;
+		drawItems = 0;
+		
 		super.destroy();
 	}
 	
 	function set_parent(note:Note):Note {
-		laneIndex = note.laneIndex;
+		if (note != null)
+			reloadNote(note);
 		return parent = note;
 	}
 	
-	public function reload(?style:NoteStyle) {
-		this.style = style;
-		sustainClip = 0;
+	public function reloadNote(note:Note):Void {
+		conductorInUse = note.conductorInUse ?? FunkinState.getCurrentConductor();
+		chartNote = note.chartNote;
+		style = note.style;
+		
+		holdStrip?.reloadTail(this);
+		tailStrip?.reloadTail(this);
 	}
-	public override function draw() {
+	public override function reload(?style:NoteStyle):Void {
+		super.reload(style);
+		
+		clipToDistance = null;
+	}
+	public override function updateTail():Void {}
+	public override function update(elapsed:Float):Void {
+		super.update(elapsed);
+		holdStrip?.update(elapsed);
+		tailStrip?.update(elapsed);
+	}
+	public override function draw():Void {
 		alpha = multAlpha * defaultAlpha;
 		if (parent != null) {
 			scrollFactor.copyFrom(parent.scrollFactor);
@@ -405,122 +457,99 @@ class NoteTail extends FunkinSprite {
 		super.draw();
 	}
 	
-	function set_style(newStyle:NoteStyle) {
-		if (style == newStyle) return newStyle;
-		style = newStyle;
-		loadStyle(newStyle);
-		return newStyle;
-	}
-	public function set_rgbEnabled(newE:Bool) {
-		shader = (newE ? rgbShader.shader : null);
-		return rgbEnabled = newE;
-	}
-	public function loadStyle(newStyle:NoteStyleAsset) {
+	public override function loadStyle(newStyle:NoteStyleAsset) {
 		var oldScale:Float = defaultScale;
 		var style:NoteStyle = NoteStyle.fetch(newStyle);
 		var asset:NoteStyleAssetData = style?.data.holds;
 		
-		NoteStyleUtil.loadNoteStyleAnimations(this, asset, style?.getDirectionName(laneIndex));
 		defaultScale = asset?.scale ?? 1;
 		defaultAlpha = asset?.alpha ?? 1;
 		scale.x *= (defaultScale / oldScale);
 		scale.y *= (defaultScale / oldScale);
 		
-		playAnimation('hold', true);
-		updateHitbox();
+		holdStrip?.loadStyle(style);
+		tailStrip?.loadStyle(style);
 	}
 	
-	// this is kinda mediocre tbh
-	public override function drawComplex(camera:FlxCamera) {
-		if (sustainHeight <= sustainClip)
-			return;
+	public override function followLane(lane:Lane):Void {
+		if (!renderTriangles) return; // TODO: basic renderer
 		
+		var distFunc = getScrollDistance ?? parent.getScrollDistance ?? Note.getScrollDistanceGeneric;
+		var posFunc = getScrollPosition ?? parent.getScrollPosition ?? Note.getScrollPositionGeneric;
+		var timeDiff:Float = endMs - conductorInUse.songPosition;
+		
+		var scrollDistance:Float;
+		var scrollPosition:FlxPoint;
+		var scrollNextPosition:FlxPoint;
+		try {
+			scrollDistance = distFunc(this, lane, timeDiff);
+			scrollPosition = posFunc(this, lane, scrollDistance);
+		} catch (e:haxe.Exception) {
+			Log.error('error while setting scroll distance or position -> ${e.details()}');
+			posFunc = Note.getScrollPositionGeneric;
+			distFunc = Note.getScrollDistanceGeneric;
+			scrollDistance = distFunc(this, lane, timeDiff);
+			scrollPosition = posFunc(this, lane, scrollDistance);
+		}
+		
+		var clipDistance:Float = distFunc(this, lane, msTime - conductorInUse.songPosition);
+		if (clipToDistance != null) clipDistance = Math.max(clipDistance, clipToDistance);
+		
+		
+		function prepareRender(strip:NoteTailStrip):NoteTailStrip {
+			strip.scale.copyFrom(scale);
+			strip.shader = shader;
+			return strip;
+		}
+		
+		drawItems = 0;
+		prepareRender(tailStrip);
+		prepareRender(holdStrip);
+		var render:NoteTailStrip = tailStrip;
+		var nextAngle:Float = (lane.direction + parent.directionOffset);
+		var scrollAngle:Null<Float> = (adaptiveDirection ? null : nextAngle);
+		while (scrollDistance > clipDistance) {
+			var height:Float = render.frameHeight * render.scale.y;
+			if (height < 5) break;
+			
+			scrollDistance -= height;
+			scrollNextPosition = posFunc(this, lane, scrollDistance, _tailScrollPoint);
+			if (adaptiveDirection) nextAngle = (scrollPosition.degreesTo(scrollNextPosition) * Math.PI / 180);
+			
+			
+			var data:NoteTailDrawData = (drawData[drawItems] ?? new NoteTailDrawData());
+			
+			data.clip = (scrollDistance <= clipDistance ? Math.abs(scrollDistance - clipDistance) / height : 0);
+			data.copyPosition(scrollPosition, scrollNextPosition);
+			data.setAngle(scrollAngle ?? nextAngle, nextAngle);
+			
+			drawData[drawItems ++] = data;
+			
+			
+			if (adaptiveDirection) scrollAngle = nextAngle;
+			scrollPosition.copyFrom(scrollNextPosition);
+			render = holdStrip;
+		}
+	}
+	
+	public override function drawComplex(camera:FlxCamera) {
 		updateShader(camera);
 		
-		var top:Float = 1;
-		var bottom:Float = 0;
-		var doTail:Bool = true;
-		var sc:FlxPoint = tailScale;
-		playAnimation('tail', true);
-		origin.set(frameWidth * .5);
-		cropFrame(top, bottom);
-		getDrawMatrix(sc);
-		
-		var totalHeight:Float = sustainHeight;
-		var absScale:Float = Math.abs(scale.y * tailScale.y);
-		
-		if (absScale < Math.max(Math.abs(scale.x), .05)) return; 
-		
-		var scaleSign:Int = FlxMath.signOf(scale.y);
-		var rad:Float = angle / 180 * Math.PI;
-		var sin:Float = Math.sin(rad);
-		var cos:Float = Math.cos(rad);
-		var cut:Bool = false;
-		
-		while (true) {
-			var pieceHeight:Float = (frameHeight - top - bottom) * absScale;
-			if (pieceHeight <= 0) return;
-			
-			totalHeight -= pieceHeight;
-			if (totalHeight <= sustainClip) {
-				var dist:Float = (sustainClip - totalHeight) / absScale; // pieceHeight * frameHeight;
-				cropFrame(dist + top, bottom);
-				getDrawMatrix(sc);
-				cut = true;
-			}
-			
-			_tileMatrix.copyFrom(_matrix);
-			_tileMatrix.translate(-totalHeight * sin, totalHeight * cos * scaleSign - top * scale.y * holdScale.y);
-			FunkinSprite.transformMatrixZoom(_tileMatrix, camera, zoomFactor, initialZoom);
-			camera.drawPixels(_frame, framePixels, _tileMatrix, colorTransform, blend, antialiasing, shader);
-			
-			if (cut) break;
-			
-			if (doTail) {
-				sc = holdScale;
+		if (renderTriangles) {
+			var render:NoteTailStrip = tailStrip;
+			for (i in 0 ... drawItems) {
+				var data:NoteTailDrawData = drawData[i];
+				if (data == null || render == null) break;
 				
-				bottom = 1;
-				doTail = false;
-				playAnimation('hold', true);
-				absScale = Math.abs(scale.y * holdScale.y);
-				origin.set(frameWidth * .5);
-				cropFrame(top, bottom);
-				getDrawMatrix(sc);
+				render.updateRender(x, y, data);
+				render.draw();
 				
-				if (absScale < Math.max(Math.abs(scale.x), .05)) return; 
+				render = holdStrip;
 			}
 		}
 	}
-	function cropFrame(cropTop:Float = 0, cropBottom:Float = 0) {
-		_frame = frame.clipTo(_rect.set(0, cropTop, frameWidth, frameHeight - cropTop - cropBottom), _frame);
-	}
-	function getDrawMatrix(?scaleFactor:FlxPoint) {
-		_frame.prepareMatrix(_matrix, FlxFrameAngle.ANGLE_0, checkFlipX(), checkFlipY());
-		
-		_matrix.translate(-origin.x, -origin.y);
-		_matrix.scale(scale.x, scale.y);
-		if (scaleFactor != null)
-			_matrix.scale(scaleFactor.x, scaleFactor.y);
-		
-		if (bakedRotationAngle <= 0) {
-			updateTrig();
-
-			if (angle != 0)
-				_matrix.rotateWithTrig(_cosAngle, _sinAngle);
-		}
-		
-		transformSpriteOffset(_transPoint);
-		getScreenPosition(_point, camera);
-		_point.add(-offset.x, -offset.y);
-		_point.add(-_transPoint.x, -_transPoint.y);
-		_matrix.translate(_point.x + origin.x, _point.y + origin.y);
-		
-		if (isPixelPerfectRender(camera)) {
-			_matrix.tx = Math.floor(_matrix.tx);
-			_matrix.ty = Math.floor(_matrix.ty);
-		}
-	}
-	public override function getScreenBounds(?newRect:FlxRect, ?camera:FlxCamera):FlxRect {
+	
+	/* public override function getScreenBounds(?newRect:FlxRect, ?camera:FlxCamera):FlxRect {
 		if (newRect == null)
 			newRect = FlxRect.get();
 		
@@ -538,29 +567,140 @@ class NoteTail extends FunkinSprite {
 		newRect.setSize(frameWidth * Math.abs(scale.x), sustainHeight);
 		if (scale.y < 0) newRect.y -= sustainHeight;
 		return newRect.getRotatedBounds(angle, _scaledOrigin, newRect);
-	}
+	} */
+	
 	public override function isSimpleRender(?camera:FlxCamera):Bool {
 		return false; // lazy zzz
 	}
+}
+
+class NoteTailStrip extends FunkinStrip {
+	public var defaultAnim:String;
+	public var style(default, set):NoteStyle;
+	public var parentTail(default, set):NoteTail;
 	
-	public override function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
-		if (forced || this.anim.name != anim)
-			reloadAnimShader(anim, style);
+	public var laneIndex:Int;
+	
+	public function new(parent:NoteTail, defaultAnim:String = 'hold') {
+		super();
 		
-		super.playAnimation(anim, forced, reversed, frame);
+		this.defaultAnim = defaultAnim;
+		this.parentTail = parent;
+		
+		indices = new DrawData<Int>(6, true, [0, 1, 2, 1, 2, 3]);
+		uvtData = new DrawData<Float>(8, true, [0, 0, 0, 0, 0, 0, 0, 0]);
+		vertices = new DrawData<Float>(8, true, [0, 0, 0, 0, 0, 0, 0, 0]);
 	}
-	public function reloadAnimShader(anim:String, style:NoteStyle) {
-		if (updateRGBShader) {
-			var animData:NoteStyleAnimData = style?.getAssetAnimation(style?.data.holds, anim);
-			if (animData != null) {
-				if (animData.disableRGB) {
-					rgbEnabled = false;
-				} else {
-					var colors:Array<FlxColor> = style.getDirectionColorMod(laneIndex, animData.colorMod);
-					rgbShader.set(colors[0], colors[1], colors[2]);
-					rgbEnabled = true;
-				}
-			}
+	
+	public function updateRender(x:Float, y:Float, drawData:NoteTailDrawData):Void {
+		if (graphic == null)
+			return;
+		
+		final clip:Float = drawData.clip;
+		final angleTo:Float = drawData.angleTo;
+		final angleFrom:Float = drawData.angleFrom;
+		
+		setPosition(x + drawData.xFrom, y + drawData.yFrom);
+		var nextXOffset:Float = drawData.xTo - drawData.xFrom;
+		var nextYOffset:Float = drawData.yTo - drawData.yFrom;
+		
+		final w:Float = graphic.width;
+		final h:Float = graphic.height;
+		final crop:Float = (antialiasing ? .5 : 0); // get rid of transparent blurry edges
+		
+		var left:Float = frame.frame.x / w;
+		var top:Float = (frame.frame.y + crop) / h;
+		var right:Float = left + frame.frame.width / w;
+		var bottom:Float = (frame.frame.y + frame.frame.height - crop) / h;
+		
+		if (clip > 0) {
+			nextXOffset *= (1 - clip);
+			nextYOffset *= (1 - clip);
+			top = FlxMath.lerp(top, bottom, clip);
 		}
+		
+		var pieceWidth:Float = frameWidth * scale.x * .5;
+		
+		// update vertices
+		vertices[0] = Math.sin(angleTo) * pieceWidth + nextXOffset; // top left
+		vertices[1] = Math.cos(angleTo) * -pieceWidth + nextYOffset;
+		uvtData[0] = left;
+		uvtData[1] = top;
+		
+		vertices[2] = Math.sin(angleTo) * -pieceWidth + nextXOffset; // top right
+		vertices[3] = Math.cos(angleTo) * pieceWidth + nextYOffset;
+		uvtData[2] = right;
+		uvtData[3] = top;
+		
+		vertices[4] = Math.sin(angleFrom) * pieceWidth; // bottom left
+		vertices[5] = Math.cos(angleFrom) * -pieceWidth;
+		uvtData[4] = left;
+		uvtData[5] = bottom;
+		
+		vertices[6] = Math.sin(angleFrom) * -pieceWidth; // bottom right
+		vertices[7] = Math.cos(angleFrom) * pieceWidth;
+		uvtData[6] = right;
+		uvtData[7] = bottom;
+	}
+	
+	function set_style(newStyle:NoteStyle) {
+		if (style == newStyle) return newStyle;
+		style = newStyle;
+		loadStyle(newStyle);
+		return newStyle;
+	}
+	function set_parentTail(note:NoteTail):NoteTail {
+		reloadTail(note);
+		return parentTail = note;
+	}
+	public function reloadTail(note:NoteTail):Void {
+		scale.copyFrom(note.scale);
+		laneIndex = note.laneIndex;
+		style = note.style;
+	}
+	public function loadStyle(newStyle:NoteStyleAsset) {
+		var style:NoteStyle = NoteStyle.fetch(newStyle);
+		var asset:NoteStyleAssetData = style?.data.holds;
+		
+		NoteStyleUtil.loadNoteStyleAnimations(this, asset, style?.getDirectionName(laneIndex));
+		
+		playAnimation(defaultAnim, true);
+		offset.set();
+	}
+}
+
+class NoteTailDrawData {
+	public var angleFrom:Float;
+	public var xFrom:Float;
+	public var yFrom:Float;
+	
+	public var angleTo:Float;
+	public var xTo:Float;
+	public var yTo:Float;
+	
+	public var clip:Float = 0;
+	
+	public function new() {}
+	
+	public function setAngle(from:Float, ?to:Float):NoteTailDrawData {
+		angleFrom = from;
+		angleTo = to ?? angleFrom;
+		return this;
+	}
+	public function setPosition(x:Float, y:Float, ?xT:Float, ?yT:Float):NoteTailDrawData {
+		xFrom = x;
+		yFrom = y;
+		if (xT != null) xTo = xT;
+		if (yT != null) yTo = yT;
+		return this;
+	}
+	public function copyPosition(point:FlxPoint, ?pointTo:FlxPoint):NoteTailDrawData {
+		xFrom = point.x;
+		yFrom = point.y;
+		if (pointTo != null) {
+			xTo = pointTo.x;
+			yTo = pointTo.y;
+		}
+		return this;
 	}
 }
