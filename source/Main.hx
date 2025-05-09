@@ -72,8 +72,8 @@ class Main extends openfl.display.Sprite {
 		#end
 	}
 	
-	public static function get_soundTray() {
-		return cast(FlxG.game.soundTray, funkin.backend.FunkinSoundTray);
+	public static function get_soundTray():funkin.backend.FunkinSoundTray {
+		return cast FlxG.game.soundTray;
 	}
 	public static function set_showWatermark(show:Bool) {
 		if (showWatermark == show) return showWatermark;
