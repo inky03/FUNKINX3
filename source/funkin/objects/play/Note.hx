@@ -139,6 +139,7 @@ class Note extends FunkinSprite {
 	function get_noteKind():String { return kind; }
 	
 	var _scrollPoint:FlxPoint = FlxPoint.get();
+	var forceDraw:Bool = false;
 	
 	public override function destroy():Void {
 		_scrollPoint.put();
@@ -152,7 +153,7 @@ class Note extends FunkinSprite {
 		if (isHoldNote && tail != null)
 			tail.draw();
 		
-		if (!goodHit)
+		if (!goodHit || forceDraw)
 			super.draw();
 	}
 	public override function kill():Void {
@@ -327,12 +328,11 @@ class Note extends FunkinSprite {
 			angle = lane.receptor.angle;
 		
 		if (isHoldNote && tail != null) {
-			if (goodHit) tail.clipToDistance = 0;
-			
 			var tailScale:Float = (scale.x / defaultScale * tail.defaultScale);
 			
 			tail.setPosition(receptor.x + receptor.width * .5, receptor.y + receptor.height * .5);
 			tail.scale.set(tailScale, tailScale);
+			tail.goodHit = goodHit;
 			tail.followLane(lane);
 			tail.updateHitbox();
 		}
@@ -375,6 +375,8 @@ class Note extends FunkinSprite {
 class NoteTail extends Note {
 	public var parent(default, set):Note;
 	
+	public var followParent:Bool = true;
+	
 	public var renderTriangles:Bool = true; // TODO
 	public var clipToDistance:Null<Float> = null;
 	public var adaptiveDirection:Bool = true;
@@ -402,6 +404,7 @@ class NoteTail extends Note {
 		tailStrip = new NoteTailStrip(this, 'tail');
 		
 		this.isHoldTail = true;
+		this.forceDraw = true;
 		this.parent = parent;
 	}
 	public override function destroy() {
@@ -492,6 +495,15 @@ class NoteTail extends Note {
 			scrollPosition = posFunc(this, lane, scrollDistance);
 		}
 		
+		if (followParent) {
+			if (goodHit) clipToDistance = distFunc(this, lane, 0);
+			
+			if (parent != null) {
+				directionOffset = parent.directionOffset;
+				scrollMultiplier = parent.scrollMultiplier;
+			}
+		}
+		
 		var clipDistance:Float = distFunc(this, lane, msTime - conductorInUse.songPosition);
 		if (clipToDistance != null) clipDistance = Math.max(clipDistance, clipToDistance);
 		
@@ -548,26 +560,6 @@ class NoteTail extends Note {
 			}
 		}
 	}
-	
-	/* public override function getScreenBounds(?newRect:FlxRect, ?camera:FlxCamera):FlxRect {
-		if (newRect == null)
-			newRect = FlxRect.get();
-		
-		if (camera == null)
-			camera = getDefaultCamera();
-		
-		newRect.setPosition(x, y);
-		if (pixelPerfectPosition)
-			newRect.floor();
-		_scaledOrigin.set(origin.x * Math.abs(scale.x), origin.y * Math.abs(scale.y));
-		newRect.x += -Std.int(camera.scroll.x * scrollFactor.x) - offset.x + origin.x - _scaledOrigin.x;
-		newRect.y += -Std.int(camera.scroll.y * scrollFactor.y) - offset.y + origin.y - _scaledOrigin.y;
-		if (isPixelPerfectRender(camera))
-			newRect.floor();
-		newRect.setSize(frameWidth * Math.abs(scale.x), sustainHeight);
-		if (scale.y < 0) newRect.y -= sustainHeight;
-		return newRect.getRotatedBounds(angle, _scaledOrigin, newRect);
-	} */
 	
 	public override function isSimpleRender(?camera:FlxCamera):Bool {
 		return false; // lazy zzz
