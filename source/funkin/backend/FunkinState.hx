@@ -52,6 +52,8 @@ class FunkinState extends FlxSubState implements funkin.backend.FunkinSprite.ISp
 	}
 	
 	override public function create() {
+		FlxG.fixedTimestep = false;
+		
 		Main.soundTray.reloadSoundtrayGraphics();
 		Paths.trackedAssets.resize(0);
 		if (clearAssetsNow) {
@@ -159,7 +161,7 @@ class FunkinState extends FlxSubState implements funkin.backend.FunkinSprite.ISp
 	}
 	
 	public function updateConductor(elapsed:Float = 0) {
-		conductorInUse.update(elapsed * 1000);
+		conductorInUse.update(elapsed * 1000 / FlxG.timeScale);
 		
 		curBar = Math.floor(conductorInUse.bar);
 		curBeat = Math.floor(conductorInUse.beat);

@@ -753,10 +753,10 @@ class PlayState extends FunkinState {
 		if (HScript.stopped(hscripts.run('keyPressed', [key, justPressed])) || inputDisabled || paused) return;
 		if (justPressed) {
 			var keybind:Int = Controls.keybindFromArray(keybinds, key);
+			
 			var oldTime:Float = conductorInUse.songPosition;
-			var newTimeMaybe:Float = conductorInUse.syncTracker?.time ?? oldTime;
 			if (conductorInUse.syncTracker != null && conductorInUse.syncTracker.playing)
-				conductorInUse.songPosition = newTimeMaybe;
+				@:privateAccess conductorInUse.songPosition = conductorInUse.syncTracker._channel.position + audioOffset;
 			
 			var canFireInput:Bool = true;
 			if (keybind >= 0)

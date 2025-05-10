@@ -9,7 +9,7 @@ class Main extends openfl.display.Sprite {
 	public static var instance:Main;
 	
 	public static var engineVersion(default, never):String = '0.0.8';
-	public static var apiVersion(default, never):String = '0.0.2';
+	public static var apiVersion(default, never):String = '0.0.3';
 	
 	public static var compiledTo(get, never):String;
 	public static var compiledWith(get, never):String;
@@ -24,6 +24,30 @@ class Main extends openfl.display.Sprite {
 		instance = this;
 		windowTitle = FlxG.stage.window.title;
 		
+		printStartup();
+		
+		Mods.refresh();
+		HScript.init();
+		DiscordRPC.prepare();
+		
+		var game:FunkinGame = new FunkinGame(0, 0, funkin.states.TitleState);
+		addChild(game);
+		addChild(debugDisplay = new DebugDisplay(10, 3));
+		
+		FlxG.maxElapsed = 1;
+		FlxG.drawFramerate = 144;
+		FlxG.updateFramerate = 144;
+		FlxG.signals.postUpdate.add(() -> DiscordRPC.update());
+		
+		showWatermark = true;
+		
+		DiscordRPC.presence.largeImageText = 'FUNKINX3 $engineVersion';
+		openfl.Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(openfl.events.UncaughtErrorEvent.UNCAUGHT_ERROR, CrashState.handleUncaughtError);
+		#if cpp
+		untyped __global__.__hxcpp_set_critical_error_handler((error) -> throw error);
+		#end
+	}
+	inline function printStartup():Void {
 		final timeText:String = 'GAME STARTED ON ${Date.now().toString()}';
 		Sys.println('');
 		#if I_AM_BORING_ZZZ
@@ -48,28 +72,6 @@ class Main extends openfl.display.Sprite {
 		}
 		#end
 		Sys.println('');
-		
-		Mods.refresh();
-		HScript.init();
-		DiscordRPC.prepare();
-		var game:FunkinGame = new FunkinGame(0, 0, funkin.states.TitleState);
-		addChild(game);
-		addChild(debugDisplay = new DebugDisplay(10, 3));
-
-		FlxG.maxElapsed = 1;
-		FlxG.drawFramerate = 144;
-		FlxG.updateFramerate = 144;
-		FlxG.fixedTimestep = false;
-		
-		FlxG.signals.postUpdate.add(() -> DiscordRPC.update());
-		
-		showWatermark = true;
-		
-		DiscordRPC.presence.largeImageText = 'FUNKINX3 $engineVersion';
-		openfl.Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(openfl.events.UncaughtErrorEvent.UNCAUGHT_ERROR, CrashState.handleUncaughtError);
-		#if cpp
-		untyped __global__.__hxcpp_set_critical_error_handler((error) -> throw error);
-		#end
 	}
 	
 	public static function get_soundTray():funkin.backend.FunkinSoundTray {

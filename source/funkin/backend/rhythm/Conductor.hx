@@ -32,27 +32,30 @@ class Conductor {
 	public var maxDisparity:Float = 33.34;
 	public static var global(default, never):Conductor = new Conductor();
 	
+	var prevBar:Int;
+	var prevBeat:Int;
+	var prevStep:Int;
+	var prevPosition:Float;
+	
 	public function new(?metronome:Metronome) {
 		this.metronome = metronome ?? new Metronome();
 	}
 	public function update(elapsedMS:Float) {
 		if (paused) return;
 		
-		var prevStep:Int = Math.floor(metronome.step);
-		var prevBeat:Int = Math.floor(metronome.beat);
-		var prevBar:Int = Math.floor(metronome.bar);
+		setPosition(songPosition + Math.min(elapsedMS, 250) * timeScale);
+	}
+	
+	public inline function setPosition(position:Float):Void {
+		prevPosition = metronome.ms;
+		prevStep = Math.floor(metronome.step);
+		prevBeat = Math.floor(metronome.beat);
+		prevBar = Math.floor(metronome.bar);
 		
-		songPosition += Math.min(elapsedMS, 250) * timeScale;
-		if (syncTracker != null) {
-			timeScale = syncTracker.pitch;
-			var offsetTime:Float = syncTracker.time + audioOffset;
-			if (syncTracker.playing && Math.abs(metronome.ms - offsetTime) > maxDisparity * timeScale)
-				songPosition = offsetTime;
-		}
+		songPosition = position;
+		sync();
 		
 		if (dispatchEvents) {
-			advance.dispatch(metronome.ms);
-			
 			var curBar:Int = Math.floor(metronome.bar);
 			var curBeat:Int = Math.floor(metronome.beat);
 			var curStep:Int = Math.floor(metronome.step);
@@ -60,6 +63,15 @@ class Conductor {
 			if (prevBar != curBar) barHit.dispatch(curBar);
 			if (prevBeat != curBeat) beatHit.dispatch(curBeat);
 			if (prevStep != curStep) stepHit.dispatch(curStep);
+			if (prevPosition != metronome.ms) advance.dispatch(metronome.ms);
+		}
+	}
+	public inline function sync():Void {
+		if (syncTracker != null) {
+			timeScale = syncTracker.pitch;
+			var offsetTime:Float = syncTracker.time + audioOffset;
+			if (syncTracker.playing && Math.abs(metronome.ms - offsetTime) > maxDisparity * timeScale)
+				songPosition = offsetTime;
 		}
 	}
 	
