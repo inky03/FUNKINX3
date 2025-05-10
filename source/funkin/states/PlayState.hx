@@ -607,7 +607,7 @@ class PlayState extends FunkinState {
 		var syncBase:FlxSound = conductorInUse.syncTracker;
 		if (syncBase != null && syncBase.playing && !conductorInUse.paused) {
 			var offsetTime:Float = syncBase.time + conductorInUse.audioOffset;
-			if ((forceSongpos && conductorInUse.songPosition < offsetTime) || Math.abs(syncBase.time - offsetTime) > 75)
+			if ((forceSongpos && conductorInUse.songPosition < offsetTime) || Math.abs(offsetTime - conductorInUse.songPosition) > 75)
 				conductorInUse.songPosition = offsetTime;
 			if (forceTrackTime) {
 				if (Math.abs(music.getDisparity(syncBase.time)) > 75)
