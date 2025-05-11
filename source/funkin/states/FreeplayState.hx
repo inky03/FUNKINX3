@@ -16,6 +16,9 @@ class FreeplayState extends FunkinState {
 	public static var selectedDifficulty:Int = 0;
 	public static var currentVariation:String = 'default';
 	
+	var fallbackVariation:Variation = new Variation('unknown', {difficulties: ['easy', 'normal', 'hard'], suffix: '', name: 'Unknown'});
+	var _hasUnknown:Bool = false;
+	
 	override public function create() {
 		Mods.currentMod = null;
 		super.create();
@@ -31,7 +34,7 @@ class FreeplayState extends FunkinState {
 		diffText.setFormat(Paths.ttf('vcr'), 18, FlxColor.WHITE, RIGHT, OUTLINE, FlxColor.BLACK);
 		diffText.scrollFactor.set();
 		add(diffText);
-
+		
 		displayItems = new FlxTypedGroup<SongItem>();
 		add(displayItems);
 		
@@ -44,10 +47,12 @@ class FreeplayState extends FunkinState {
 					loadLevel('$folder/$level', path.mod);
 			}
 		}
+		if (_hasUnknown)
+			variationList.push(fallbackVariation);
 		
 		FlxG.camera.target = target = new FlxObject();
 		FlxG.camera.followLerp = 9 / 60;
-
+		
 		if (currentVariation == null) currentVariation = variationList[0].internalName;
 		displayVariation(findVariation(currentVariation));
 		selectDifficulty();
@@ -76,11 +81,15 @@ class FreeplayState extends FunkinState {
 			inputEnabled = false;
 			
 			new FlxTimer().start(2, (timer:FlxTimer) -> {
+				var difficulty:Null<String> = null;
 				var shifted:Bool = FlxG.keys.pressed.SHIFT;
 				var variation:Variation = findVariation(currentVariation);
+				
+				if (variation != null) difficulty = variation.difficulties[selectedDifficulty];
+				
 				var selectedItem:SongItem = displayItems.members[selection];
 				Mods.currentMod = selectedItem.mod ?? '';
-				var chart:Chart = Chart.loadChart(selectedItem.songPath, variation.difficulties[selectedDifficulty], variation.suffix);
+				var chart:Chart = Chart.loadChart(selectedItem.songPath, difficulty, variation.suffix);
 				FlxG.switchState(() -> new PlayState(chart, shifted));
 			});
 		}
@@ -91,6 +100,8 @@ class FreeplayState extends FunkinState {
 	
 	// TODO: this doesn't work like how i wanted it to...
 	public function selectDifficulty(mod:Int = 0) {
+		if (variationList.length == 0) return;
+		
 		var variation:Variation = findVariation(currentVariation);
 		var difficulties:Array<String> = variation.difficulties;
 		var nextVariation:Variation = variation;
@@ -118,7 +129,7 @@ class FreeplayState extends FunkinState {
 		diffText.text = 'VARIATION: ${nextVariation.name}\n${difficulties[selectedDifficulty].toUpperCase()}';
 	}
 	public function select(mod:Int = 0) {
-		if (items.length == 0) return;
+		if (displayItems.length == 0) return;
 		if (mod != 0) FunkinSound.playOnce(Paths.sound('scrollMenu'), .8);
 		
 		displayItems.members[selection]?.highlight(false);
@@ -156,11 +167,19 @@ class FreeplayState extends FunkinState {
 				item.songPath = song.songPath;
 				item.mod = mod ?? '';
 				items.push(item);
+				
 				for (variationName in (song.variations ?? levels.variations)) {
 					loadVariation(variationName, mod);
 					var variation:Variation = findVariation(variationName);
-					if (variation != null)
+					if (variation != null) {
 						item.variations.push(variation);
+					} else {
+						variation = variationList[0];
+						variation ??= fallbackVariation;
+						item.variations.push(fallbackVariation);
+						
+						if (variation == fallbackVariation) _hasUnknown = true;
+					}
 				}
 				
 				var songPath:String = 'data/songs/${song.songPath}';

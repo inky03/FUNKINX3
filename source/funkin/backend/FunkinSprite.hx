@@ -279,8 +279,7 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 
 	public function hasAnimationPrefix(prefix:String) {
 		var frames:Array<flixel.graphics.frames.FlxFrame> = [];
-		@:privateAccess //why is it private :sob:
-		animation.findByPrefix(frames, prefix);
+		try { @:privateAccess animation.findByPrefix(frames, prefix); } catch (e:Dynamic) {} //why is it private :sob:
 		return (frames.length > 0);
 	}
 	inline public function transformSpriteOffset(point:FlxPoint):FlxPoint {
