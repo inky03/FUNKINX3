@@ -291,9 +291,9 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 	public function animationIsLooping(anim:String):Bool { return current?.animationIsLooping(anim) ?? false; }
 	public function setOffset(x:Float = 0, y:Float = 0):Void { current?.setOffset(x, y); }
 	
-	public function timeAnimSteps(?steps:Float):Void {
+	public function timeAnimSteps(?steps:Float, max:Bool = true):Void {
 		for (chara in members)
-			chara?.timeAnimSteps(steps);
+			chara?.timeAnimSteps(steps, max);
 	}
 	public function playAnimationSoft(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0):Void {
 		for (chara in members)

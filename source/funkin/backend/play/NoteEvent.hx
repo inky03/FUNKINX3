@@ -178,7 +178,7 @@ using StringTools;
 				
 				if (playAnimation && targetCharacter != null) {
 					var suffixAnim:String = '$singAnimation$animSuffix${targetCharacter.animSuffix}';
-					if ((!targetCharacter.specialAnim || targetCharacter.currentAnimation == suffixAnim) && targetCharacter.animationExists(suffixAnim))
+					if (targetCharacter.currentAnimation == suffixAnim)
 						targetCharacter.timeAnimSteps();
 				}
 				
