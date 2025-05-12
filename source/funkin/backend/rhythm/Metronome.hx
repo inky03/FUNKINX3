@@ -166,7 +166,15 @@ class Metronome {
 		return target;
 	}
 	
-	public function sortTempoChanges() {
+	public function copyTempoChanges(copyChanges:Array<TempoChange>):Array<TempoChange> {
+		tempoChanges.resize(0);
+		for (change in copyChanges) {
+			var newChange:TempoChange = new TempoChange(change.beatTime, change.bpm, new TimeSignature().copyFrom(change.timeSignature));
+			tempoChanges.push(newChange);
+		}
+		return tempoChanges;
+	}
+	public function sortTempoChanges():Void {
 		tempoChanges.sort((a:TempoChange, b:TempoChange) -> Std.int(a.beatTime) - Std.int(b.beatTime));
 	}
 }

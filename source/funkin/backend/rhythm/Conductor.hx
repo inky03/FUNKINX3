@@ -97,11 +97,14 @@ class Conductor {
 	public function set_bar(newBar:Float):Float { return metronome.setBar(newBar); }
 	// public function set_ms(newMS:Float):Float { return metronome.setMS(newMS); }
 	
-	public function resetToDefault() {
+	public function resetToDefault():Void {
 		metronome = new Metronome();
 	}
 	
-	public function sortTempoChanges() {
+	public function copyTempoChanges(tempoChanges:Array<TempoChange>):Array<TempoChange> {
+		return metronome.copyTempoChanges(tempoChanges);
+	}
+	public function sortTempoChanges():Void {
 		metronome.sortTempoChanges();
 	}
 }

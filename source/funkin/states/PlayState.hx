@@ -149,7 +149,7 @@ class PlayState extends FunkinState {
 		ghostTapping = Options.data.ghostTapping;
 		
 		conductorInUse = new Conductor();
-		conductorInUse.tempoChanges = chart.tempoChanges;
+		conductorInUse.copyTempoChanges(chart.tempoChanges);
 		barHit.add((t:Int) -> dispatchSongEvent({type: BAR_HIT, time: t}));
 		beatHit.add((t:Int) -> dispatchSongEvent({type: BEAT_HIT, time: t}));
 		stepHit.add((t:Int) -> dispatchSongEvent({type: STEP_HIT, time: t}));
@@ -843,8 +843,8 @@ class PlayState extends FunkinState {
 		if (!ratingGroup.alive) return rating;
 		
 		rating.alpha = 1;
-		rating.cameras = null;
 		rating.visible = true;
+		rating.cameras = ratingGroup.cameras;
 		rating.loadTexture(ratingString);
 		rating.scale.set(scale, scale);
 		rating.setPosition(ratingGroup.x, ratingGroup.y);
