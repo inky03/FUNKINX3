@@ -35,6 +35,12 @@ class Alphabet extends FlxSpriteGroup {
 		}
 	}
 	
+	public override function revive():Void {
+		super.revive();
+		for (i => character in characters)
+			if (i >= text.length) character.kill();
+	}
+	
 	public function setColors(white:FlxColor = FlxColor.WHITE, black:FlxColor = FlxColor.BLACK):Alphabet {
 		for (character in characters)
 			character.setColors(white, black);

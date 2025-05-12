@@ -214,22 +214,24 @@ class Strumline extends FunkinSpriteGroup {
 		var wRatio:Float = (targetWidth > 0 ? targetWidth / width : 1);
 		var hRatio:Float = (targetHeight > 0 ? targetHeight / height : 1);
 		var ratio:Float = Math.min(wRatio, hRatio);
-		if (ratio != 1) {
-			switch (center) {
-				case X:
-					x += (width - width * ratio) * .5;
-				case Y:
-					y += (height - height * ratio) * .5;
-				case XY:
-					x += (width - width * ratio) * .5;
-					y += (height - height * ratio) * .5;
-				default:
-					//shrug
-			}
-			// TODO: better way... ??
-			recalculateLaneSpacing(laneSpacing * ratio, laneSpacing);
-			scale.set(ratio, ratio);
+		if (ratio != 1)
+			scaleTo(scale.x * ratio);
+	}
+	public function scaleTo(x:Float, ?y:Float, center:FlxAxes = NONE) {
+		y ??= x;
+		switch (center) {
+			case X:
+				x += (width - width * x) * .5;
+			case Y:
+				y += (height - height * x) * .5;
+			case XY:
+				x += (width - width * y) * .5;
+				y += (height - height * y) * .5;
+			default:
 		}
+		
+		recalculateLaneSpacing(laneSpacing / scale.x * x, laneSpacing);
+		scale.set(x, y);
 	}
 	public function center(axes:FlxAxes = XY) { //do Not inline that.
 		switch (axes) {
