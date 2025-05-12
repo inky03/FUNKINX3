@@ -175,8 +175,13 @@ class FunkinState extends FlxSubState implements funkin.backend.FunkinSprite.ISp
 		var limit:Int = 50; //avoid lags
 		while (events.length > 0 && time >= events[0].msTime && limit > 0) {
 			var event:ITimedEvent<Dynamic> = events.shift();
-			if (event.func != null)
-				event.func(event);
+			if (event.func != null) {
+				try {
+					event.func(event);
+				} catch (e:haxe.Exception) {
+					Log.error('error when triggering event -> ${e.details()}');
+				}
+			}
 			limit --;
 		}
 	}

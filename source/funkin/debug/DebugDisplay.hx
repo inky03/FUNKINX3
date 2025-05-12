@@ -6,6 +6,8 @@ import openfl.display.Bitmap;
 import openfl.text.TextField;
 import openfl.text.TextFormat;
 
+import funkin.util.MemoryUtil;
+
 class DebugDisplay extends Sprite {
 	public var perfCounter:PerfCounter;
 	public var watermark:X3Watermark;
@@ -107,11 +109,11 @@ class PerfCounter extends TextField {
 		while (times[0] < currentTime - 1000) times.shift();
 		
 		currentFPS = Math.round((oldFPS + times.length) / 2);
-		mem = getMemoryUsed();
+		mem = MemoryUtil.getMemoryUsed();
 		
 		if (oldFPS != currentFPS || oldMem != mem) {
 			maxMem = Math.max(mem, maxMem);
-			text = (showFPS ? 'FPS: ${Math.min(currentFPS, FlxG.drawFramerate)}' : '') + (showMem ? '\nGC MEM: ${formatBytes(mem)} / ${formatBytes(maxMem)}' : '');
+			text = (showFPS ? 'FPS: ${Math.min(currentFPS, FlxG.drawFramerate)}' : '') + (showMem ? '\nMEM: ${formatBytes(mem)} / ${formatBytes(maxMem)}' : '');
 		}
 	}
 	
@@ -122,13 +124,5 @@ class PerfCounter extends TextField {
 			curUnit++;
 		}
 		return FlxMath.roundDecimal(bytes, precision) + byteUnits[curUnit];
-	}
-	
-	public static function getMemoryUsed():#if cpp Float #else Int #end {
-		#if cpp
-		return cpp.vm.Gc.memInfo64(cpp.vm.Gc.MEM_INFO_CURRENT);
-		#else
-		return openfl.system.System.totalMemory;
-		#end
 	}
 }

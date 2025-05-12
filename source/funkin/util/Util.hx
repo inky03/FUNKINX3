@@ -53,8 +53,16 @@ class Util { // maybe these utils can be on their own specific purpose classes
 		if (min != null && n < min) return min;
 		return (max != null && n > max ? max : n);
 	}
-	public static function smoothLerp(a:Float, b:Float, t:Float):Float {
+	public static inline function smoothLerp(a:Float, b:Float, t:Float):Float {
 		return FlxMath.lerp(a, b, 1 - Math.exp(-t));
+	}
+	public static inline function euclideanMod(n:Float, div:Float):Float {
+		var mod:Float = n % div;
+		return (mod < 0 ? mod + Math.abs(div) : mod);
+	}
+	public static function eucMod(n:Float, div:Float):Float { return euclideanMod(n, div); }
+	public static inline function wrap(n:Float, min:Float, max:Float):Float {
+		return euclideanMod(n - min, max - min) + min;
 	}
 
 	// idfk

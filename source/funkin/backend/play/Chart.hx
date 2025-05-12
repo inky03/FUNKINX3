@@ -642,7 +642,7 @@ enum abstract ChartFormat(String) to String {
 	public var name:String;
 	public var msTime:Float = 0;
 	public var params:Map<String, Any>;
-	public var func:ChartEvent -> Void = genericFunction;
+	public var func:#if hl Dynamic #else ChartEvent #end -> Void = genericFunction;
 	
 	public static function genericFunction(e:ChartEvent) {
 		var chartEvent:ChartEvent = cast e;

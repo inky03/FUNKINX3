@@ -7,6 +7,12 @@ import crowplexus.hscript.Interp;
 
 import funkin.backend.FunkinSprite;
 
+enum Exit { // all of this because Stop IS PRIVATW AHHHHHHHHH
+	Continue;
+	Return;
+	Break;
+}
+
 class ModInterp extends Interp {
 	public var hscript:HScript;
 	
@@ -169,6 +175,13 @@ class ModInterp extends Interp {
 		switch (eDef) {
 			case EImport(v, as):
 				return doImport(v, as);
+			case EBreak:
+				throw Break;
+			case EContinue:
+				throw Continue;
+			case EReturn(e):
+				returnValue = (e == null ? null : expr(e));
+				throw Return;
 			case EFunction(params, fexpr, name, _):
 				var capturedLocals = duplicate(locals);
 				var minParams:Int = 0;
@@ -248,5 +261,92 @@ class ModInterp extends Interp {
 			default:
 		}
 		return super.expr(e);
+	}
+	override function exprReturn(e): Dynamic {
+		try {
+			return expr(e);
+		} catch (e:Exit) {
+			switch (e) {
+				case Break:
+					throw "Invalid break";
+				case Continue:
+					throw "Invalid continue";
+				case Return:
+					var v = returnValue;
+					returnValue = null;
+					return v;
+			}
+		}
+		return null;
+	}
+	
+	override function doWhileLoop(eCond, e) {
+		var old: Int = declared.length;
+		do {
+			try {
+				expr(e);
+			} catch (err:Exit) {
+				switch (err) {
+					case Continue:
+					case Break: break;
+					case Return: throw err;
+				}
+			}
+		} while (expr(eCond) == true);
+		restore(old);
+	}
+	override function whileLoop(eCond, e) {
+		var old: Int = declared.length;
+		while (expr(eCond) == true) {
+			try {
+				expr(e);
+			} catch (err:Exit) {
+				switch (err) {
+					case Continue:
+					case Break: break;
+					case Return: throw err;
+				}
+			}
+		}
+		restore(old);
+	}
+	override function forLoop(n, v, itExpr, e): Void {
+		var old: Int = declared.length;
+		declared.push({n: n, old: locals.get(n)});
+		var keyValue: Bool = false;
+		if (v != null) {
+			keyValue = true;
+			declared.push({n: v, old: locals.get(v)});
+		}
+		var it: Dynamic = (keyValue ? makeKVIterator : makeIterator)(expr(itExpr));
+		var _itHasNext: Dynamic = it.hasNext;
+		var _itNext: Dynamic = it.next;
+		
+		while (_itHasNext()) {
+			if (keyValue) {
+				var next = _itNext();
+				if (next.key == null || next.value == null) {
+					var nulled: String = (next.key == null ? 'key' : 'value');
+					error(ECustom('${Std.isOfType(next, Int) ? 'Int' : Type.getClassName(Type.getClass(next))} has no field $nulled'));
+				}
+				locals.set(n, {r: next.key, const: false});
+				locals.set(v, {r: next.value, const: false});
+			} else {
+				locals.set(n, {r: _itNext(), const: false});
+			}
+			
+			try {
+				expr(e);
+			} catch (err:Exit) {
+				switch (err) {
+					case Continue:
+					case Break:
+						break;
+					case Return:
+						throw err;
+				}
+			}
+		}
+		restore(old);
 	}
 }

@@ -1,13 +1,14 @@
 package funkin.backend;
 
-import flixel.util.FlxDestroyUtil.IFlxDestroyable;
 import openfl.utils.Assets as OFLAssets;
 import lime.utils.Assets as LimeAssets;
 import flxanimate.data.AnimationData;
+import flixel.util.FlxDestroyUtil;
 import flixel.graphics.FlxGraphic;
 import openfl.display.BitmapData;
 import flixel.graphics.frames.*;
 import flixel.system.FlxAssets;
+import funkin.util.MemoryUtil;
 import openfl.utils.AssetType;
 import openfl.media.Sound;
 import openfl.Assets;
@@ -52,16 +53,12 @@ class Paths {
 		}
 		for (key => dyn in dynamicCache) {
 			if (!trackedAssets.contains(key) && !excludeKeys.contains(key)) {
-				if (dyn != null) {
-					if (Std.isOfType(dyn, IFlxDestroyable))
-						try dyn.destroy();
-					dyn = null;
-				}
+				if (dyn is IFlxDestroyable) FlxDestroyUtil.destroy(dyn);
 				dynamicCache.remove(key);
 			}
 		}
 		FlxG.bitmap.clearUnused();
-		runGC();
+		MemoryUtil.collect();
 	}
 	inline public static function excludedGraphicKeys():Array<String> {
 		var exclusions:Array<String> = excludeKeys.copy();
@@ -69,11 +66,10 @@ class Paths {
 		for (spr in excludeSprites) exclusions.push(spr.graphic.key);
 		return exclusions;
 	}
+	
+	@:deprecated('Paths.runGC is deprecated, use MemoryUtil.collect instead!')
 	public static function runGC() {
-		openfl.system.System.gc();
-		#if hl
-		hl.Gc.major();
-		#end
+		MemoryUtil.collect();
 	}
 
 	public static function getPath(key:String, allowMods:Bool = true, ?library:String) {
