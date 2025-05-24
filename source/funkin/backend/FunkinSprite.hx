@@ -348,6 +348,8 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 		animationList[name] = {prefix: prefix, fps: fps, loop: loop, assetPath: assetPath, frameIndices: frameIndices, flipX: flipX, flipY: flipY};
 	}
 	public function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
+		preloadAnimAsset(anim);
+		
 		var played:Bool = this.anim.play(anim, forced, reversed, frame);
 		
 		if (played) {
