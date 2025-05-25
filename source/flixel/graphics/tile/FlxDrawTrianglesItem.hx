@@ -140,11 +140,8 @@ class FlxDrawTrianglesItem extends FlxDrawBaseItem<FlxDrawTrianglesItem>
 	public function addTriangles(vertices:DrawData<Float>, indices:DrawData<Int>, uvtData:DrawData<Float>, ?colors:DrawData<Int>, ?position:FlxPoint,
 			?cameraBounds:FlxRect #if !flash , ?transform:ColorTransform #end, rotation:Float = 0):Void
 	{
-		if (position == null)
-			position = point.set();
-
-		if (cameraBounds == null)
-			cameraBounds = rect.set(0, 0, FlxG.width, FlxG.height);
+		position ??= point.set();
+		cameraBounds ??= rect.set(0, 0, FlxG.width, FlxG.height);
 
 		var verticesLength:Int = vertices.length;
 		var prevVerticesLength:Int = this.vertices.length;
@@ -153,34 +150,26 @@ class FlxDrawTrianglesItem extends FlxDrawBaseItem<FlxDrawTrianglesItem>
 		var prevUVTDataLength:Int = this.uvtData.length;
 		var prevColorsLength:Int = this.colors.length;
 		var prevNumberOfVertices:Int = this.numVertices;
-
-		var tempX:Float, tempY:Float;
+		
 		var i:Int = 0;
 		var currentVertexPosition:Int = prevVerticesLength;
 		
 		var vertPoint:FlxPoint = FlxPoint.get();
-		while (i < verticesLength)
-		{
+		while (i < verticesLength) {
 			vertPoint.set(position.x + vertices[i], position.y + vertices[i + 1]);
 			
-			if (rotation == 0) {
-				tempX = vertPoint.x;
-				tempY = vertPoint.y;
-			} else {
+			if (rotation != 0) {
 				var pivot:FlxPoint = cameraBounds.getMidpoint(FlxPoint.weak());
-				var rotatedPoint:FlxPoint = vertPoint.pivotDegrees(pivot, rotation);
-				
-				tempX = rotatedPoint.x;
-				tempY = rotatedPoint.y;
+				vertPoint.pivotDegrees(pivot, rotation);
 			}
 
-			this.vertices[currentVertexPosition++] = tempX;
-			this.vertices[currentVertexPosition++] = tempY;
+			this.vertices[currentVertexPosition ++] = vertPoint.x;
+			this.vertices[currentVertexPosition ++] = vertPoint.y;
 
 			if (i == 0) {
-				bounds.set(tempX, tempY, 0, 0);
+				bounds.set(vertPoint.x, vertPoint.y, 0, 0);
 			} else {
-				inflateBounds(bounds, tempX, tempY);
+				inflateBounds(bounds, vertPoint.x, vertPoint.y);
 			}
 
 			i += 2;
