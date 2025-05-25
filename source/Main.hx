@@ -114,9 +114,10 @@ class Pride {
 	public static var flagsMap:Map<String, Array<BackgroundColor>> = [
 		'transgender' => [brightCyan, brightMagenta, brightWhite, brightMagenta, brightCyan],
 		'lesbian' => [brightRed, brightYellow, brightWhite, brightMagenta, magenta],
-		'pride' => [brightRed, brightYellow, green, brightBlue, magenta],
-		'bisexual' => [brightRed, brightRed, magenta, blue, blue],
-		'pansexual' => [brightRed, brightRed, brightYellow, brightCyan, brightCyan]
+		'pride' => [brightRed, yellow, brightYellow, green, brightBlue, magenta],
+		'bisexual' => [brightRed, brightRed, magenta, magenta, blue, blue],
+		'pansexual' => [brightRed, brightRed, brightYellow, brightYellow, brightCyan, brightCyan],
+		'nonbinary' => [brightYellow, brightWhite, magenta, brightBlack]
 	];
 	public static var flags(get, never):Array<Array<BackgroundColor>>;
 	
@@ -126,7 +127,8 @@ class Pride {
 			array.push(item);
 		return array;
 	}
-	public static function getFlagSlices(array:Array<BackgroundColor>, width:Int = 15):Array<String> {
+	public static function getFlagSlices(array:Array<BackgroundColor>, ?width:Int):Array<String> {
+		width ??= array.length * 3;
 		var rectangle:String = StringTools.rpad('', ' ', width);
 		var slices:Array<String> = [];
 		for (color in array)
