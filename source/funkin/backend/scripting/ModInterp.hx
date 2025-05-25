@@ -192,7 +192,7 @@ class ModInterp extends Interp {
 				}
 				
 				var f = function(args: Array<Dynamic>) {
-					if (((args == null) ? 0 : args.length) != params.length) {
+					if (args?.length ?? 0 != params.length) {
 						if (args.length < minParams) {
 							var str = "Invalid number of parameters. Got " + args.length + ", required " + minParams;
 							if (name != null)
@@ -209,7 +209,7 @@ class ModInterp extends Interp {
 									args2.push(args[pos++]);
 									extraParams--;
 								} else {
-									args2.push(expr(p.value));
+									args2.push(p.value == null ? null : expr(p.value)); // GENIUS
 								}
 							} else {
 								args2.push(args[pos++]);
@@ -217,6 +217,7 @@ class ModInterp extends Interp {
 						}
 						args = args2;
 					}
+					
 					var old = me.locals, depth = me.depth;
 					me.depth ++;
 					me.locals = me.duplicate(capturedLocals);

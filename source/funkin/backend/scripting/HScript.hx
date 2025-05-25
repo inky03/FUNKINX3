@@ -4,6 +4,7 @@ package funkin.backend.scripting;
 import funkin.backend.FunkinRuntimeShader;
 import funkin.backend.scripting.HScriptClasses;
 
+import haxe.PosInfos;
 import crowplexus.iris.Iris;
 import crowplexus.iris.IrisConfig;
 import crowplexus.iris.ErrorSeverity;
@@ -113,8 +114,14 @@ class HScript extends Iris {
 		this.scriptString = code;
 	}
 	
-	public function errorCaught(e:IrisError, ?extra:String) {
-		Log.fatal(Printer.errorToString(e));
+	function errorCaught(e:Dynamic):Void {
+		if (Std.isOfType(e, IrisError)) {
+			var pos:PosInfos = cast {fileName: e.origin, lineNumber: e.line};
+			Iris.fatal(Printer.errorToString(e, false), pos);
+		} else {
+			var pos:PosInfos = @:privateAccess { cast interp.posInfos(); }
+			Iris.fatal(Std.string(e), pos);
+		}
 	}
 	public static function customLog(level:ErrorSeverity, x, ?pos:haxe.PosInfos) {
 		if (pos == null) pos = Iris.getDefaultPos();
@@ -161,14 +168,8 @@ class HScript extends Iris {
 			if (!executed)
 				failed = true;
 			
-			var irisE:IrisError;
-			if (Std.isOfType(e, IrisError)) {
-				irisE = cast e;
-			} else {
-				@:privateAccess irisE = new IrisError(ECustom(Std.string(e)), parser.readPos, parser.readPos, parser.origin, parser.line);
-			}
+			errorCaught(e);
 			
-			errorCaught(irisE);
 			return null;
 		}
 	}
@@ -205,7 +206,7 @@ class HScript extends Iris {
 		}
 
 		#if hscriptPos
-		set("trace", Reflect.makeVarArgs(function(x:Array<Dynamic>) { // fix static trace
+		set('trace', Reflect.makeVarArgs(function(x:Array<Dynamic>) { // fix static trace
 			var pos = this.interp != null ? this.interp.posInfos() : Iris.getDefaultPos(this.name);
 			var v = x.shift();
 			if (x.length > 0)
