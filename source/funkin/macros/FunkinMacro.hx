@@ -32,5 +32,48 @@ class FunkinMacro {
 		
 		return fields;
 	}
+	
+	public static macro function buildReset(isOverride:Bool = false):Array<Field> {
+		var pos:Position = Context.currentPos();
+		var cls:ClassType = Context.getLocalClass().get();
+		var fields:Array<Field> = Context.getBuildFields();
+		
+		var resetExpr:Array<Expr> = [];
+		var access = [APublic];
+		
+		if (isOverride) { // just genius bro
+			access.push(AOverride); // theres prob a better way to do this, but cant really figure it out
+			resetExpr.push(macro { super.resetVars(); });
+		}
+		
+		for (field in fields) {
+			if (field.meta == null) continue;
+			
+			for (meta in field.meta) {
+				if (meta.name != 'resetVar') continue;
+				
+				Context.info(field.name, pos);
+				
+				switch (field.kind) {
+					case FVar(type, expr):
+						resetExpr.push(macro { $i{field.name} = $expr; });
+						
+					default: // nothing ...
+				}
+			}
+		}
+		
+		fields.push({
+			name: 'resetVars',
+			access: access,
+			pos: pos,
+			kind: FFun({
+				args: [],
+				expr: macro $b{resetExpr}
+			}),
+		});
+		
+		return fields;
+	}
 }
 #end

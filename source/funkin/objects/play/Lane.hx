@@ -326,13 +326,9 @@ class Lane extends FunkinSpriteGroup {
 		queue.resize(0);
 	}
 	public function updateNote(note:Note) {
-		note.followLane(this);
-		
-		if (note.ignore)
-			return;
-		
-		var killingNote:Bool = false;
-		if ((cpu || (held && note.goodHit)) && songPosition >= note.msTime && !note.lost && note.canHit) {
+		if (!note.ignore && (cpu || (held && note.goodHit)) && songPosition >= note.msTime && !note.lost && note.canHit) {
+			var killingNote:Bool = false;
+			
 			if (!note.goodHit)
 				_noteEvent(basicEvent(PRESSED, note, cpu ? note.msTime : songPosition));
 			
@@ -352,6 +348,8 @@ class Lane extends FunkinSpriteGroup {
 			}
 		}
 		
+		note.followLane(this);
+		
 		var canDespawn:Bool = !note.preventDespawn;
 		if (note.lost || note.goodHit) {
 			if (canDespawn && (note.endMs - songPosition) < -spawnRadius)
@@ -359,7 +357,7 @@ class Lane extends FunkinSpriteGroup {
 		} else {
 			if (songPosition - hitWindow > note.msTime) {
 				note.lost = true;
-				_noteEvent(basicEvent(LOST, note));
+				if (!note.ignore) _noteEvent(basicEvent(LOST, note));
 			}
 		}
 		
@@ -384,7 +382,7 @@ class Lane extends FunkinSpriteGroup {
 		note.chartNote = songNote;
 		note.hitWindow = hitWindow;
 		
-		note.reload(style);
+		note.reload(style, this);
 		note.scale.set(scale.x * note.defaultScale, scale.y * note.defaultScale);
 		note.updateHitbox();
 		
@@ -399,7 +397,7 @@ class Lane extends FunkinSpriteGroup {
 		var event:NoteEvent = basicEvent(HIT, note, position);
 		_noteEvent(event);
 		
-		if (kill && !note.isHoldNote && !note.ignore && !event.cancelled)
+		if (kill && !note.isHoldNote && !event.cancelled)
 			killNote(note);
 	}
 	public function killNote(note:Note, requeue:Bool = false, sort:Bool = true) {

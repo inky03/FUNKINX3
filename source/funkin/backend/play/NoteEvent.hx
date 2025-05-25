@@ -230,6 +230,8 @@ using StringTools;
 				
 				applyScore(scoreHandler, scoring, game);
 			case LOST:
+				note.multAlpha *= .3;
+				
 				if (inGame && game.genericVocals != null)
 					game.genericVocals.volume = 0;
 				
