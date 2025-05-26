@@ -298,7 +298,7 @@ class Character extends FunkinSprite implements ICharacter {
 			playAnimation(anim, forced, reversed, frame);
 			
 			if (forced || !sameAnim || animWasDone) {
-				timeAnimSteps(steps ?? singForSteps);
+				timeAnimSteps(steps);
 				specialAnim = true;
 			}
 		}
@@ -536,7 +536,7 @@ class Character extends FunkinSprite implements ICharacter {
 		
 		scaleMultiplier = charData.scale;
 		smooth = !charData.no_antialiasing;
-		singForSteps = charData.sing_duration;
+		singForSteps = Math.max(charData.sing_duration, 1);
 		defaultFlipX = charData.flip_x ?? false;
 		scale.set(scaleMultiplier, scaleMultiplier);
 		cameraOffset.set(charData.camera_position[0], charData.camera_position[1]);
