@@ -63,11 +63,11 @@ using funkin.backend.play.NoteStyle.NoteStyleUtil;
 class NoteObject extends FunkinSprite {
 	public var lane:Lane;
 	
+	public var defaultAlpha:Float = 1;
+	public var defaultScale:Float = 1;
+	
 	@resetVar public var updateModchart:Bool = true;
 	@resetVar public var followReceptor:Bool = true;
-	
-	@resetVar public var defaultAlpha:Float = 1;
-	@resetVar public var defaultScale:Float = 1;
 	
 	@resetVar public var direction:Float = 0;
 	@resetVar public var distanceOffset:Float = 0;

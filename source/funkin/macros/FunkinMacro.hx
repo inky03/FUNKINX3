@@ -52,8 +52,6 @@ class FunkinMacro {
 			for (meta in field.meta) {
 				if (meta.name != 'resetVar') continue;
 				
-				Context.info(field.name, pos);
-				
 				switch (field.kind) {
 					case FVar(type, expr):
 						resetExpr.push(macro { $i{field.name} = $expr; });
