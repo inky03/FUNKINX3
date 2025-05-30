@@ -4,6 +4,13 @@ import crowplexus.hscript.Expr;
 import crowplexus.hscript.Parser;
 
 class ModParser extends Parser {
+	public function new() {
+		super();
+		
+		for (proc => value in crowplexus.iris.macro.DefineMacro.defines)
+			preprocesorValues.set(proc, value);
+	}
+	
 	override function parseFunctionArgs() {
 		var args:Array<Argument> = [];
 		var tk = token();
