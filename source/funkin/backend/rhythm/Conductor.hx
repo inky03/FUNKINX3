@@ -60,10 +60,10 @@ class Conductor {
 			var curBeat:Int = Math.floor(metronome.beat);
 			var curStep:Int = Math.floor(metronome.step);
 			
-			if (prevBar != curBar) barHit.dispatch(curBar);
-			if (prevBeat != curBeat) beatHit.dispatch(curBeat);
-			if (prevStep != curStep) stepHit.dispatch(curStep);
 			if (prevPosition != metronome.ms) advance.dispatch(metronome.ms);
+			if (prevStep != curStep) stepHit.dispatch(curStep);
+			if (prevBeat != curBeat) beatHit.dispatch(curBeat);
+			if (prevBar != curBar) barHit.dispatch(curBar);
 		}
 	}
 	public inline function sync():Void {
