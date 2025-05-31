@@ -98,6 +98,7 @@ class Stage extends FunkinSpriteGroup {
 	}
 	public function loadModernStageData(data:ModernStageData) {
 		library = data.directory ?? data.library ?? '';
+		Paths.library = library;
 
 		zoom = data.cameraZoom;
 		for (prop in data.props) {

@@ -258,7 +258,6 @@ class PlayState extends FunkinState {
 			stage.setup(chart.stage);
 			add(stage);
 			
-			Paths.library = stage.library;
 			player1 = stage.getCharacter('bf');
 			player2 = stage.getCharacter('dad');
 			player3 = stage.getCharacter('gf');

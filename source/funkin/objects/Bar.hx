@@ -79,7 +79,15 @@ class Bar extends FunkinSpriteGroup {
 	}
 	
 	function get_barCenter():FlxPoint {
-		return _barPoint.set(leftBar.x + leftBar.clipRect.x + leftBar.clipRect.width, leftBar.y + leftBar.height * .5);
+		var result:FlxPoint = _barPoint.set(leftBar.clipRect.x + leftBar.clipRect.width, leftBar.clipRect.y + leftBar.clipRect.height * .5);
+		result.subtract(leftBar.origin);
+		result.scale(leftBar.scale.x, leftBar.scale.y);
+		result.degrees += leftBar.angle;
+		result.add(leftBar.origin);
+		result.subtract(leftBar.offset);
+		result.add(leftBar.x, leftBar.y);
+		
+		return result;
 	}
 	function set_percent(newPercent:Float):Float {
 		if (percent != newPercent) {
