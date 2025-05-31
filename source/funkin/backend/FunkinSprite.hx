@@ -404,6 +404,9 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 		if (isAnimate) return animate.height;
 		else return height;
 	}
+	override function set_clipRect(rect:FlxRect):FlxRect { // dont gaf
+		return clipRect = rect;
+	}
 	function get_isAnimate() {
 		return (renderType == ANIMATEATLAS && animate != null);
 	}
