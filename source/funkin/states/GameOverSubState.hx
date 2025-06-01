@@ -25,6 +25,7 @@ class GameOverSubState extends FunkinState {
 	var playState:PlayState;
 	var waitTimer:FlxTimer = null;
 	public var started:Bool = false;
+	public var canStart:Bool = true;
 	public var confirmed:Bool = false;
 	public var wasInstant:Bool = false;
 	
@@ -108,13 +109,13 @@ class GameOverSubState extends FunkinState {
 			var aniName:String = 'firstDeath$deathAnimationPostfix';
 			if (character.animationExists(aniName, true)) {
 				character.playAnimation(aniName);
-				character.onAnimationComplete.addOnce((anim:String) -> {
-					if (!started && anim == aniName)
+				character.onAnimationComplete.add((ani:String) -> {
+					if (canStart && !started && ani == aniName)
 						startGameOver();
 				});
 			}
 			new FlxTimer().start(2.5, (_) -> {
-				if (!started && character.isAnimationFinished())
+				if (!started && canStart && character.isAnimationFinished())
 					startGameOver();
 			});
 		} else {

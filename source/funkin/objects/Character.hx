@@ -554,7 +554,10 @@ class Character extends FunkinSprite implements ICharacter {
 			setBaseSize();
 			dance();
 		}
+		
 		finishAnimation();
+		if (anim.looped)
+			playAnimation(currentAnimation, true);
 		
 		dropNoteCounts = findCountAnimations('drop');
 		comboNoteCounts = findCountAnimations('combo');
