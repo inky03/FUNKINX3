@@ -7,7 +7,7 @@ import funkin.objects.Character;
 using StringTools;
 
 //THIS IS ALL KINDOF A MESS BUT IT WORKS??? I THINK
-class Stage extends FunkinSpriteGroup {
+class Stage extends FunkinGroup {
 	var chart:Chart;
 	public var name:String;
 	public var json:Dynamic;

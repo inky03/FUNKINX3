@@ -4,6 +4,52 @@ import funkin.backend.FunkinSprite;
 
 import haxe.iterators.ArrayKeyValueIterator;
 
+typedef FunkinGroup = FunkinTypedGroup<FlxBasic>;
+class FunkinTypedGroup<T:FlxBasic> implements ISpriteVars extends FlxTypedGroup<T> {
+	public var extraData:Map<String, Dynamic> = new Map();
+	
+	public function setVar(k:String, v:Dynamic):Dynamic {
+		if (extraData == null) extraData = new Map();
+		extraData.set(k, v);
+		return v;
+	}
+	public function getVar(k:String):Dynamic {
+		if (extraData == null) return null;
+		return extraData.get(k);
+	}
+	public function hasVar(k:String):Bool {
+		if (extraData == null) return false;
+		return extraData.exists(k);
+	}
+	public function removeVar(k:String):Bool {
+		if (extraData == null) return false;
+		return extraData.remove(k);
+	}
+	
+	public function sortZIndex() {
+		sort(Util.sortZIndex, FlxSort.ASCENDING);
+	}
+	public function insertZIndex(obj:T) {
+		if (members.contains(obj)) remove(obj, true);
+		
+		var low:Float = Math.POSITIVE_INFINITY;
+		for (pos => mem in members) {
+			low = Math.min(mem.zIndex, low);
+			if (obj.zIndex < mem.zIndex) {
+				insert(pos, obj);
+				return obj;
+			}
+		}
+		if (obj.zIndex < low) {
+			insert(0, obj);
+		} else {
+			add(obj);
+		}
+		
+		return obj;
+	}
+}
+
 typedef FunkinSpriteGroup = FunkinTypedSpriteGroup<FlxSprite>;
 class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteGroup implements ISpriteVars implements IZoomFactor extends FlxTypedSpriteGroup<T> {
 	public var zoomFactor(default, set):Float = 1;
@@ -47,7 +93,8 @@ class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteGroup implements ISp
 		sort(Util.sortZIndex, FlxSort.ASCENDING);
 	}
 	public function insertZIndex(obj:T) {
-		if (members.contains(obj)) remove(obj);
+		if (members.contains(obj)) remove(obj, true);
+		
 		var low:Float = Math.POSITIVE_INFINITY;
 		for (pos => mem in members) {
 			low = Math.min(mem.zIndex, low);
@@ -61,6 +108,7 @@ class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteGroup implements ISp
 		} else {
 			add(obj);
 		}
+		
 		return obj;
 	}
 	public inline function moveToTop(sprite:T):T {
