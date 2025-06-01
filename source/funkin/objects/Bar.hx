@@ -9,7 +9,8 @@ class Bar extends FunkinSpriteGroup {
 	public var leftBar:FunkinSprite;
 	public var rightBar:FunkinSprite;
 	
-	public var targetPercent:Float = 100;
+	public var value:Float = .5;
+	public var targetPercent:Float = 50;
 	public var percent(default, set):Float;
 	public var percentLerp:Null<Float> = .15 * 60;
 	public var valueFunc:Bar -> Float = null;
@@ -113,8 +114,8 @@ class Bar extends FunkinSpriteGroup {
 			if (bounds.max <= bounds.min)
 				return 0;
 			
-			var val:Float = valueFunc(this);
-			return targetPercent = Util.clamp((val - bounds.min) / bounds.max * 100, 0, 100);
+			value = valueFunc(this);
+			return targetPercent = Util.clamp((value - bounds.min) / (bounds.max - bounds.min) * 100, 0, 100);
 		} else {
 			return Util.clamp(targetPercent, 0, 100);
 		}
