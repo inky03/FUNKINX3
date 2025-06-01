@@ -324,6 +324,7 @@ class Note extends NoteObject {
 		var asset:NoteStyleAssetData = style?.data.notes;
 		
 		NoteStyleUtil.loadNoteStyleAnimations(this, asset, style?.getDirectionName(laneIndex));
+		updateRGBShader = !(style?.data.general.disableRGB ?? false);
 		defaultScale = asset?.scale ?? 1;
 		defaultAlpha = asset?.alpha ?? 1;
 		scale.x *= (defaultScale / oldScale);
@@ -660,6 +661,7 @@ class NoteTailStrip extends FunkinStrip {
 	public var parentTail(default, set):NoteTail;
 	
 	public var fast(default, set):Bool;
+	var topCoordOffset:Int = 0;
 	var sinFunc:Float -> Float;
 	var cosFunc:Float -> Float;
 	var topUV:Float;
@@ -691,16 +693,36 @@ class NoteTailStrip extends FunkinStrip {
 			return;
 		
 		var w:Float = graphic.width;
+		var h:Float = graphic.height;
 		
 		var crop:Float = (antialiasing ? .5 : 0); // gets rid of blurry edges
-		var leftUV:Float = (frame.frame.x / w);
-		var rightUV:Float = (leftUV + frame.frame.width / w);
-		var bottomUV:Float = ((frame.frame.y + frame.frame.height - crop) / graphic.height);
+		var leftUV:Float, highUV:Float, rightUV:Float, bottomUV:Float;
 		
-		uvtData[0] = uvtData[4] = leftUV; // left corners uv
-		uvtData[2] = uvtData[6] = rightUV; // right corners uv
-		uvtData[5] = uvtData[7] = bottomUV; // bottom corners uv
-		topUV = ((frame.frame.y + crop) / graphic.height);
+		leftUV = (frame.frame.x / w);
+		highUV = (frame.frame.y / h);
+		rightUV = (leftUV + frame.frame.width / w);
+		bottomUV = (highUV + frame.frame.height / h);
+		
+		switch (frame.angle) {
+			case ANGLE_NEG_90 | ANGLE_270:
+				topCoordOffset = 0;
+				uvtData[1] = uvtData[5] = highUV; // left corners uv
+				uvtData[3] = uvtData[7] = bottomUV; // right corners uv
+				uvtData[4] = uvtData[6] = (leftUV + crop / w); // bottom corners uv
+				topUV = (rightUV - crop / w); // top corners uv
+			case ANGLE_90:
+				topCoordOffset = 0;
+				uvtData[1] = uvtData[5] = bottomUV; // left corners uv
+				uvtData[3] = uvtData[7] = highUV; // right corners uv
+				uvtData[4] = uvtData[6] = (rightUV - crop / w); // bottom corners uv
+				topUV = (leftUV + crop / w); // top corners uv
+			default:
+				topCoordOffset = 1;
+				uvtData[0] = uvtData[4] = leftUV; // left corners uv
+				uvtData[2] = uvtData[6] = rightUV; // right corners uv
+				uvtData[5] = uvtData[7] = (bottomUV - crop / h); // bottom corners uv
+				topUV = (highUV + crop / h); // top corners uv
+		} // +90 untested but SHOULD work ??
 	}
 	public function updateRender(drawData:NoteTailDrawData):Void {
 		if (graphic == null)
@@ -725,7 +747,7 @@ class NoteTailStrip extends FunkinStrip {
 		vertices[1] = cos + nextYOffset;
 		vertices[2] = sin + nextXOffset; // top right
 		vertices[3] = -cos + nextYOffset;
-		uvtData[1] = uvtData[3] = FlxMath.lerp(topUV, uvtData[5], clip); // top corners uv (for clipping)
+		uvtData[0 + topCoordOffset] = uvtData[2 + topCoordOffset] = FlxMath.lerp(topUV, uvtData[4 + topCoordOffset], clip); // top corners uv (for clipping)
 		
 		sin = sinFunc(angleFrom) * width;
 		cos = cosFunc(angleFrom) * width;
