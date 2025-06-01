@@ -19,6 +19,7 @@ class Bar extends FunkinSpriteGroup {
 	public var barCenter(get, null):FlxPoint;
 	
 	public var leftToRight(default, set):Bool = true;
+	public var overlayOnTop(default, set):Bool = false;
 	
 	var _barPoint:FlxPoint = FlxPoint.get();
 	
@@ -29,15 +30,16 @@ class Bar extends FunkinSpriteGroup {
 		rightBar = new FunkinSprite().makeGraphic(Std.int(overlay.width), Std.int(overlay.height), -1);
 		rightBar.clipRect = new FlxRect();
 		leftBar.clipRect = new FlxRect();
-		add(overlay);
-		add(leftBar);
-		add(rightBar);
 		valueFunc = valueFunction;
 		if (newBounds != null)
 			bounds = newBounds;
 		
+		insertZIndex(leftBar, 5);
+		insertZIndex(rightBar, 10);
+		
 		barRect.height = leftBar.height - barRect.y * 2;
 		barRect.width = leftBar.width - barRect.x * 2;
+		overlayOnTop = false;
 		snapToPercent();
 		setColors();
 	}
@@ -117,11 +119,15 @@ class Bar extends FunkinSpriteGroup {
 			return Util.clamp(targetPercent, 0, 100);
 		}
 	}
-	function set_leftToRight(isIt:Bool) {
+	function set_leftToRight(isIt:Bool):Bool {
 		if (leftToRight == isIt) return isIt;
 		leftToRight = isIt;
 		updateBars();
 		return isIt;
+	}
+	function set_overlayOnTop(yea:Bool):Bool {
+		insertZIndex(overlay, (yea ? 15 : 0));
+		return overlayOnTop = yea;
 	}
 	public function updateBars() {
 		var fPercent:Float = (leftToRight ? 100 - percent : percent) * .01;
