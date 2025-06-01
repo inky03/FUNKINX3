@@ -20,7 +20,6 @@ class FreeplayState extends FunkinState {
 	var _hasUnknown:Bool = false;
 	
 	override public function create() {
-		Mods.currentMod = null;
 		super.create();
 		
 		playMusic(MainMenuState.menuMusic);
@@ -161,6 +160,8 @@ class FreeplayState extends FunkinState {
 			var content:String = File.getContent(path);
 			var levels:LevelsData = TJSON.parse(content);
 			for (song in levels.songList) {
+				Mods.currentMod = mod;
+				
 				if (song.showOnFreeplay != null && !song.showOnFreeplay) continue;
 				var i:Int = items.length - 1;
 				var item:SongItem = new SongItem(0, 0, song.displayName, song.icon);
@@ -191,6 +192,8 @@ class FreeplayState extends FunkinState {
 		} catch (e:haxe.Exception) {
 			Log.error('error loading level @ "$path" -> ${e.details()}');
 		}
+		
+		Mods.currentMod = null;
 	}
 	public function loadVariation(name:String, ?mod:String) {
 		try {
