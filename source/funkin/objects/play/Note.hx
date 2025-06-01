@@ -738,29 +738,35 @@ class NoteTailStrip extends FunkinStrip {
 		var angleFrom:Float = drawData.angleFrom;
 		
 		setPosition(drawData.xFrom, drawData.yFrom);
+		var sprXOffset:Float = -(spriteOffset.x + animOffset.x);
+		var sprYOffset:Float = -(spriteOffset.y + animOffset.y);
 		var nextXOffset:Float = (drawData.xTo - drawData.xFrom) * (1 - clip);
 		var nextYOffset:Float = (drawData.yTo - drawData.yFrom) * (1 - clip);
 		
 		// update vertices
 		var width:Float = frameWidth * .5 * drawData.scaleFrom;
 		var widthTo:Float = frameWidth * .5 * drawData.scaleTo;
+		var xOffset:Float = sprXOffset * drawData.scaleFrom;
+		var xOffsetTo:Float = sprXOffset * drawData.scaleTo;
+		var yOffset:Float = sprYOffset * drawData.scaleFrom;
+		var yOffsetTo:Float = sprYOffset * drawData.scaleTo;
 		
 		var sin:Float = sinFunc(angleTo) * widthTo;
 		var cos:Float = cosFunc(angleTo) * widthTo;
 		
-		vertices[0] = -sin + nextXOffset; // top left
-		vertices[1] = cos + nextYOffset;
-		vertices[2] = sin + nextXOffset; // top right
-		vertices[3] = -cos + nextYOffset;
+		vertices[0] = -sin + nextXOffset + xOffsetTo; // top left
+		vertices[1] = cos + nextYOffset + yOffsetTo;
+		vertices[2] = sin + nextXOffset + xOffsetTo; // top right
+		vertices[3] = -cos + nextYOffset + yOffsetTo;
 		uvtData[0 + topCoordOffset] = uvtData[2 + topCoordOffset] = FlxMath.lerp(topUV, uvtData[4 + topCoordOffset], clip); // top corners uv (for clipping)
 		
 		sin = sinFunc(angleFrom) * width;
 		cos = cosFunc(angleFrom) * width;
 		
-		vertices[4] = -sin; // bottom left
-		vertices[5] = cos;
-		vertices[6] = sin; // bottom right
-		vertices[7] = -cos;
+		vertices[4] = -sin + xOffset; // bottom left
+		vertices[5] = cos + yOffset;
+		vertices[6] = sin + xOffset; // bottom right
+		vertices[7] = -cos + yOffset;
 	}
 	public inline function copyNote(note:Note):Void {
 		scrollFactor.copyFrom(note.scrollFactor);
