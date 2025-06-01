@@ -29,8 +29,9 @@ class FunkinTypedGroup<T:FlxBasic> implements ISpriteVars extends FlxTypedGroup<
 	public function sortZIndex() {
 		sort(Util.sortZIndex, FlxSort.ASCENDING);
 	}
-	public function insertZIndex(obj:T) {
+	public function insertZIndex(obj:T, ?zIndex:Int) {
 		if (members.contains(obj)) remove(obj, true);
+		if (zIndex != null) obj.zIndex = zIndex;
 		
 		var low:Float = Math.POSITIVE_INFINITY;
 		for (pos => mem in members) {
@@ -92,8 +93,9 @@ class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteGroup implements ISp
 	public function sortZIndex() {
 		sort(Util.sortZIndex, FlxSort.ASCENDING);
 	}
-	public function insertZIndex(obj:T) {
+	public function insertZIndex(obj:T, ?zIndex:Int) {
 		if (members.contains(obj)) remove(obj, true);
+		if (zIndex != null) obj.zIndex = zIndex;
 		
 		var low:Float = Math.POSITIVE_INFINITY;
 		for (pos => mem in members) {
