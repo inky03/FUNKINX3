@@ -231,7 +231,7 @@ class Lane extends FunkinSpriteGroup {
 				continue;
 			if (hittableOnly && (!note.canHit || note.goodHit))
 				continue;
-			if (highNote == null || (note.hitPriority > highNote.hitPriority || (note.hitPriority == highNote.hitPriority && note.msTime < highNote.msTime)))
+			if (highNote == null || note.hitPriority > highNote.hitPriority || (note.hitPriority == highNote.hitPriority && note.msTime < highNote.msTime))
 				highNote = note;
 		}
 		return highNote;
@@ -487,7 +487,7 @@ class Receptor extends FunkinSprite {
 		this.style = NoteStyle.fetch(style);
 		
 		onAnimationComplete.add((anim:String) -> {
-			if (anim != 'static' && autoReset && (lane == null || !lane.held))
+			if (!anim.startsWith('static') && autoReset && (lane == null || !lane.held))
 				playAnimation('static', true);
 		});
 	}
@@ -499,6 +499,10 @@ class Receptor extends FunkinSprite {
 	}
 	
 	public override function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
+		var overrideAnim:String = '$anim-$noteData';
+		if (animationExists(overrideAnim))
+			anim = overrideAnim;
+		
 		if (updateRGBShader) {
 			var animData:NoteStyleAnimData = style?.getAssetAnimation(style.data.receptors, anim);
 			if (animData != null) {
@@ -639,6 +643,10 @@ class NoteSplash extends FunkinSprite {
 		return this;
 	}
 	public override function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
+		var overrideAnim:String = '$anim-$noteData';
+		if (animationExists(overrideAnim))
+			anim = overrideAnim;
+		
 		if (updateRGBShader) {
 			var animData:NoteStyleAnimData = style?.getAssetAnimation(asset, anim);
 			if (animData != null) {

@@ -62,6 +62,7 @@ using funkin.backend.play.NoteStyle.NoteStyleUtil;
 @:build(funkin.macros.FunkinMacro.buildReset())
 class NoteObject extends FunkinSprite {
 	public var lane:Lane;
+	public var laneIndex:Int = 0;
 	
 	public var defaultAlpha:Float = 1;
 	public var defaultScale:Float = 1;
@@ -73,8 +74,11 @@ class NoteObject extends FunkinSprite {
 	@resetVar public var distanceOffset:Float = 0;
 	@resetVar public var scrollDistance:Float = 0;
 	@resetVar public var scrollMultiplier:Float = 1;
+	@:deprecated('noteData is deprecated, use laneIndex instead!') public var noteData(get, set):Int;
 	@:deprecated('directionOffset is deprecated, use direction instead!') public var directionOffset(get, set):Float;
 	
+	function get_noteData():Int { return laneIndex; }
+	function set_noteData(value:Int):Int { return laneIndex = value; }
 	function get_directionOffset():Float { return direction; }
 	function set_directionOffset(alpha:Float):Float { return direction = alpha; }
 	
@@ -123,7 +127,6 @@ class Note extends NoteObject {
 	
 	public var chartNote(default, set):ChartNote;
 	public var strumlineIndex:Int = 0;
-	public var laneIndex:Int = 0;
 	
 	@resetVar public var preventDespawn:Bool = false;
 	@resetVar public var consumed:Bool = false;
@@ -155,7 +158,6 @@ class Note extends NoteObject {
 	public var style(default, set):NoteStyle;
 	public var kind(default, set):String = '';
 	@:deprecated('noteKind is deprecated, use kind instead!') public var noteKind(get, set):String;
-	@:deprecated('noteData is deprecated, use laneIndex instead!') public var noteData(get, set):Int;
 	@:deprecated('player is deprecated, use strumlineIndex instead!') public var player(get, never):Bool;
 	
 	public var endMs(get, never):Float;
@@ -166,8 +168,6 @@ class Note extends NoteObject {
 	public var beatLength(default, set):Float = 0;
 	public var isHoldNote(default, null):Bool = false;
 	
-	function get_noteData():Int { return laneIndex; }
-	function set_noteData(value:Int):Int { return laneIndex = value; }
 	function get_player():Bool { return (strumlineIndex == 0); }
 	function set_noteKind(newKind:String):String { return kind = newKind; }
 	function get_noteKind():String { return kind; }
@@ -390,6 +390,10 @@ class Note extends NoteObject {
 	}
 	
 	public override function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
+		var overrideAnim:String = '$anim-$laneIndex';
+		if (animationExists(overrideAnim))
+			anim = overrideAnim;
+		
 		if (forced || this.anim.name != anim)
 			reloadAnimShader(anim, style);
 		
@@ -470,6 +474,7 @@ class NoteTail extends Note {
 	public function reloadNote(note:Note):Void {
 		conductorInUse = note.conductorInUse ?? FunkinState.getCurrentConductor();
 		chartNote = note.chartNote;
+		laneIndex = note.laneIndex;
 		style = note.style;
 		
 		holdStrip?.reloadTail(this);
@@ -704,7 +709,7 @@ class NoteTailStrip extends FunkinStrip {
 		bottomUV = (highUV + frame.frame.height / h);
 		
 		switch (frame.angle) {
-			case ANGLE_NEG_90 | ANGLE_270:
+			case ANGLE_NEG_90:
 				topCoordOffset = 0;
 				uvtData[1] = uvtData[5] = highUV; // left corners uv
 				uvtData[3] = uvtData[7] = bottomUV; // right corners uv
@@ -790,7 +795,12 @@ class NoteTailStrip extends FunkinStrip {
 		
 		NoteStyleUtil.loadNoteStyleAnimations(this, asset, style?.getDirectionName(laneIndex));
 		
-		playAnimation(defaultAnim, true);
+		var overrideAnim:String = '$defaultAnim-$laneIndex';
+		if (animationExists(overrideAnim)) {
+			playAnimation(overrideAnim, true);
+		} else {
+			playAnimation(defaultAnim, true);
+		}
 		offset.set();
 	}
 }
