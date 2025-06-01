@@ -133,16 +133,18 @@ class Bar extends FunkinSpriteGroup {
 	public function updateBars() {
 		var fPercent:Float = (leftToRight ? 100 - percent : percent) * .01;
 		var leftWidth:Float = FlxMath.lerp(0, barRect.width, fPercent);
+		var yM:Float = (leftBar.frameHeight / overlay.frameHeight);
+		var xM:Float = (leftBar.frameWidth / overlay.frameWidth);
 		
-		leftBar.clipRect.x = barRect.x;
-		leftBar.clipRect.y = barRect.y;
-		leftBar.clipRect.width = leftWidth;
+		leftBar.clipRect.x = barRect.x * xM;
+		leftBar.clipRect.y = barRect.y * yM;
+		leftBar.clipRect.width = leftWidth * xM;
 		
-		rightBar.clipRect.y = barRect.y;
-		rightBar.clipRect.x = barRect.x + leftWidth;
-		rightBar.clipRect.width = barRect.width - leftWidth;
+		rightBar.clipRect.y = barRect.y * yM;
+		rightBar.clipRect.x = (barRect.x + leftWidth) * xM;
+		rightBar.clipRect.width = (barRect.width - leftWidth) * xM;
 		
-		rightBar.clipRect.height = leftBar.clipRect.height = barRect.height;
+		rightBar.clipRect.height = leftBar.clipRect.height = barRect.height * yM;
 		rightBar.clipRect = rightBar.clipRect;
 		leftBar.clipRect = leftBar.clipRect;
 	}
