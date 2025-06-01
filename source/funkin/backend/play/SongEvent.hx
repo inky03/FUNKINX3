@@ -159,9 +159,14 @@ class PlayStateEventHandler {
 					case 2: // gf focus
 						focusChara = game.player3;
 				}
-
+				
+				if (game.camLocked) { // change "spotlight", NOT camera
+					game.spotlight = focusChara?.current;
+					return;
+				}
+				
 				if (focusChara != null) {
-					game.focusOnCharacter(focusChara.current);
+					game.focusOnCharacter(focusChara?.current);
 				} else {
 					game.camFocusTarget.x = 0;
 					game.camFocusTarget.y = 0;

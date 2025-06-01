@@ -536,6 +536,7 @@ class Character extends FunkinSprite implements ICharacter {
 		
 		scaleMultiplier = charData.scale;
 		smooth = !charData.no_antialiasing;
+		bopFrequency = (animationExists('danceLeft') && animationExists('danceRight') ? 1 : 2);
 		singForSteps = Math.max(charData.sing_duration, 1);
 		defaultFlipX = charData.flip_x ?? false;
 		scale.set(scaleMultiplier, scaleMultiplier);

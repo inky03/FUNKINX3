@@ -54,6 +54,7 @@ class PlayState extends FunkinState {
 	public var camFocusTarget:FlxObject;
 	public var spotlight(default, set):Null<FlxSprite>;
 	
+	public var camLocked:Bool = false;
 	public var camZooming:Bool = true;
 	public var camZoomIntensity:Float = 1;
 	public var hudZoomIntensity:Float = 2;
