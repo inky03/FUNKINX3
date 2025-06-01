@@ -785,25 +785,18 @@ class PlayState extends FunkinState {
 	public function playerNoteEvent(e:NoteEvent) {
 		e.setup();
 		
-		e.doSplash = true;
-		e.doSpark = true;
+		e.doSplash = e.doSpark = true;
 		
 		if (e.type == NoteEventType.GHOST && ghostTapping) {
 			e.playAnimation = false;
 		} else {
-			e.playSound = true;
-			e.applyRating = true;
+			e.playSound = e.applyHealth = e.applyRating = true;
 		}
 		
 		dispatchPlayEvent('playerNoteEvent', e);
 	}
 	public function opponentNoteEvent(e:NoteEvent) {
 		e.setup();
-		
-		e.applyRating = false;
-		e.playSound = false;
-		e.doSplash = false;
-		e.doSpark = false;
 		
 		dispatchPlayEvent('opponentNoteEvent', e);
 	}

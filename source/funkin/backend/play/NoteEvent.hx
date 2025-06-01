@@ -19,6 +19,7 @@ using StringTools;
 	public var strumline:Strumline;
 	public var animSuffix:String = '';
 	public var songPosition:Float = 0;
+	public var holdDelta:Float = 0;
 
 	public var spark:NoteSpark = null;
 	public var splash:NoteSplash = null;
@@ -31,6 +32,7 @@ using StringTools;
 	public var doSplash:Bool = false;
 	public var playSound:Bool = false;
 	public var popRating:Bool = true;
+	public var applyHealth:Bool = false;
 	public var applyRating:Bool = false;
 	public var playAnimation:Bool = true;
 	public var animateReceptor:Bool = true;
@@ -79,7 +81,8 @@ using StringTools;
 							rating.acceleration.y = 550;
 						}
 						
-						game.health += note.healthGain * scoring.healthMod;
+						if (applyHealth)
+							game.health += note.healthGain * scoring.healthMod;
 					}
 					
 					applyScore(scoreHandler, scoring, game);
@@ -160,13 +163,15 @@ using StringTools;
 						nextHitTime = Math.max(Math.min(songPos, note.endMs), prevHitTime);
 					}
 					
-					final secondDiff:Float = Math.max(0, (nextHitTime - prevHitTime) * .001);
+					holdDelta = Math.max(0, nextHitTime - prevHitTime);
+					
+					final secondDiff:Float = holdDelta * .001;
 					scoring ??= {score: 0, healthMod: secondDiff};
 					
 					if (scoreHandler != null)
 						scoring.score = scoreHandler.holdScorePerSecond * secondDiff;
 					
-					if (inGame)
+					if (inGame && applyRating && applyHealth)
 						game.health += (scoring.healthMod ?? 1) * note.healthGainPerSecond;
 					
 					applyScore(scoreHandler, scoring, game);
@@ -224,7 +229,7 @@ using StringTools;
 				if (applyRating) {
 					scoring ??= scoreHandler?.judgeNoteGhost();
 					
-					if (inGame)
+					if (inGame && applyHealth)
 						game.health += (scoring.healthMod ?? -.01);
 				}
 				
@@ -255,7 +260,8 @@ using StringTools;
 							rating.acceleration.y = 240;
 						}
 						
-						game.health -= note.healthLoss * (scoring.healthMod ?? 1);
+						if (applyHealth)
+							game.health -= note.healthLoss * (scoring.healthMod ?? 1);
 					}
 					
 					applyScore(scoreHandler, scoring, game);
