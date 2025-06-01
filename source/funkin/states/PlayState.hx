@@ -335,20 +335,10 @@ class PlayState extends FunkinState {
 		iconP2.zIndex = 15;
 		uiGroup.add(iconP2);
 		
-		if (player1 != null) {
-			player1.onCharacterChanged.add((name:String, char:Character) -> {
-				matchIconData(iconP1, char);
-				if (spotlight == player1.current)
-					focusOnCharacter(char);
-			});
-		}
-		if (player2 != null) {
-			player2.onCharacterChanged.add((name:String, char:Character) -> {
-				matchIconData(iconP2, char);
-				if (spotlight == player2.current)
-					focusOnCharacter(char);
-			});
-		}
+		if (player1 != null)
+			player1.onCharacterChanged.add((name:String, char:Character) -> matchIconData(iconP1, char));
+		if (player2 != null)
+			player2.onCharacterChanged.add((name:String, char:Character) -> matchIconData(iconP2, char));
 		
 		scoreTxt = new FlxText(0, FlxG.height - 25, FlxG.width, 'Score: idk');
 		scoreTxt.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, CENTER, OUTLINE, FlxColor.BLACK);
