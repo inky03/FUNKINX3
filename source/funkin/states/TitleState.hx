@@ -128,8 +128,8 @@ class TitleState extends FunkinState {
 			showTitleScreen(true);
 		}
 		
-		DiscordRPC.presence.details = 'In the title screen';
-		DiscordRPC.dirty = true;
+		DiscordRpc.presence.details = 'In the title screen';
+		DiscordRpc.dirty = true;
 		
 		enter.color = enterColors[enterColorIndex ++];
 	}

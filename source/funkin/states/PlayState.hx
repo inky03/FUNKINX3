@@ -574,7 +574,7 @@ class PlayState extends FunkinState {
 		if (beat >= 0 && !songStarted)
 			dispatchSongEvent({type: SONG_START});
 		
-		if (DiscordRPC.supported && music.playing && DiscordRPC.presence.endTimestamp.toInt() == 0)
+		if (DiscordRpc.supported && music.playing && DiscordRpc.presence.endTimestamp.toInt() == 0)
 			refreshRPCTime();
 		if (camZoomRate != null && camZoomRate > 0 && beat % camZoomRate == 0)
 			bopCamera();
@@ -623,32 +623,32 @@ class PlayState extends FunkinState {
 	
 	// TODO: ok, maybe these could be in a single function
 	public function refreshRPCTime() {
-		if (!DiscordRPC.supported || !autoUpdateRPC)
+		if (!DiscordRpc.supported || !autoUpdateRPC)
 			return;
 		
 		if (music.playing) {
 			var beginTime:Float = Date.now().getTime() - music.time + audioOffset;
 			var endTime:Float = beginTime + chart.songLength;
-			DiscordRPC.presence.endTimestamp = Std.int(endTime * .001);
-			DiscordRPC.presence.startTimestamp = Std.int(beginTime * .001);
+			DiscordRpc.presence.endTimestamp = Std.int(endTime * .001);
+			DiscordRpc.presence.startTimestamp = Std.int(beginTime * .001);
 			// trace('PLAYING SONG FROM ' + Std.int(beginTime * .001) + ' to ' + Std.int(endTime * .001));
 		} else {
-			DiscordRPC.presence.startTimestamp = DiscordRPC.presence.endTimestamp = 0;
+			DiscordRpc.presence.startTimestamp = DiscordRpc.presence.endTimestamp = 0;
 		}
-		DiscordRPC.dirty = true;
+		DiscordRpc.dirty = true;
 	}
 	public function refreshRPCTitle() {
-		if (!DiscordRPC.supported || !autoUpdateRPC)
+		if (!DiscordRpc.supported || !autoUpdateRPC)
 			return;
 		
 		var detailsText:String = '${chart.name} on ${chart.difficulty.toUpperCase()}';
 		if (paused)
 			detailsText += ' (Paused)';
-		DiscordRPC.details = detailsText;
+		DiscordRpc.details = detailsText;
 		refreshRPCDetails();
 	}
 	public function refreshRPCDetails() {
-		if (!DiscordRPC.supported || !autoUpdateRPC)
+		if (!DiscordRpc.supported || !autoUpdateRPC)
 			return;
 		
 		var detailsString:String;
@@ -675,7 +675,7 @@ class PlayState extends FunkinState {
 			detailsString = '';
 		}
 		
-		DiscordRPC.state = detailsString;
+		DiscordRpc.state = detailsString;
 	}
 	
 	inline public function dispatchSongEvent(e:SongEvent) dispatchPlayEvent('songEvent', e);
@@ -972,8 +972,8 @@ class PlayState extends FunkinState {
 		Paths.library = '';
 		
 		funkin.backend.play.NoteStyle.wipe();
-		DiscordRPC.details = DiscordRPC.state = '';
-		DiscordRPC.presence.startTimestamp = DiscordRPC.presence.endTimestamp = 0;
+		DiscordRpc.details = DiscordRpc.state = '';
+		DiscordRpc.presence.startTimestamp = DiscordRpc.presence.endTimestamp = 0;
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyPressEvent);
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, keyReleaseEvent);
 		conductorInUse.paused = false;

@@ -38,8 +38,8 @@ class OptionsState extends FunkinState {
 		
 		Main.showWatermark = true;
 		
-		DiscordRPC.presence.details = 'Navigating options';
-		DiscordRPC.dirty = true;
+		DiscordRpc.presence.details = 'Navigating options';
+		DiscordRpc.dirty = true;
 	}
 	
 	override public function update(elapsed:Float) {

@@ -77,8 +77,8 @@ class ModMenuState extends FunkinState {
 		}
 		shiftCapsules();
 
-		DiscordRPC.presence.details = 'In the mod menu';
-		DiscordRPC.dirty = true;
+		DiscordRpc.presence.details = 'In the mod menu';
+		DiscordRpc.dirty = true;
 	}
 	
 	public function stepHitEvent(step:Int) {

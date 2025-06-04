@@ -1,4 +1,4 @@
-package funkin.backend;
+package funkin.backend.api;
 
 #if hxdiscord_rpc
 import hxdiscord_rpc.Discord;
@@ -6,7 +6,7 @@ import hxdiscord_rpc.Types;
 import sys.thread.Thread;
 #end
 
-class DiscordRPC {
+class DiscordRpc {
 	public static var supported(default, never):Bool = #if hxdiscord_rpc true #else false #end;
 
 	public static var dirty:Bool = false;
@@ -15,6 +15,8 @@ class DiscordRPC {
 
 	public static var details(default, set):String = '';
 	public static var state(default, set):String = '';
+	
+	static var success:Null<Bool> = false;
 
 	static function set_details(newDetails:String):String {
 		if (details == newDetails) return newDetails;
@@ -89,14 +91,15 @@ class DiscordRPC {
 	
 	private static function onReady(request:cpp.RawConstPointer<DiscordUser>):Void {
 		final username:String = request[0].username;
-		final globalName:String = request[0].username;
 		final discriminator:Int = Std.parseInt(request[0].discriminator);
 		
 		if (discriminator != 0) {
-			Log.info('Discord: connected to user $username#$discriminator ($globalName)!');
+			Log.info('discord: connected to user @$username#$discriminator ($username)!');
 		} else {
-			Log.info('Discord: connected to user @$username ($globalName)!');
+			Log.info('discord: connected to user @$username ($username)!');
 		}
+		
+		success = true;
 		
 		var gitButton:DiscordButton = new DiscordButton();
 		gitButton.url = 'https://github.com/inky03/FUNKINX3';
@@ -107,10 +110,14 @@ class DiscordRPC {
 		refresh();
 	}
 	private static function onDisconnected(errorCode:Int, message:cpp.ConstCharStar):Void {
-		Log.info('Discord: disconnected ($errorCode:$message)');
+		if (success != null)
+			Log.info('discord: disconnected (code $errorCode -> $message)');
+		success = null;
 	}
 	private static function onError(errorCode:Int, message:cpp.ConstCharStar):Void {
-		Log.error('Discord: $errorCode:$message');
+		if (success != false)
+			Log.error('discord: error (code $errorCode)... -> $message');
+		success = false;
 	}
 	#else
 	public static var presence:Dynamic = {};

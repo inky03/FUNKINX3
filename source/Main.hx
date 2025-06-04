@@ -28,7 +28,7 @@ class Main extends openfl.display.Sprite {
 		
 		Mods.refresh();
 		HScript.init();
-		DiscordRPC.prepare();
+		DiscordRpc.prepare();
 		
 		var game:FunkinGame = new FunkinGame(0, 0, funkin.states.TitleState);
 		addChild(game);
@@ -37,11 +37,11 @@ class Main extends openfl.display.Sprite {
 		FlxG.maxElapsed = 1;
 		FlxG.drawFramerate = 144;
 		FlxG.updateFramerate = 144;
-		FlxG.signals.postUpdate.add(() -> DiscordRPC.update());
+		FlxG.signals.postUpdate.add(() -> DiscordRpc.update());
 		
 		showWatermark = true;
 		
-		DiscordRPC.presence.largeImageText = 'FUNKINX3 $engineVersion';
+		DiscordRpc.presence.largeImageText = 'FUNKINX3 $engineVersion';
 		openfl.Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(openfl.events.UncaughtErrorEvent.UNCAUGHT_ERROR, CrashState.handleUncaughtError);
 		#if cpp
 		untyped __global__.__hxcpp_set_critical_error_handler((error) -> throw error);

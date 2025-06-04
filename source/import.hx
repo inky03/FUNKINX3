@@ -47,5 +47,5 @@ import funkin.backend.rhythm.*;
 import funkin.backend.Mods;
 import funkin.backend.Paths;
 
-import funkin.backend.DiscordRpc;
+import funkin.backend.api.DiscordRpc;
 #end
