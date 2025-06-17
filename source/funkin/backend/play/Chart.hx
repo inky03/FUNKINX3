@@ -285,8 +285,9 @@ class Chart {
 			
 			var ms:Float = 0;
 			var beat:Float = 0;
-			var sectionNumerator:Float = 0;
-			var osectionNumerator:Float = 0;
+			
+			var numerator:Int = 0;
+			var onumerator:Int = 0;
 			
 			var bpm:Float = song.initialBpm;
 			var crochet:Float = 60000 / song.initialBpm;
@@ -323,22 +324,32 @@ class Chart {
 				}
 				
 				var sectionDenominator:Int = 4;
-				var sectionNumerator:Null<Float> = section.sectionBeats;
-				if (sectionNumerator == null) sectionNumerator = section.lengthInSteps * .25;
-				if (sectionNumerator == null) sectionNumerator = 4;
+				var sectionNumerator:Null<Float> = section.sectionBeats ?? ((section?.lengthInSteps ?? 16) * .25);
 				while (sectionNumerator % 1 > 0 && sectionDenominator < 32) {
 					sectionNumerator *= 2;
 					sectionDenominator *= 2;
 				}
-				var changeSign:Bool = (sectionNumerator != osectionNumerator);
-				if (section.changeBPM || changeSign) {
-					osectionNumerator = sectionNumerator;
-					if (section.changeBPM) bpm = section.bpm;
-					crochet = 60000 / bpm / sectionDenominator * 4;
-					stepCrochet = crochet * .25;
-					
-					song.tempoChanges.push(new TempoChange(beat, section.changeBPM ? section.bpm : null, changeSign ? new TimeSignature(Std.int(sectionNumerator), sectionDenominator) : null));
+				numerator = Std.int(sectionNumerator);
+				
+				var changeTempo:Bool = false;
+				var newSign:TimeSignature = null;
+				
+				if (numerator != onumerator) {
+					newSign = new TimeSignature(Math.ceil(numerator), sectionDenominator);
+					onumerator = numerator;
+					changeTempo = true;
 				}
+				if (section.changeBPM) {
+					bpm = section.bpm;
+					changeTempo = true;
+				}
+				
+				if (changeTempo) {
+					crochet = (60000 / bpm / sectionDenominator * 4);
+					stepCrochet = crochet * .25;
+					song.tempoChanges.push(new TempoChange(beat, section.changeBPM ? bpm : null, newSign));
+				}
+				
 				beat += sectionNumerator;
 				ms += sectionNumerator * crochet;
 				
