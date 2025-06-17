@@ -169,7 +169,7 @@ class Metronome {
 	public function copyTempoChanges(copyChanges:Array<TempoChange>):Array<TempoChange> {
 		tempoChanges.resize(0);
 		for (change in copyChanges) {
-			var newChange:TempoChange = new TempoChange(change.beatTime, change.bpm, new TimeSignature().copyFrom(change.timeSignature));
+			var newChange:TempoChange = new TempoChange(change.beatTime, change.bpm, change.timeSignature?.clone());
 			tempoChanges.push(newChange);
 		}
 		return tempoChanges;

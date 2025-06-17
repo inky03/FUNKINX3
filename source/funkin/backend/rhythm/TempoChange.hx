@@ -59,6 +59,9 @@ class TimeSignature { //should this be a class?
 		denominator = sign.denominator;
 		return this;
 	}
+	public function clone():TimeSignature {
+		return new TimeSignature(numerator, denominator);
+	}
 	public function toString():String {
 		return '$numerator/$denominator';
 	}
