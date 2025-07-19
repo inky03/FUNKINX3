@@ -143,12 +143,12 @@ class Stage extends FunkinSpriteGroup {
 				else
 					propSprite.loadTexture(prop.assetPath, library);
 			}
+			insertZIndex(propSprite);
 			propSprite.sway = (propSprite.animationExists('danceLeft') && propSprite.animationExists('danceRight'));
 			if (prop.scroll != null) propSprite.scrollFactor.set(prop.scroll[0], prop.scroll[1]);
 			if (prop.scale != null) propSprite.scale.set(prop.scale[0], prop.scale[1]);
 			var assetName:String = prop.name ?? prop.assetPath;
 			propSprite.updateHitbox();
-			insertZIndex(propSprite);
 			
 			this.props.set(assetName, propSprite);
 		}
@@ -182,10 +182,10 @@ class Stage extends FunkinSpriteGroup {
 			});
 			
 			var charaGroup:CharacterGroup = new CharacterGroup(chara.position[0], chara.position[1], char, side, name);
+			insertZIndex(charaGroup);
 			charaGroup.zIndex = chara.zIndex;
 			charaGroup.stageCameraOffset.set(chara.cameraOffsets[0], chara.cameraOffsets[1]);
 			if (chara.scale != null) charaGroup.scale.set(chara.scale, chara.scale);
-			insertZIndex(charaGroup);
 						
 			this.characters.set(name, charaGroup);
 		}
