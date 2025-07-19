@@ -182,10 +182,10 @@ class Stage extends FunkinSpriteGroup {
 			});
 			
 			var charaGroup:CharacterGroup = new CharacterGroup(chara.position[0], chara.position[1], char, side, name);
-			insertZIndex(charaGroup);
 			charaGroup.zIndex = chara.zIndex;
 			charaGroup.stageCameraOffset.set(chara.cameraOffsets[0], chara.cameraOffsets[1]);
 			if (chara.scale != null) charaGroup.scale.set(chara.scale, chara.scale);
+			insertZIndex(charaGroup);
 						
 			this.characters.set(name, charaGroup);
 		}
