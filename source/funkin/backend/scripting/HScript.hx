@@ -1,6 +1,6 @@
 package funkin.backend.scripting;
 
-#if ALLOW_SCRIPTS // TODO: make the game actually compile without the define
+#if ALLOW_SCRIPTS // TODO: make the game actually compile without this define
 import funkin.backend.FunkinRuntimeShader;
 import funkin.backend.scripting.HScriptClasses;
 
@@ -8,6 +8,7 @@ import haxe.PosInfos;
 import crowplexus.iris.Iris;
 import crowplexus.iris.IrisConfig;
 import crowplexus.iris.ErrorSeverity;
+import crowplexus.hscript.*;
 import crowplexus.hscript.Printer;
 import crowplexus.hscript.Expr.Error as IrisError;
 
@@ -17,14 +18,15 @@ enum HScriptFunctionEnum {
 	STOP;
 	STOPALL;
 }
-class HScript extends Iris {
+class HScript extends FlxBasic {
 	public static var staticVariables:Map<String, Dynamic> = [];
 	public static var STOP(default, never):HScriptFunctionEnum = HScriptFunctionEnum.STOP;
 	public static var STOPALL(default, never):HScriptFunctionEnum = HScriptFunctionEnum.STOPALL;
 	@:noReflection public static var defaultVariables:Map<String, Dynamic> = [
-		#if hl
-		'Math' => HScriptMath,
-		#end
+		'Std' => Std,
+		'Math' => #if hl HScriptMath #else Math #end,
+		'StringTools' => StringTools,
+		
 		'Main' => Main,
 		'Type' => Type,
 		'Reflect' => Reflect,
@@ -41,6 +43,7 @@ class HScript extends Iris {
 		'FlxSpriteGroup' => FlxSpriteGroup,
 		'ShaderFilter' => openfl.filters.ShaderFilter,
 		
+		'FunkinText' => funkin.backend.FunkinText,
 		'FunkinSound' => funkin.backend.FunkinSound,
 		'FunkinSprite' => funkin.backend.FunkinSprite,
 		'FunkinCamera' => funkin.backend.FunkinCamera,
@@ -77,19 +80,20 @@ class HScript extends Iris {
 		'experimentalVars' => true
 	];
 	
+	var expr:Expr;
+	var parser:ModParser;
+	var interp:ModInterp;
+	var executed:Bool = false;
+	public var failed:Bool = false;
+	public var compiled:Bool = false;
+	
 	public var interceptArray:Array<Dynamic> = null;
 	public var defaultVars:Map<String, Dynamic> = null;
 	
 	public var scriptString(default, set):String = '';
 	public var scriptPath:Null<String> = null;
+	public var packageName:String = '';
 	public var scriptName:String = '';
-	public var objExists:Bool = true;
-	public var compiled:Bool = false;
-	public var failed:Bool = false;
-	public var active:Bool = true;
-	var executed:Bool = false;
-	var modParser:ModParser;
-	var modInterp:ModInterp;
 	
 	public static function init() {
 		Iris.logLevel = customLog;
@@ -98,20 +102,157 @@ class HScript extends Iris {
 		return (result == STOP || result == STOPALL);
 	}
 	public function new(name:String, code:String, ?interceptArray:Array<Dynamic>, ?defaultVars:Map<String, Dynamic>) {
-		super('', new IrisConfig(name, false, false, []));
+		super();
 		
-		parser = modParser = new ModParser();
-		interp = modInterp = new ModInterp();
-		modInterp.hscript = this;
-		preset();
+		parser = new ModParser();
+		interp = new ModInterp();
+		interp.hscript = this;
 		
 		parser.allowTypes = parser.allowJSON = parser.allowMetadata = true;
+		preset();
 		
 		this.interceptArray = interceptArray;
 		this.defaultVars = defaultVars;
 		
 		this.scriptName = name;
 		this.scriptString = code;
+	}
+	
+	public function run(?func:String, ?args:Array<Any>, safe:Bool = true, forceRun:Bool = false):Any {
+		if (!compiled || failed || (!active && !forceRun)) return null;
+		try {
+			if (func != null) {
+				if (!executed) execute();
+				executed = true;
+				
+				if (safe && !hasVar(func)) return null;
+				var result:IrisCall = call(func, args);
+				return result?.returnValue ?? null;
+			} else {
+				return execute();
+			}
+		} catch (e:Dynamic) {
+			if (!executed)
+				failed = true;
+			
+			errorCaught(e);
+			
+			return null;
+		}
+	}
+	public override function kill():Void {
+		if (alive)
+			run('kill', true, true);
+		
+		super.kill();
+	}
+	public override function revive():Void {
+		if (!alive)
+			run('revive', true, true);
+		
+		super.revive();
+	}
+	public override function destroy():Void {
+		if (exists)
+			run('destroy', true, true);
+		
+		interp = null;
+		parser = null;
+		super.destroy();
+	}
+	public function preset():Void {
+		for (field => val in defaultVariables)
+			set(field, val);
+		
+		set('script', this);
+		set('game', FlxG.state);
+		if (Std.isOfType(FlxG.state, FunkinState)) {
+			var state:FunkinState = cast FlxG.state;
+			set('conductor', state.conductorInUse);
+		}
+
+		#if hscriptPos
+		set('trace', Reflect.makeVarArgs(function(x:Array<Dynamic>) { // fix static trace
+			@:privateAccess var pos = (interp != null ? this.interp.posInfos() : Iris.getDefaultPos(scriptName));
+			
+			var v = x.shift();
+			if (x.length > 0) pos.customParams = x;
+			
+			Iris.print(Std.string(v), pos);
+		}));
+		#end
+	}
+	
+	public function parse(string:String, force:Bool = false) {
+		if (force || expr == null)
+			expr = parser.parseString(string, scriptName);
+		return expr;
+	}
+	public function execute():Dynamic {
+		packageName = parser.packageName;
+		return interp.execute(expr);
+	}
+	public function set(name:String, value:Dynamic, allowOverride:Bool = true):Void {
+		if (allowOverride || !hasVar(name))
+			setVar(name, value);
+	}
+	public function call(fun:String, ?args:Array<Dynamic>):IrisCall {
+		var ny:Dynamic = getVar(fun); // function signature
+		var isFunction:Bool = false;
+		
+		try {
+			isFunction = (ny != null && Reflect.isFunction(ny));
+			if (!isFunction) throw 'Tried to call a non-function, for "$fun"';
+
+			final ret = Reflect.callMethod(null, ny, args ?? []);
+			return {funName: fun, signature: ny, returnValue: ret};
+		}
+		
+		#if hscriptPos
+		catch (e:Expr.Error) {
+			Iris.error(Printer.errorToString(e, false), this.interp.posInfos());
+		}
+		#end
+		catch (e:haxe.Exception) {
+			@:privateAccess var pos = (isFunction ? this.interp.posInfos() : Iris.getDefaultPos(scriptName));
+			Iris.error(
+				Std.string(e)
+					#if IRIS_DEBUG + "\n" + CallStack.toString(CallStack.exceptionStack(true)) #end,
+				pos
+			);
+		}
+		
+		return null;
+	}
+	
+	public override function setVar(name:String, value:Dynamic):Dynamic {
+		interp.variables.set(name, value);
+		return value;
+	}
+	public override function getVar(name:String):Dynamic {
+		return interp.variables.get(name);
+	}
+	public override function removeVar(name:String):Void {
+		interp.variables.remove(name);
+	}
+	public override function hasVar(name:String):Bool {
+		return interp.variables.exists(name);
+	}
+	
+	function set_scriptString(newCode:String):String {
+		if (newCode == scriptString) return scriptString;
+		
+		failed = false;
+		try {
+			parse(newCode, true);
+			executed = false;
+			compiled = true;
+		} catch (e:IrisError) {
+			compiled = false;
+			errorCaught(e);
+		}
+		
+		return scriptString = newCode;
 	}
 	
 	function errorCaught(e:Dynamic):Void {
@@ -124,12 +265,12 @@ class HScript extends Iris {
 		}
 	}
 	public static function customLog(level:ErrorSeverity, x, ?pos:haxe.PosInfos) {
-		if (pos == null) pos = Iris.getDefaultPos();
+		@:privateAccess if (pos == null) pos = Iris.getDefaultPos();
 
 		var out:String = Std.string(x);
 		if (pos != null && pos.customParams != null)
 			for (i in pos.customParams)
-				out += "," + Std.string(i);
+				out += ',$i';
 
 		var posPrefix:String = pos.fileName;
 		if (pos.lineNumber != -1)
@@ -149,88 +290,6 @@ class HScript extends Iris {
 			#end
 		}
 		Sys.println('$posPrefix $out');
-	}
-	
-	public function run(?func:String, ?args:Array<Any>, safe:Bool = true, forceRun:Bool = false):Any {
-		if (!compiled || failed || (!active && !forceRun)) return null;
-		try {
-			if (func != null) {
-				if (!executed) execute();
-				executed = true;
-				
-				if (safe && !exists(func)) return null;
-				var result:IrisCall = call(func, args);
-				return result?.returnValue ?? null;
-			} else {
-				return execute();
-			}
-		} catch (e:Dynamic) {
-			if (!executed)
-				failed = true;
-			
-			errorCaught(e);
-			
-			return null;
-		}
-	}
-	public function kill() {
-		if (active) {
-			run('kill', true, true);
-			active = false;
-		}
-	}
-	public function revive() {
-		if (!active) {
-			run('revive', true, true);
-			active = true;
-		}
-	}
-	public override function destroy() {
-		if (objExists) {
-			run('destroy', true, true);
-			objExists = false;
-			super.destroy();
-		}
-	}
-	public override function preset() {
-		super.preset();
-
-		for (field => val in defaultVariables)
-			set(field, val);
-		
-		set('script', this);
-		set('game', FlxG.state);
-		if (Std.isOfType(FlxG.state, FunkinState)) {
-			var state:FunkinState = cast FlxG.state;
-			set('conductor', state.conductorInUse);
-		}
-
-		#if hscriptPos
-		set('trace', Reflect.makeVarArgs(function(x:Array<Dynamic>) { // fix static trace
-			var pos = this.interp != null ? this.interp.posInfos() : Iris.getDefaultPos(this.name);
-			var v = x.shift();
-			if (x.length > 0)
-				pos.customParams = x;
-			var str:String = Std.string(v);
-			Iris.print(str, pos);
-		}));
-		#end
-	}
-	
-	function set_scriptString(newCode:String):String {
-		if (newCode == scriptString) return scriptString;
-		
-		scriptCode = newCode;
-		failed = false;
-		try {
-			parse(true);
-			compiled = true;
-			executed = false;
-		} catch (e:IrisError) {
-			compiled = false;
-			errorCaught(e);
-		}
-		return scriptString = newCode;
 	}
 }
 #else

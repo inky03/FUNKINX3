@@ -72,10 +72,10 @@ class ModInterp extends Interp {
 			error(EInvalidAccess(f));
 		
 		if (variables.get('experimentalVars') == true) {
-			if (Std.isOfType(o, ISpriteVars)) {
-				var spr:ISpriteVars = cast o;
-				if (o.hasVar(f))
-					return o.getVar(f);
+			if (Std.isOfType(o, FlxBasic)) {
+				var basic:FlxBasic = cast o;
+				if (basic.hasVar(f))
+					return basic.getVar(f);
 			}
 		}
 		

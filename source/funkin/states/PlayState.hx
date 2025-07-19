@@ -30,9 +30,9 @@ class PlayState extends FunkinState {
 	public var simpleBG:FunkinSprite;
 	
 	public var healthBar:Bar;
-	public var scoreTxt:FlxText;
 	public var iconP1:HealthIcon;
 	public var iconP2:HealthIcon;
+	public var scoreTxt:FunkinText;
 	public var uiGroup:FunkinSpriteGroup;
 	public var ratingGroup:FunkinTypedSpriteGroup<FunkinSprite>;
 	
@@ -255,8 +255,9 @@ class PlayState extends FunkinState {
 		playerStrumline.setPosition(FlxG.width - playerStrumline.width - 50 - 75, strumlineY);
 		
 		if (!simple) {
-			stage = new Stage(chart);
-			stage.setup(chart.stage);
+			stage = new Stage(chart.stage);
+			stage.addCharacters(chart);
+			stage.start(this);
 			add(stage);
 			
 			player1 = stage.getCharacter('bf');
@@ -340,7 +341,7 @@ class PlayState extends FunkinState {
 		if (player2 != null)
 			player2.onCharacterChanged.add((name:String, char:Character) -> matchIconData(iconP2, char));
 		
-		scoreTxt = new FlxText(0, FlxG.height - 25, FlxG.width, 'Score: idk');
+		scoreTxt = new FunkinText(0, FlxG.height - 25, FlxG.width, 'Score: idk');
 		scoreTxt.setFormat(Paths.ttf('vcr'), 16, FlxColor.WHITE, CENTER, OUTLINE, FlxColor.BLACK);
 		scoreTxt.y -= scoreTxt.height * .5;
 		scoreTxt.borderSize = 1.25;

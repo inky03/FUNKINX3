@@ -2,7 +2,7 @@ package funkin.objects;
 
 import funkin.objects.HealthIcon;
 import funkin.backend.scripting.HScript;
-import funkin.backend.scripting.HScripts;
+import funkin.backend.scripting.HScriptGroup;
 
 using StringTools;
 
@@ -53,7 +53,7 @@ class Character extends FunkinSprite implements ICharacter {
 	public var volume(default, set):Float = 1;
 	public var vocals:FunkinSound;
 	
-	public var hscripts:HScripts;
+	public var hscripts:HScriptGroup;
 	var safeH:Null<String> = null;
 	
 	public function new(x:Float, y:Float, ?character:String, side:CharacterSide = IDGAF, ?fallback:String, runScripts:Bool = true) {
@@ -63,7 +63,7 @@ class Character extends FunkinSprite implements ICharacter {
 		anim.onComplete.add((anim:String) -> characterGroup?.onAnimationComplete.dispatch(anim));
 		anim.onLoop.add((anim:String) -> characterGroup?.onAnimationLoop.dispatch(anim));
 		
-		hscripts = new HScripts([this], ['this' => this, 'super' => this]);
+		hscripts = new HScriptGroup([this], ['this' => this, 'super' => this]);
 		
 		rotateOffsets = true;
 		vocals = new FunkinSound();
@@ -253,7 +253,7 @@ class Character extends FunkinSprite implements ICharacter {
 		super.revive();
 	}
 	public override function destroy() {
-		hscripts.destroyAll();
+		hscripts.destroy();
 		super.destroy();
 	}
 	
@@ -409,8 +409,8 @@ class Character extends FunkinSprite implements ICharacter {
 		return res;
 	}
 	function functionOverridden(id:String):Bool {
-		for (script in hscripts.activeScripts) {
-			if (Reflect.isFunction(script.get(id)))
+		for (script in hscripts) {
+			if (Reflect.isFunction(script.getVar(id)))
 				return true;
 		}
 		return false;
@@ -574,10 +574,8 @@ class Character extends FunkinSprite implements ICharacter {
 			return;
 		
 		var comboAnim:String = 'combo$combo';
-		if (animationExists(comboAnim, true)) {
-			playAnimationSteps(comboAnim, true);
-			specialAnim = true;
-		}
+		if (animationExists(comboAnim, true))
+			playAnimationSpecial(comboAnim, true);
 	}
 	public function playComboDropAnimation(combo:Int) {
 		if (safeH != 'playComboDropAnimation' && functionOverridden('playComboDropAnimation')) {
@@ -594,14 +592,12 @@ class Character extends FunkinSprite implements ICharacter {
 				dropAnim = 'drop$count';
 		}
 		
-		if (dropAnim != null) {
-			playAnimationSteps(dropAnim, true);
-			specialAnim = true;
-		}
+		if (dropAnim != null)
+			playAnimationSpecial(dropAnim, true);
 	}
 	
-	function get_hasComboAnimations():Bool { return comboNoteCounts.length > 0; }
-	function get_hasDropAnimations():Bool { return dropNoteCounts.length > 0; }
+	function get_hasComboAnimations():Bool { return (comboNoteCounts.length > 0); }
+	function get_hasDropAnimations():Bool { return (dropNoteCounts.length > 0); }
 	function findCountAnimations(prefix:String):Array<Int> {
 		var counts:Array<Int> = [];
 		
@@ -694,6 +690,7 @@ interface ICharacter extends IBopper extends IFunkinSpriteAnim {
 	public function playAnim(anim:String, context:PlayAnimContext = SOFT, forced:Bool = false, reversed:Bool = false, frame:Int = 0, ?time:Float):Void;
 	public function playComboDropAnimation(combo:Int):Void;
 	public function playComboAnimation(combo:Int):Void;
+	public function idle():Void;
 }
 interface IBopper {
 	public var bop(default, set):Bool;

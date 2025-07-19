@@ -6,7 +6,7 @@ import funkin.backend.rhythm.Conductor;
 
 import flixel.util.FlxSignal.FlxTypedSignal;
 
-class FunkinState extends FlxSubState implements funkin.backend.FunkinSprite.ISpriteVars {
+class FunkinState extends FlxSubState {
 	public var curBar:Int = -1;
 	public var curBeat:Int = -1;
 	public var curStep:Int = -1;
@@ -19,34 +19,15 @@ class FunkinState extends FlxSubState implements funkin.backend.FunkinSprite.ISp
 	public var beatHit:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
 	public var stepHit:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
 	
-	public var hscripts:HScripts;
+	public var hscripts:HScriptGroup;
 	
 	static var clearAssetsNow:Bool = false;
 	var firstRun:Bool = true;
 	
-	public var extraData:Map<String, Dynamic> = new Map();
-	public function setVar(k:String, v:Dynamic):Dynamic {
-		if (extraData == null) extraData = new Map();
-		extraData.set(k, v);
-		return v;
-	}
-	public function getVar(k:String):Dynamic {
-		if (extraData == null) return null;
-		return extraData.get(k);
-	}
-	public function hasVar(k:String):Bool {
-		if (extraData == null) return false;
-		return extraData.exists(k);
-	}
-	public function removeVar(k:String):Bool {
-		if (extraData == null) return false;
-		return extraData.remove(k);
-	}
-	
 	public function new() {
 		super();
 		conductorInUse = Conductor.global;
-		hscripts = new HScripts([this], ['this' => this]);
+		add(hscripts = new HScriptGroup([this], ['this' => this]));
 		
 		persistentUpdate = true;
 	}
@@ -71,7 +52,6 @@ class FunkinState extends FlxSubState implements funkin.backend.FunkinSprite.ISp
 	override public function destroy() {
 		conductorInUse = null;
 		
-		hscripts.destroyAll();
 		super.destroy();
 	}
 	

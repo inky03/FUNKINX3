@@ -15,13 +15,12 @@ import flixel.graphics.tile.FlxDrawTrianglesItem.DrawData;
 
 using funkin.backend.play.NoteStyle.NoteStyleUtil;
 
-@:structInit class ChartNote implements ISpriteVars implements ITimeSortable {
+@:structInit class ChartNote extends FlxBasic implements ITimeSortable {
 	public var laneIndex:Int;
 	public var kind:String = '';
 	public var msTime:Float = 0;
 	public var msLength:Float = 0;
 	public var strumlineIndex:Int = 0;
-	public var extraData:Map<String, Dynamic> = null;
 	
 	public inline function copy(?toNote:ChartNote):ChartNote {
 		if (toNote == null) {
@@ -34,24 +33,6 @@ using funkin.backend.play.NoteStyle.NoteStyleUtil;
 			toNote.kind = kind;
 			return toNote;
 		}
-	}
-	
-	public function setVar(k:String, v:Dynamic):Dynamic {
-		if (extraData == null) extraData = new Map();
-		extraData.set(k, v);
-		return v;
-	}
-	public function getVar(k:String):Dynamic {
-		if (extraData == null) return null;
-		return extraData.get(k);
-	}
-	public function hasVar(k:String):Bool {
-		if (extraData == null) return false;
-		return extraData.exists(k);
-	}
-	public function removeVar(k:String):Bool {
-		if (extraData == null) return false;
-		return extraData.remove(k);
 	}
 	
 	function set_kind(v:String):String { return kind = v; }
@@ -602,7 +583,8 @@ class NoteTail extends Note {
 		
 		drawItems = 0;
 		var rad:Float = (Math.PI / 180);
-		var prevAngle:Float = angle * rad;
+		var prevAngle:Null<Float> = null;
+		var defaultAngle:Float = angle * rad;
 		var scaleY:Float = (lane?.scale.y ?? scale.y);
 		
 		while (scrollDistance > clipDistance) {
@@ -619,8 +601,15 @@ class NoteTail extends Note {
 			var curPosition:FlxPoint = FlxPoint.weak(x, y);
 			
 			if (renderDistance == null || scrollDistance < renderDistance) {
-				if (adaptiveDirection) angle = (prevPosition.degreesTo(curPosition) + 180);
-				var radAngle:Float = angle * rad;
+				var radAngle:Float;
+				if (adaptiveDirection) {
+					angle = (prevPosition.degreesTo(curPosition) + 180);
+					radAngle = angle * rad;
+					prevAngle ??= radAngle;
+				} else {
+					prevAngle ??= defaultAngle;
+					radAngle = angle * rad;
+				}
 				
 				
 				var data:NoteTailDrawData = (drawData[drawItems] ?? new NoteTailDrawData());

@@ -31,6 +31,7 @@ using StringTools;
 	public var doSpark:Bool = false; // many vars...
 	public var doSplash:Bool = false;
 	public var playSound:Bool = false;
+	public var popCover:Bool = true;
 	public var popRating:Bool = true;
 	public var applyHealth:Bool = false;
 	public var applyRating:Bool = false;
@@ -104,7 +105,7 @@ using StringTools;
 				if (note.isHoldNote) {
 					lane.held = true;
 					lane.heldNote = note;
-					spark = lane.popCover(note);
+					if (popCover) spark = lane.popCover(note);
 				} else if (animateReceptor && !lane.cpu) {
 					lane.receptor.grayBeat = note.beatTime + .5;
 				}
@@ -198,11 +199,11 @@ using StringTools;
 					}
 					
 					if (perfectRelease) {
-						spark = lane.spark(note, doSpark);
+						if (popCover) spark = lane.spark(note, doSpark);
 						if (playSound)
 							FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/hitsoundTail'), .7);
 					} else {
-						spark = lane.spark(note, false);
+						if (popCover) spark = lane.spark(note, false);
 						if (playSound)
 							FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/hitsoundFail'), .7);
 					}

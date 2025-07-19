@@ -1,31 +1,11 @@
 package funkin.backend;
 
+import flixel.util.FlxDestroyUtil;
 import funkin.backend.FunkinSprite;
-
 import haxe.iterators.ArrayKeyValueIterator;
 
 typedef FunkinGroup = FunkinTypedGroup<FlxBasic>;
-class FunkinTypedGroup<T:FlxBasic> implements ISpriteVars extends FlxTypedGroup<T> {
-	public var extraData:Map<String, Dynamic> = new Map();
-	
-	public function setVar(k:String, v:Dynamic):Dynamic {
-		if (extraData == null) extraData = new Map();
-		extraData.set(k, v);
-		return v;
-	}
-	public function getVar(k:String):Dynamic {
-		if (extraData == null) return null;
-		return extraData.get(k);
-	}
-	public function hasVar(k:String):Bool {
-		if (extraData == null) return false;
-		return extraData.exists(k);
-	}
-	public function removeVar(k:String):Bool {
-		if (extraData == null) return false;
-		return extraData.remove(k);
-	}
-	
+class FunkinTypedGroup<T:FlxBasic> extends FlxTypedGroup<T> {
 	public function sortZIndex() {
 		sort(Util.sortZIndex, FlxSort.ASCENDING);
 	}
@@ -52,32 +32,23 @@ class FunkinTypedGroup<T:FlxBasic> implements ISpriteVars extends FlxTypedGroup<
 }
 
 typedef FunkinSpriteGroup = FunkinTypedSpriteGroup<FlxSprite>;
-class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteGroup implements ISpriteVars implements IZoomFactor extends FlxTypedSpriteGroup<T> {
+class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteGroup implements IFunkinSpriteVars extends FlxTypedSpriteGroup<T> {
+	public var skew(default, null):FlxPoint;
 	public var zoomFactor(default, set):Float = 1;
 	public var initialZoom(default, set):Float = 1;
-	public var extraData:Map<String, Dynamic> = new Map();
 	
-	public function setVar(k:String, v:Dynamic):Dynamic {
-		if (extraData == null) extraData = new Map();
-		extraData.set(k, v);
-		return v;
+	override function initVars():Void {
+		skew = new FlxCallbackPoint(skewCallback);
+		super.initVars();
 	}
-	public function getVar(k:String):Dynamic {
-		if (extraData == null) return null;
-		return extraData.get(k);
-	}
-	public function hasVar(k:String):Bool {
-		if (extraData == null) return false;
-		return extraData.exists(k);
-	}
-	public function removeVar(k:String):Bool {
-		if (extraData == null) return false;
-		return extraData.remove(k);
+	override public function destroy():Void {
+		skew = FlxDestroyUtil.destroy(skew);
+		super.destroy();
 	}
 	
-	inline function getFunk(sprite:T):IZoomFactor {
-		if (Std.isOfType(sprite, IZoomFactor))
-			return cast(sprite, IZoomFactor);
+	inline function getFunk(sprite:T):IFunkinSpriteVars {
+		if (Std.isOfType(sprite, IFunkinSpriteVars))
+			return cast(sprite, IFunkinSpriteVars);
 		return null;
 	}
 	public override function updateHitbox():Void {}
@@ -128,7 +99,7 @@ class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteGroup implements ISp
 	
 	override function preAdd(sprite:T):Void {
 		super.preAdd(sprite);
-		var funk:IZoomFactor = getFunk(sprite);
+		var funk:IFunkinSpriteVars = getFunk(sprite);
 		if (funk != null) {
 			funk.zoomFactor = zoomFactor;
 			funk.initialZoom = initialZoom;
@@ -138,7 +109,7 @@ class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteGroup implements ISp
 	function set_zoomFactor(value:Float):Float {
 		for (sprite in members) {
 			if (sprite == null) continue;
-			var funk:IZoomFactor = getFunk(sprite);
+			var funk:IFunkinSpriteVars = getFunk(sprite);
 			if (funk != null) funk.zoomFactor = value;
 		}
 		return zoomFactor = value;
@@ -146,10 +117,17 @@ class FunkinTypedSpriteGroup<T:FlxSprite> implements ISpriteGroup implements ISp
 	function set_initialZoom(value:Float):Float {
 		for (sprite in members) {
 			if (sprite == null) continue;
-			var funk:IZoomFactor = getFunk(sprite);
+			var funk:IFunkinSpriteVars = getFunk(sprite);
 			if (funk != null) funk.initialZoom = value;
 		}
 		return initialZoom = value;
+	}
+	inline function skewCallback(Scale:FlxPoint):Void {
+		for (sprite in members) {
+			if (sprite == null) continue;
+			var funk:IFunkinSpriteVars = getFunk(sprite);
+			if (funk != null) funk.skew.copyFrom(skew);
+		}
 	}
 	
 	public inline function keyValueIterator():ArrayKeyValueIterator<T> { return new ArrayKeyValueIterator(members); }

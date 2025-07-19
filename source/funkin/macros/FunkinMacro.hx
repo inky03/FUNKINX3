@@ -12,11 +12,12 @@ class FunkinMacro {
 		var fields:Array<Field> = Context.getBuildFields();
 		
 		fields = fields.concat([{
+			pos: pos,
 			name: "zIndex",
 			access: [Access.APublic],
-			kind: FieldType.FProp('default', 'set', macro:Int, macro $v{0}),
-			pos: pos
+			kind: FieldType.FProp('default', 'set', macro:Int, macro $v{0})
 		}, {
+			pos: pos,
 			name: "set_zIndex",
 			access: [Access.APublic],
 			kind: FieldType.FFun({
@@ -27,7 +28,46 @@ class FunkinMacro {
 				ret: macro:Int,
 				expr: macro { return zIndex = value; }
 			}),
-			pos: pos
+		}, {
+			pos: pos, // extradata stuffs
+			name: 'extraData',
+			access: [APublic],
+			kind: FieldType.FProp('default', 'null', macro:Map<String, Dynamic>, macro $v{[]})
+		}, {
+			pos: pos,
+			name: 'getVar',
+			access: [APublic],
+			kind: FieldType.FFun({
+				ret: macro:Dynamic,
+				args: [{type: macro:String, name: 'id'}],
+				expr: macro { return extraData.get(id); }
+			})
+		}, {
+			pos: pos,
+			name: 'setVar',
+			access: [APublic],
+			kind: FieldType.FFun({
+				ret: macro:Dynamic,
+				args: [{type: macro:String, name: 'id'}, {type: macro:Dynamic, name: 'value'}],
+				expr: macro { extraData.set(id, value); return value; }
+			})
+		}, {
+			pos: pos,
+			name: 'removeVar',
+			access: [APublic],
+			kind: FieldType.FFun({
+				args: [{type: macro:String, name: 'id'}],
+				expr: macro { extraData.remove(id); }
+			})
+		}, {
+			pos: pos,
+			name: 'hasVar',
+			access: [APublic],
+			kind: FieldType.FFun({
+				ret: macro:Bool,
+				args: [{type: macro:String, name: 'id'}],
+				expr: macro { return extraData.exists(id); }
+			})
 		}]);
 		
 		return fields;

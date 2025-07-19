@@ -36,6 +36,7 @@ import funkin.util.*;
 import funkin.debug.Log;
 import funkin.backend.Options;
 import funkin.backend.Controls;
+import funkin.backend.FunkinText;
 import funkin.backend.FunkinSound;
 import funkin.backend.FunkinState;
 import funkin.backend.FunkinSprite;

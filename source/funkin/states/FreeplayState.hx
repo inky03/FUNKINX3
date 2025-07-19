@@ -20,6 +20,8 @@ class FreeplayState extends FunkinState {
 	var _hasUnknown:Bool = false;
 	
 	override public function create() {
+		Mods.currentMod = null;
+		
 		super.create();
 		
 		playMusic(MainMenuState.menuMusic);

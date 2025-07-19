@@ -259,6 +259,7 @@ class Lane extends FunkinSpriteGroup {
 	public function splash(?note:Note):NoteSplash {
 		var splash:NoteSplash = noteSplashes.recycle(NoteSplash, () -> new NoteSplash(noteData, style), true);
 		
+		preAdd(splash);
 		noteSplashes.moveToTop(splash);
 		splash.reload(note?.style ?? style);
 		splash.popOnReceptor(receptor);
@@ -270,6 +271,7 @@ class Lane extends FunkinSpriteGroup {
 	public function popCover(?note:Note):NoteSpark {
 		var spark:NoteSpark = noteSparks.recycle(NoteSpark, () -> new NoteSpark(noteData, style), true);
 		
+		preAdd(spark);
 		noteSparks.moveToTop(spark);
 		spark.reload(note?.style ?? style);
 		spark.heldNote = note;
@@ -376,6 +378,9 @@ class Lane extends FunkinSpriteGroup {
 	}
 	public function insertNote(songNote:ChartNote):Note {
 		var note:Note = generateNote(noteClass, songNote);
+		preAdd(note);
+		if (note.tail?.alive)
+			preAdd(note.tail);
 		notes.moveToBottom(note);
 		
 		note.lane = this;
@@ -448,7 +453,7 @@ class Lane extends FunkinSpriteGroup {
 		super.set_zoomFactor(value);
 		for (sprite in topMembers) {
 			if (sprite == null) continue;
-			var funk:IZoomFactor = getFunk(sprite);
+			var funk:IFunkinSpriteVars = getFunk(sprite);
 			if (funk != null) funk.zoomFactor = value;
 		}
 		return zoomFactor = value;
@@ -457,7 +462,7 @@ class Lane extends FunkinSpriteGroup {
 		super.set_initialZoom(value);
 		for (sprite in topMembers) {
 			if (sprite == null) continue;
-			var funk:IZoomFactor = getFunk(sprite);
+			var funk:IFunkinSpriteVars = getFunk(sprite);
 			if (funk != null) funk.initialZoom = value;
 		}
 		return initialZoom = value;

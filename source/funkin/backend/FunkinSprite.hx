@@ -14,20 +14,20 @@ import flixel.animation.FlxAnimation;
 
 import funkin.backend.FunkinAnimate;
 
-class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFactor implements IFunkinSpriteAnim {
+class FunkinSprite extends flixel.addons.effects.FlxSkewedSprite implements IFunkinSpriteVars implements IFunkinSpriteAnim {
 	public var onAnimationFrame:FlxTypedSignal<Int -> String -> Void> = new FlxTypedSignal();
 	public var onAnimationComplete:FlxTypedSignal<String -> Void> = new FlxTypedSignal();
 	public var onAnimationLoop:FlxTypedSignal<String -> Void> = new FlxTypedSignal();
 	public var currentAnimation(get, never):Null<String>;
 
 	public var animationList:Map<String, AnimationInfo> = new Map();
-	public var extraData:Map<String, Dynamic> = new Map();
 	public var offsets:Map<String, FlxPoint> = new Map();
 	public var smooth(default, set):Bool = true;
 	public var spriteOffset:FlxPoint;
 	public var animOffset:FlxPoint;
-	public var rotateOffsets:Bool = false;
+	public var rotateOffsets:Bool = true;
 	public var scaleOffsets:Bool = true;
+	public var skewOffsets:Bool = true;
 	
 	public var zoomFactor(default, set):Float = 1;
 	public var initialZoom(default, set):Float = 1;
@@ -39,24 +39,6 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 	
 	var _loadedAtlases:Array<String> = [];
 	var _transPoint:FlxPoint;
-	
-	public function setVar(k:String, v:Dynamic):Dynamic {
-		if (extraData == null) extraData = new Map();
-		extraData.set(k, v);
-		return v;
-	}
-	public function getVar(k:String):Dynamic {
-		if (extraData == null) return null;
-		return extraData.get(k);
-	}
-	public function hasVar(k:String):Bool {
-		if (extraData == null) return false;
-		return extraData.exists(k);
-	}
-	public function removeVar(k:String):Bool {
-		if (extraData == null) return false;
-		return extraData.remove(k);
-	}
 	
 	public function new(x:Float = 0, y:Float = 0, isSmooth:Bool = true) {
 		super(x, y);
@@ -89,19 +71,26 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 		}
 	}
 	public override function draw() {
-		transformSpriteOffset(_transPoint);
 		if (renderType == ANIMATEATLAS && animate != null) {
+			transformSpriteOffset(_transPoint);
+			
+			animate.matrixExposed = matrixExposed;
+			animate.skew.copyFrom(skew);
+			if (matrixExposed)
+				animate.transformMatrix.copyFrom(transformMatrix);
+			
+			animate.offset.set(_transPoint.x + offset.x, _transPoint.y + offset.y);
+			animate.scrollFactor.copyFrom(scrollFactor);
+			animate.origin.copyFrom(origin);
+			animate.scale.copyFrom(scale);
+			
 			animate.colorTransform = colorTransform; // lmao
 			animate.antialiasing = antialiasing;
-			animate.scrollFactor = scrollFactor;
 			animate.initialZoom = initialZoom;
 			animate.zoomFactor = zoomFactor;
 			animate.setPosition(x, y);
 			animate.cameras = cameras;
 			animate.shader = shader;
-			animate.offset.set(_transPoint.x + offset.x, _transPoint.y + offset.y);
-			animate.origin = origin;
-			animate.scale = scale;
 			animate.alpha = alpha;
 			animate.angle = angle;
 			animate.flipX = flipX;
@@ -149,7 +138,6 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 		camera.copyPixels(_frame, framePixels, _flashRect, _flashPoint, colorTransform, blend, antialiasing);
 	}
 	public override function drawComplex(camera:FlxCamera) {
-		// todo: implement this in flxsprite instead of funkinsprite? (zoomFactor wont work for flxtexts and such)
 		updateShader(camera);
 		
 		_frame.prepareMatrix(_matrix, FlxFrameAngle.ANGLE_0, checkFlipX(), checkFlipY());
@@ -157,11 +145,18 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 		_matrix.translate(-origin.x, -origin.y);
 		_matrix.scale(scale.x, scale.y);
 		
-		if (bakedRotationAngle <= 0) {
-			updateTrig();
+		if (matrixExposed) {
+			_matrix.concat(transformMatrix);
+		} else {
+			if (bakedRotationAngle <= 0) {
+				updateTrig();
 
-			if (angle != 0)
-				_matrix.rotateWithTrig(_cosAngle, _sinAngle);
+				if (angle != 0)
+					_matrix.rotateWithTrig(_cosAngle, _sinAngle);
+			}
+			
+			updateSkewMatrix();
+			_matrix.concat(_skewMatrix);
 		}
 		
 		transformSpriteOffset(_transPoint);
@@ -285,6 +280,7 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 	inline public function transformSpriteOffset(point:FlxPoint):FlxPoint {
 		var xP:Float = (spriteOffset.x + animOffset.x) * (scaleOffsets ? scale.x : 1);
 		var yP:Float = (spriteOffset.y + animOffset.y) * (scaleOffsets ? scale.y : 1);
+		
 		if (rotateOffsets && angle % 360 != 0) {
 			var rad:Float = angle / 180 * Math.PI;
 			var cos:Float = FlxMath.fastCos(rad);
@@ -293,6 +289,14 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 		} else {
 			point.set(xP, yP);
 		}
+		
+		if (skewOffsets && (skew.x != 0 || skew.y != 0)) {
+			point.set(
+				point.x + point.y * Math.tan(skew.x / 180 * Math.PI),
+				point.y + point.x * Math.tan(skew.y / 180 * Math.PI)
+			);
+		}
+		
 		return point;
 	}
 	
@@ -319,16 +323,20 @@ class FunkinSprite extends FlxSprite implements ISpriteVars implements IZoomFact
 	}
 	public override function updateHitbox() {
 		if (isAnimate) {
-			animate.alpha = .001;
+			animate.alpha = .0001;
 			animate.draw();
 			animate.alpha = 1;
+			
 			width = animate.width * scale.x;
 			height = animate.height * scale.y;
+			frameWidth = animate.frameWidth;
+			frameHeight = animate.frameHeight;
+			
+			offset.set(-0.5 * (width - frameWidth), -0.5 * (height - frameHeight));
+			centerOrigin();
 		} else {
 			super.updateHitbox();
 		}
-		// Sys.println('HITBOX UPDATED $width x $height -> $offset');
-		// spriteOffset.set(offset.x / (scaleOffsets ? scale.x : 1), offset.y / (scaleOffsets ? scale.y : 1));
 	}
 
 	public function setAnimationOffset(name:String, x:Float = 0, y:Float = 0):FlxPoint {
@@ -731,15 +739,8 @@ class FunkinSpriteAnimHandler implements IFlxDestroyable {
 	}
 }
 
-interface ISpriteVars {
-	public var extraData:Map<String, Dynamic>;
-	
-	public function setVar(k:String, v:Dynamic):Dynamic;
-	public function getVar(k:String):Dynamic;
-	public function hasVar(k:String):Bool;
-	public function removeVar(k:String):Bool;
-}
-interface IZoomFactor {
+interface IFunkinSpriteVars {
+	public var skew(default, null):FlxPoint;
 	public var zoomFactor(default, set):Float;
 	public var initialZoom(default, set):Float;
 }

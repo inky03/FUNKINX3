@@ -338,6 +338,10 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 		}
 		return danced;
 	}
+	public function idle():Void {
+		for (chara in members)
+			chara?.idle();
+	}
 	
 	public function flip():CharacterGroup {
 		if (side != IDGAF)
