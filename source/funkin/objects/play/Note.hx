@@ -9,7 +9,6 @@ import funkin.backend.play.NoteStyle;
 import funkin.objects.CharacterGroup;
 import funkin.backend.FunkinStrip;
 
-import flixel.math.FlxMatrix;
 import flixel.graphics.frames.FlxFrame;
 import flixel.graphics.tile.FlxDrawTrianglesItem.DrawData;
 
@@ -102,6 +101,7 @@ class Note extends NoteObject {
 	
 	public var tail:NoteTail;
 	public var rgbShader:RGBSwap;
+	public var arrowPath:ArrowPath;
 	public var updateRGBShader:Bool = true;
 	public var rgbEnabled(default, set):Bool;
 	public var tailOffset(default, null):FlxPoint;
@@ -327,9 +327,9 @@ class Note extends NoteObject {
 		copyReceptor(receptor);
 		
 		try {
-			scrollDistance = (customScrollDistance ?? genericScrollDistance)(this, lane, timeDiff);
+			scrollDistance = (customScrollDistance ?? arrowPath?.customScrollDistance ?? genericScrollDistance)(this, lane, timeDiff);
 			if (updateModchart)
-				(customModchart ?? genericModchart)(this, lane, scrollDistance);
+				(customModchart ?? arrowPath?.customModchart ?? genericModchart)(this, lane, scrollDistance);
 		} catch (e:haxe.Exception) {
 			Log.error('error on note modchart function -> ${e.details()}');
 			
@@ -552,8 +552,8 @@ class NoteTail extends Note {
 		var render:NoteTailStrip = tailStrip;
 		renderingTail = true;
 		
-		var distFunc = (customScrollDistance ?? parent.customScrollDistance ?? genericScrollDistance);
-		var modchartFunc = (customModchart ?? parent.customModchart ?? genericModchart);
+		var distFunc = (customScrollDistance ?? parent?.customScrollDistance ?? parent?.arrowPath?.customScrollDistance ?? genericScrollDistance);
+		var modchartFunc = (customModchart ?? parent?.customModchart ?? parent?.arrowPath?.customModchart ?? genericModchart);
 		var timeDiff:Float = endMs - conductorInUse.songPosition;
 		var receptor:Receptor = lane.receptor;
 		
@@ -813,7 +813,7 @@ class NoteTailDrawData {
 	
 	public var clip:Float = 0;
 	
-	public var strip:NoteTailStrip;
+	public var strip:Dynamic;
 	
 	public function new() {}
 	

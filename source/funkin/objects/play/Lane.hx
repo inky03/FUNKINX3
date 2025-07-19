@@ -50,6 +50,7 @@ class Lane extends FunkinSpriteGroup {
 	var spawnLimit:Int = 75;
 	
 	public var receptor:Receptor;
+	public var arrowPath:ArrowPath;
 	public var notes:FunkinTypedSpriteGroup<Note>;
 	public var noteSparks:FunkinTypedSpriteGroup<NoteSpark>;
 	public var noteSplashes:FunkinTypedSpriteGroup<NoteSplash>;
@@ -94,11 +95,15 @@ class Lane extends FunkinSpriteGroup {
 		};
 		
 		receptor = new Receptor(0, 0, data, style);
+		arrowPath = new ArrowPath(this);
+		arrowPath.render = false;
 		notes = new FunkinTypedSpriteGroup();
 		noteSparks = new FunkinTypedSpriteGroup(0, 0, 5);
 		noteSplashes = new FunkinTypedSpriteGroup(0, 0, 5);
 		spawnRadius = Note.distanceToMS(FlxG.height + 75, scrollSpeed);
 		receptor.lane = this; //lol
+		
+		this.add(arrowPath);
 		this.add(receptor);
 		for (mem in [notes, noteSparks, noteSplashes]) {
 			topMembers.push(mem); // render conditionally
@@ -386,6 +391,7 @@ class Lane extends FunkinSpriteGroup {
 		note.lane = this;
 		note.chartNote = songNote;
 		note.hitWindow = hitWindow;
+		note.arrowPath = arrowPath;
 		
 		note.reload(style, this);
 		note.scale.set(scale.x * note.defaultScale, scale.y * note.defaultScale);
