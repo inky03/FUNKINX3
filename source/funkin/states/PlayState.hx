@@ -93,6 +93,10 @@ class PlayState extends FunkinState {
 	
 	public var noteStyle(default, set):NoteStyleAsset;
 	
+	public var fadeNotes:Bool = true;
+	static var wooshNotes:Array<Note> = [];
+	static var restartingSong:Bool = false;
+	
 	function set_noteStyle(newStyle:NoteStyleAsset):NoteStyleAsset {
 		if (noteStyle == newStyle) return newStyle;
 		
@@ -374,9 +378,31 @@ class PlayState extends FunkinState {
 		updateScoreText();
 		sortZIndex();
 		
+		if (restartingSong)
+			fadeNotes = false;
+		for (note in wooshNotes) {
+			if (!note.exists) {
+				Log.warning('well the note isnt real');
+				continue;
+			}
+			var strumline:Strumline = strumlineGroup.members[note.strumlineIndex];
+			if (strumline != null) {
+				var lane:Lane = strumline.getLane(note.laneIndex);
+				if (lane != null) lane.wooshNotes.add(note);
+			}
+		}
+		for (strumline in strumlineGroup) {
+			for (lane in strumline.lanes)
+				lane.woosh();
+		}
+		wooshNotes.resize(0);
+		restartingSong = false;
+		
 		if (playCountdown) {
-			for (strumline in strumlineGroup)
-				strumline.visible = false;
+			if (fadeNotes) {
+				for (strumline in strumlineGroup)
+					strumline.visible = false;
+			}
 			
 			for (tick in ['THREE', 'TWO', 'ONE', 'GO']) {
 				Paths.sound('gameplay/countdown/funkin/intro$tick');
@@ -503,20 +529,10 @@ class PlayState extends FunkinState {
 				flipUI();
 			}
 		} else if (!dead) {
-			if (FlxG.keys.justPressed.ENTER && !pauseDisabled) {
-				paused = !paused;
-				var pauseVocals:Bool = (paused || conductorInUse.songPosition < 0);
-				if (pauseVocals) {
-					music.pause();
-				} else {
-					music.play(true, conductorInUse.songPosition);
-					syncMusic(false, true);
-				}
-				FlxTimer.globalManager.forEach((timer:FlxTimer) -> { if (!timer.finished) timer.active = !paused; });
-				FlxTween.globalManager.forEach((tween:FlxTween) -> { if (!tween.finished) tween.active = !paused; });
-
-				refreshRPCTitle();
-				refreshRPCTime();
+			if (FlxG.keys.justPressed.ENTER && !paused && !pauseDisabled) {
+				FlxTimer.globalManager.forEach((timer:FlxTimer) -> { if (!timer.finished) timer.active = false; });
+				FlxTween.globalManager.forEach((tween:FlxTween) -> { if (!tween.finished) tween.active = false; });
+				openSubState(new PauseSubState(this));
 			}
 			
 			if (FlxG.keys.justPressed.R && !paused)
@@ -551,6 +567,32 @@ class PlayState extends FunkinState {
 		hscripts.run('draw');
 		super.draw();
 		hscripts.run('drawPost');
+	}
+	
+	override public function onSubStateOpened(subState):Void {
+		if (subState is PauseSubState) {
+			paused = true;
+			music.pause();
+			
+			camHUD.active = camGame.active = false;
+			
+			refreshRPCTitle();
+			refreshRPCTime();
+		}
+	}
+	override public function onSubStateClosed(subState):Void {
+		if (subState is PauseSubState) {
+			paused = false;
+			music.play(true, conductorInUse.songPosition);
+			syncMusic(false, true);
+			
+			camHUD.active = camGame.active = true;
+			FlxTimer.globalManager.forEach((timer:FlxTimer) -> { if (!timer.finished) timer.active = true; });
+			FlxTween.globalManager.forEach((tween:FlxTween) -> { if (!tween.finished) tween.active = true; });
+			
+			refreshRPCTitle();
+			refreshRPCTime();
+		}
 	}
 	
 	public function stepHitEvent(step:Int) {
@@ -695,6 +737,10 @@ class PlayState extends FunkinState {
 	public function finishSong() {
 		songFinished = true;
 		dispatchSongEvent({type: SONG_FINISH});
+	}
+	public function restartSong() {
+		restartingSong = true;
+		FlxG.resetState();
 	}
 	public function popCountdown(image:String):FunkinSprite {
 		if (Paths.image(image) == null)
@@ -970,6 +1016,22 @@ class PlayState extends FunkinState {
 	}
 	
 	override public function destroy() {
+		if (restartingSong) {
+			for (strumline in strumlineGroup) {
+				for (lane in strumline.lanes) {
+					for (note in lane.notes) {
+						if (!note.alive) {
+							note.destroy();
+							continue;
+						}
+						wooshNotes.push(note);
+					}
+					while (lane.notes.length > 0) // this is fucking stupid
+						lane.notes.remove(lane.notes.members[0], true);
+				}
+			}
+		}
+		
 		Paths.library = '';
 		
 		funkin.backend.play.NoteStyle.wipe();

@@ -8,21 +8,21 @@ typedef ShaderOrFilter = flixel.util.typeLimit.OneOfTwo<Shader, BitmapFilter>;
 class FunkinCamera extends FlxCamera {
 	public var pauseZoomLerp:Bool = false; // OK, this is hacky but i cant be arsed
 	public var pauseFollowLerp:Bool = false;
+	
 	public var zoomTarget:Null<Float> = null;
 	public var zoomFollowLerp:Float = -1;
 	public var zoomOffset:Float = 0;
-
-	override public function update(elapsed:Float):Void {
+	
+	public static var topCamera(get, never):FlxCamera;
+	
+	public override function update(elapsed:Float):Void {
 		if (target != null) updateFollow();
 		updateLerp(elapsed);
 
 		updateScroll();
 		updateFlash(elapsed);
 		updateFade(elapsed);
-
-		flashSprite.filters = filtersEnabled ? filters : null;
-
-		updateFlashSpritePosition();
+		
 		updateShake(elapsed);
 	}
 	public override function follow(target:FlxObject, ?style:FlxCameraFollowStyle, ?lerp:Float):Void {
@@ -35,6 +35,9 @@ class FunkinCamera extends FlxCamera {
 			zoom = zoomTarget;
 	}
 	override function render() {
+		flashSprite.filters = filtersEnabled ? filters : null;
+		updateFlashSpritePosition();
+		
 		if (filters != null) {
 			for (filter in filters) {
 				if (!Std.isOfType(filter, openfl.filters.ShaderFilter))
@@ -48,6 +51,7 @@ class FunkinCamera extends FlxCamera {
 				}
 			}
 		}
+		
 		super.render();
 	}
 	
@@ -118,6 +122,10 @@ class FunkinCamera extends FlxCamera {
 		}
 	}
 
-	override function set_followLerp(value:Float)
+	override function set_followLerp(value:Float) {
 		return followLerp = value;
+	}
+	static function get_topCamera():FlxCamera {
+		return FlxG.cameras.list[FlxG.cameras.list.length - 1];
+	}
 }

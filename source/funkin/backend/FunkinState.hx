@@ -44,11 +44,15 @@ class FunkinState extends FlxSubState {
 			Paths.clean();
 		}
 		
+		subStateOpened.add(onSubStateOpened);
+		subStateClosed.add(onSubStateClosed);
+		
 		super.create();
 	}
-	function rhythmBarHit(t:Int) barHit.dispatch(t);
-	function rhythmBeatHit(t:Int) beatHit.dispatch(t);
-	function rhythmStepHit(t:Int) stepHit.dispatch(t);
+	
+	public function onSubStateOpened(substate):Void {}
+	public function onSubStateClosed(substate):Void {}
+	
 	override public function destroy() {
 		conductorInUse = null;
 		
@@ -79,6 +83,9 @@ class FunkinState extends FlxSubState {
 		if (!conductor.stepHit.has(rhythmStepHit)) conductor.stepHit.add(rhythmStepHit);
 		if (!conductor.advance.has(updateEvents)) conductor.advance.add(updateEvents);
 	}
+	function rhythmBarHit(t:Int) barHit.dispatch(t);
+	function rhythmBeatHit(t:Int) beatHit.dispatch(t);
+	function rhythmStepHit(t:Int) stepHit.dispatch(t);
 
 	public function sortZIndex() {
 		sort(Util.sortZIndex, FlxSort.ASCENDING);

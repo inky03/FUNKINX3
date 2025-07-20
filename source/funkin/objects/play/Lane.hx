@@ -52,6 +52,7 @@ class Lane extends FunkinSpriteGroup {
 	public var receptor:Receptor;
 	public var arrowPath:ArrowPath;
 	public var notes:FunkinTypedSpriteGroup<Note>;
+	public var wooshNotes:FunkinTypedSpriteGroup<Note>;
 	public var noteSparks:FunkinTypedSpriteGroup<NoteSpark>;
 	public var noteSplashes:FunkinTypedSpriteGroup<NoteSplash>;
 	public var queue:Array<ChartNote> = [];
@@ -98,6 +99,7 @@ class Lane extends FunkinSpriteGroup {
 		arrowPath = new ArrowPath(this);
 		arrowPath.render = false;
 		notes = new FunkinTypedSpriteGroup();
+		wooshNotes = new FunkinTypedSpriteGroup();
 		noteSparks = new FunkinTypedSpriteGroup(0, 0, 5);
 		noteSplashes = new FunkinTypedSpriteGroup(0, 0, 5);
 		spawnRadius = Note.distanceToMS(FlxG.height + 75, scrollSpeed);
@@ -105,7 +107,7 @@ class Lane extends FunkinSpriteGroup {
 		
 		this.add(arrowPath);
 		this.add(receptor);
-		for (mem in [notes, noteSparks, noteSplashes]) {
+		for (mem in [wooshNotes, notes, noteSparks, noteSplashes]) {
 			topMembers.push(mem); // render conditionally
 			this.add(mem);
 		}
@@ -129,6 +131,27 @@ class Lane extends FunkinSpriteGroup {
 		}
 	}
 	
+	public function woosh():Void {
+		for (note in wooshNotes) {
+			var startX:Float = note.x;
+			var startY:Float = note.y;
+			
+			FlxTween.tween(note, {x: note.x + FlxG.height * Math.cos(direction / 180 * Math.PI), y: note.y + FlxG.height * Math.sin(direction / 180 * Math.PI)}, .5, {
+				ease: FlxEase.expoIn,
+				onComplete: (_) -> {
+					note.kill();
+					wooshNotes.remove(note, true);
+					note.destroy();
+				},
+				onUpdate: (_) -> {
+					if (note.tail != null) {
+						@:privateAccess note.tail.holdStrip?.setPosition(note.x - startX, note.y - startY);
+						@:privateAccess note.tail.tailStrip?.setPosition(note.x - startX, note.y - startY);
+					}
+				}
+			});
+		}
+	}
 	public override function update(elapsed:Float) {
 		updateQueue();
 		updateNotes();

@@ -44,8 +44,10 @@ import funkin.backend.scripting.HScript;
 		
 		switch (type) {
 			case START_COUNTDOWN:
-				for (strumline in game.strumlineGroup)
-					strumline.fadeIn();
+				if (game.fadeNotes) {
+					for (strumline in game.strumlineGroup)
+						strumline.fadeIn();
+				}
 			case TICK_COUNTDOWN:
 				var folder:String = 'funkin';
 				FunkinSound.playOnce(Paths.sound('gameplay/countdown/$folder/intro$countdown'));
