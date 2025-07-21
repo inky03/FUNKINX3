@@ -9,9 +9,11 @@ import funkin.backend.play.NoteStyle;
 import funkin.objects.CharacterGroup;
 import funkin.backend.FunkinStrip;
 
+import openfl.geom.ColorTransform;
 import flixel.graphics.frames.FlxFrame;
 import flixel.graphics.tile.FlxDrawTrianglesItem.DrawData;
 
+using flixel.util.FlxColorTransformUtil;
 using funkin.backend.play.NoteStyle.NoteStyleUtil;
 
 @:structInit class ChartNote extends FlxBasic implements ITimeSortable {
@@ -477,15 +479,6 @@ class NoteTail extends Note {
 		tailStrip?.update(elapsed);
 	}
 	public override function draw():Void {
-		alpha = multAlpha * defaultAlpha;
-		
-		if (parent != null) {
-			scrollFactor.copyFrom(parent.scrollFactor);
-			cameras = parent.cameras;
-			shader = parent.shader;
-			alpha *= parent.alpha;
-			color = parent.color;
-		}
 		holdStrip?.copyNote(this);
 		tailStrip?.copyNote(this);
 		
@@ -531,6 +524,7 @@ class NoteTail extends Note {
 		copyNote(parent);
 		copyReceptor(receptor);
 		
+		copyValues();
 		if (renderTriangles) {
 			updateTriangles(lane);
 		} else {
@@ -562,6 +556,17 @@ class NoteTail extends Note {
 			visible = (parent.visible && receptor.visible);
 		if (followAngle)
 			angle = direction + parent.direction + receptor.lane?.direction ?? 0 + 90;
+	}
+	public function copyValues():Void {
+		alpha = multAlpha * defaultAlpha;
+		
+		if (parent != null) {
+			scrollFactor.copyFrom(parent.scrollFactor);
+			cameras = parent.cameras;
+			shader = parent.shader;
+			alpha *= parent.alpha;
+			color = parent.color;
+		}
 	}
 	public function updateTriangles(lane:Lane):Void {
 		if (!updateModchart) return;
@@ -608,27 +613,32 @@ class NoteTail extends Note {
 			
 			var prevScale:FlxPoint = FlxPoint.weak(scale.x, scale.y);
 			var prevPosition:FlxPoint = FlxPoint.weak(x, y);
+			var prevColor:FlxColor = color;
 			
 			scrollDistance -= height;
 			modchartFunc(this, lane, scrollDistance);
 			
-			var curPosition:FlxPoint = FlxPoint.weak(x, y);
-			
 			if (renderDistance == null || scrollDistance < renderDistance) {
+				var curPosition:FlxPoint = FlxPoint.weak(x, y);
+				var size:Float;
+				
 				if (adaptiveDirection) {
 					angle = (prevPosition.degreesTo(curPosition) + 180);
+					size = curPosition.distanceTo(prevPosition);
 					prevAngle ??= angle;
 				} else {
+					size = height;
 					prevAngle ??= defaultAngle;
 				}
 				
 				
 				var data:NoteTailDrawData = (drawData[drawItems] ?? new NoteTailDrawData());
 				
-				data.clip = (scrollDistance <= clipDistance ? Math.abs(scrollDistance - clipDistance) / height : 0);
+				data.clip = (scrollDistance <= clipDistance ? Math.abs(scrollDistance - clipDistance) / size : 0);
 				data.copyPosition(prevPosition, curPosition);
 				data.setScale(prevScale.x, scale.x);
 				data.setAngle(prevAngle, angle);
+				data.setCT(colorTransform);
 				data.strip = render;
 				
 				drawData[drawItems ++] = data;
@@ -660,8 +670,8 @@ class NoteTailStrip extends FunkinStrip {
 		this.defaultAnim = defaultAnim;
 		
 		indices = new DrawData<Int>(6, true, [0, 1, 2, 1, 2, 3]);
-		uvtData = new DrawData<Float>(8, true, [0, 0, 0, 0, 0, 0, 0, 0]);
-		vertices = new DrawData<Float>(8, true, [0, 0, 0, 0, 0, 0, 0, 0]);
+		uvtData = new DrawData<Float>(8, true, [for (i in 0 ... 8) 0]);
+		vertices = new DrawData<Float>(8, true, [for (i in 0 ... 8) 0]);
 	}
 	
 	override function set_frame(newFrame:FlxFrame):FlxFrame {
@@ -709,8 +719,7 @@ class NoteTailStrip extends FunkinStrip {
 		} // +90 untested but SHOULD work ??
 	}
 	public function updateRender(drawData:NoteTailDrawData):Void {
-		if (graphic == null)
-			return;
+		if (graphic == null) return;
 		
 		var sprXOffset:Float = -(spriteOffset.x + animOffset.x);
 		var sprYOffset:Float = -(spriteOffset.y + animOffset.y);
@@ -741,12 +750,21 @@ class NoteTailStrip extends FunkinStrip {
 		vertices[5] = (cos + yOffset + drawData.yFrom);
 		vertices[6] = (sin + xOffset + drawData.xFrom); // bottom right
 		vertices[7] = (-cos + yOffset + drawData.yFrom);
+		
+		// colors[0] = colors[1] = (gradient ? drawData.colorFrom : drawData.colorTo);
+		// colors[2] = colors[3] = drawData.colorTo;
+		
+		if (drawData.ct != null) {
+			var ct:ColorTransform = drawData.ct;
+			colorTransform.setOffsets(ct.redOffset, ct.greenOffset, ct.blueOffset, ct.alphaOffset);
+			colorTransform.setMultipliers(ct.redMultiplier, ct.greenMultiplier, ct.blueMultiplier, ct.alphaMultiplier);
+		}
 	}
 	public inline function copyNote(note:Note):Void {
 		scrollFactor.copyFrom(note.scrollFactor);
+		initialZoom = note.initialZoom;
+		zoomFactor = note.zoomFactor;
 		shader = note.shader;
-		alpha = note.alpha;
-		color = note.color;
 	}
 	
 	function set_style(newStyle:NoteStyle) {
@@ -791,6 +809,8 @@ class NoteTailDrawData {
 	public var xTo:Float = 0;
 	public var yTo:Float = 0;
 	
+	public var ct:ColorTransform = null;
+	
 	public var clip:Float = 0;
 	
 	public var strip:Dynamic;
@@ -806,6 +826,11 @@ class NoteTailDrawData {
 	public inline function setScale(from:Float, ?to:Float):Void {
 		scaleFrom = from;
 		scaleTo = to ?? from;
+	}
+	public inline function setCT(copy:ColorTransform):Void {
+		ct ??= new ColorTransform();
+		ct.setOffsets(copy.redOffset, copy.greenOffset, copy.blueOffset, copy.alphaOffset);
+		ct.setMultipliers(copy.redMultiplier, copy.greenMultiplier, copy.blueMultiplier, copy.alphaMultiplier);
 	}
 	public inline function setPosition(x:Float, y:Float, ?xT:Float, ?yT:Float):Void {
 		xFrom = x;

@@ -141,8 +141,7 @@ class ArrowPathStrip extends FunkinStrip {
 	}
 	
 	public function updateRender(drawData:NoteTailDrawData):Void {
-		if (graphic == null)
-			return;
+		if (graphic == null) return;
 		
 		// update vertices
 		var width:Float = (thickness * .5 * drawData.scaleTo);
