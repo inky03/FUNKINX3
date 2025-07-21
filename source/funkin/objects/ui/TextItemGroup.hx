@@ -2,7 +2,10 @@ package funkin.objects.ui;
 
 class TextItemGroup extends FunkinTypedSpriteGroup<TextItem> {
 	public var itemPadding:Float = 25;
+	public var itemDrift:Float = 0;
 	public var selection:Int = 0;
+	
+	public var selectedItem(get, never):TextItem;
 	
 	public function new() {
 		super();
@@ -16,27 +19,29 @@ class TextItemGroup extends FunkinTypedSpriteGroup<TextItem> {
 	}
 	
 	public function repositionItems():Void {
-		var yy:Float = y;
+		var xx:Float = 0;
+		var yy:Float = 0;
 		
 		for (item in members) {
 			if (item == null || !item.exists) continue;
 			
-			item.y = yy;
-			yy += item.height + itemPadding;
+			item.startY = yy;
+			item.startX = xx;
+			item.setPosition(x + xx, y + yy);
+			
+			xx += itemDrift;
+			yy += item.text.height + itemPadding;
 		}
 	}
 	
 	public function confirm():Void {
-		var curOption:TextItem = members[selection];
-		if (curOption != null) {
-			curOption.confirm();
-		}
+		selectedItem?.confirm();
 	}
 	
-	public function select(mod:Int = 0):Void {
+	public function select(mod:Int = 0, sound:Bool = true):Void {
 		if (length == 0) return;
 		
-		if (mod != 0) FunkinSound.playOnce(Paths.sound('scrollMenu'), .8);
+		if (mod != 0 && sound) FunkinSound.playOnce(Paths.sound('scrollMenu'), .8);
 		
 		var prevOption:TextItem = members[selection];
 		if (prevOption != null) {
@@ -49,5 +54,9 @@ class TextItemGroup extends FunkinTypedSpriteGroup<TextItem> {
 		if (curOption != null) {
 			curOption.highlight(true);
 		}
+	}
+	
+	function get_selectedItem():TextItem {
+		return members[selection];
 	}
 }
