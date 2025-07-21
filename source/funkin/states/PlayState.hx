@@ -6,11 +6,11 @@ import flixel.util.FlxSignal.FlxTypedSignal;
 
 import funkin.backend.scripting.HScript;
 import funkin.backend.play.ScoreHandler;
+import funkin.backend.play.ScoreSystem;
 import funkin.backend.play.IPlayEvent;
 import funkin.backend.play.SongEvent;
 import funkin.backend.play.NoteStyle;
 import funkin.backend.play.NoteEvent;
-import funkin.backend.play.Scoring;
 import funkin.backend.play.Chart;
 import funkin.objects.CharacterGroup;
 import funkin.objects.Character;
@@ -65,7 +65,7 @@ class PlayState extends FunkinState {
 	public var songName:String;
 	public var simple:Bool;
 	
-	public var scoring:ScoreHandler = new ScoreHandler(EMI);
+	public var scoring:ScoreHandler = new ScoreHandler(new EmiScoreSystem());
 	@:isVar public var score(get, set):Float = 0;
 	@:isVar public var misses(get, set):Int = 0;
 	@:isVar public var combo(get, set):Int = 0;

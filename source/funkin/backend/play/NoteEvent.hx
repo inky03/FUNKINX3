@@ -4,8 +4,9 @@ import funkin.states.PlayState;
 import funkin.objects.Character;
 import funkin.objects.play.Note;
 import funkin.objects.play.Lane;
-import funkin.backend.play.Scoring;
 import funkin.objects.play.Strumline;
+import funkin.backend.play.ScoreSystem;
+import funkin.backend.play.ScoreHandler;
 
 using StringTools;
 
@@ -23,9 +24,9 @@ using StringTools;
 
 	public var spark:NoteSpark = null;
 	public var splash:NoteSplash = null;
-	public var scoring:Scoring.Score = null;
+	public var score:Score = null;
+	public var scoring(get, set):Score;
 	public var scoreHandler:ScoreHandler = null;
-	public var targetCharacter:ICharacter = null;
 
 	public var perfect:Bool = false; // release event
 	public var doSpark:Bool = false; // many vars...
@@ -38,6 +39,7 @@ using StringTools;
 	public var playAnimation:Bool = true;
 	public var animateReceptor:Bool = true;
 	public var singAnimation:Null<String> = null;
+	public var targetCharacter:ICharacter = null;
 	
 	var game:PlayState = null;
 	var inGame:Bool = false;
@@ -72,25 +74,25 @@ using StringTools;
 				
 				if (applyRating) {
 					applyExtraWindow(6);
-					scoring ??= scoreHandler?.judgeNoteHit(note, note.msTime - songPosition);
+					score ??= scoreHandler?.judgeNoteHit(note, note.msTime - songPosition);
 					
 					if (inGame) {
 						if (popRating) {
-							var rating:FunkinSprite = game.popRating('gameplay/funkin/${scoring.rating}');
+							var rating:FunkinSprite = game.popRating('gameplay/funkin/${score.rating}');
 							rating.velocity.y = -FlxG.random.int(140, 175);
 							rating.velocity.x = FlxG.random.int(0, 10);
 							rating.acceleration.y = 550;
 						}
 						
 						if (applyHealth)
-							game.health += note.healthGain * scoring.healthMod;
+							game.health += note.healthGain * score.healthMod;
 					}
 					
-					applyScore(scoreHandler, scoring, game);
-					note.score = scoring;
+					applyScore(scoreHandler, score, game);
+					note.score = score;
 				}
 				
-				if (doSplash && (scoring?.hitWindow == null || scoring.hitWindow.splash))
+				if (doSplash && (score?.hitWindow == null || score.hitWindow.splash))
 					splash = lane.splash(note);
 				
 				if (playAnimation && targetCharacter != null) {
@@ -145,13 +147,13 @@ using StringTools;
 				var perfectRelease:Bool = true;
 				final songPos:Float = songPosition;
 				
-				perfect = (released && songPos >= note.endMs - Scoring.holdLeniencyMS);
+				perfect = (released && songPos >= note.endMs - scoreHandler.system.holdLeniencyMS);
 				
-				if (applyRating) {
+				if (applyRating && scoreHandler.system.holdScoring) {
 					perfectRelease = perfect;
 					
 					var prevHitTime:Float;
-					if (!note.held && note.holdTime <= note.msTime + Scoring.holdLeniencyMS) {
+					if (!note.held && note.holdTime <= note.msTime + scoreHandler.system.holdLeniencyMS) {
 						prevHitTime = note.msTime;
 					} else {
 						prevHitTime = Math.max(note.holdTime, note.msTime);
@@ -167,15 +169,15 @@ using StringTools;
 					holdDelta = Math.max(0, nextHitTime - prevHitTime);
 					
 					final secondDiff:Float = holdDelta * .001;
-					scoring ??= {score: 0, healthMod: secondDiff};
+					score ??= {score: 0, healthMod: secondDiff};
 					
 					if (scoreHandler != null)
-						scoring.score = scoreHandler.holdScorePerSecond * secondDiff;
+						score.score = scoreHandler.system.holdScorePerSecond * secondDiff;
 					
 					if (inGame && applyRating && applyHealth)
-						game.health += (scoring.healthMod ?? 1) * note.healthGainPerSecond;
+						game.health += (score.healthMod ?? 1) * note.healthGainPerSecond;
 					
-					applyScore(scoreHandler, scoring, game);
+					applyScore(scoreHandler, score, game);
 					
 					if (!released)
 						note.held = true;
@@ -228,13 +230,13 @@ using StringTools;
 				
 				applyExtraWindow(15);
 				if (applyRating) {
-					scoring ??= scoreHandler?.judgeNoteGhost();
+					score ??= scoreHandler?.judgeNoteGhost();
 					
 					if (inGame && applyHealth)
-						game.health += (scoring.healthMod ?? -.01);
+						game.health += (score.healthMod ?? -.01);
 				}
 				
-				applyScore(scoreHandler, scoring, game);
+				applyScore(scoreHandler, score, game);
 			case LOST:
 				note.multAlpha *= .3;
 				
@@ -251,7 +253,7 @@ using StringTools;
 					FunkinSound.playOnce(Paths.sound('gameplay/hitsounds/miss${FlxG.random.int(1, 3)}'), FlxG.random.float(0.5, 0.6));
 
 				if (applyRating) {
-					scoring ??= scoreHandler?.judgeNoteMiss(note);
+					score ??= scoreHandler?.judgeNoteMiss(note);
 					
 					if (inGame) {
 						if (popRating) {
@@ -262,10 +264,10 @@ using StringTools;
 						}
 						
 						if (applyHealth)
-							game.health -= note.healthLoss * (scoring.healthMod ?? 1);
+							game.health -= note.healthLoss * (score.healthMod ?? 1);
 					}
 					
-					applyScore(scoreHandler, scoring, game);
+					applyScore(scoreHandler, score, game);
 				}
 			default:
 		}
@@ -289,6 +291,13 @@ using StringTools;
 		} else {
 			lane.extraWindow = extraWin;
 		}
+	}
+	
+	function get_scoring():Score {
+		return score;
+	}
+	function set_scoring(now:Score):Score {
+		return score = now;
 	}
 }
 

@@ -1,9 +1,7 @@
 package funkin.backend.play;
 
-import funkin.backend.play.Scoring;
+import funkin.backend.play.ScoreSystem;
 import flixel.util.FlxSignal.FlxTypedSignal;
-
-using Lambda;
 
 class ScoreHandler {
 	public var score:Float = 0;
@@ -19,23 +17,10 @@ class ScoreHandler {
 	public var onComboChange:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
 	public var onHit:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
 	
-	public var hitWindows:Array<HitWindow> = [];
-	public var holdScorePerSecond:Float;
-	public var system:ScoringSystem;
+	public var system:ScoreSystem;
 
-	public function new(system:ScoringSystem = LEGACY) {
-		this.system = system;
-		this.hitWindows = switch (system) {
-			case EMI:
-				holdScorePerSecond = 250;
-				Scoring.emiDefault();
-			case PBOT1:
-				holdScorePerSecond = 250;
-				Scoring.pbotDefault();
-			default:
-				holdScorePerSecond = 0;
-				Scoring.legacyDefault();
-		}
+	public function new(?system:ScoreSystem) {
+		this.system = (system ?? new ScoreSystem());
 	}
 	public function reset() {
 		score = accuracyMod = accuracyDiv = combo = misses = 0;
@@ -43,9 +28,9 @@ class ScoreHandler {
 	}
 	
 	public function applyScore(score:Score) {
-		this.hits += score.hits ?? 0;
-		this.score += score.score ?? 0;
-		this.misses += score.misses ?? 0;
+		this.hits += (score.hits ?? 0);
+		this.score += (score.score ?? 0);
+		this.misses += (score.misses ?? 0);
 		
 		if (score.rating != null)
 			countRating(score.rating);
@@ -59,33 +44,23 @@ class ScoreHandler {
 	}
 	
 	public function judgeNoteHit(note:funkin.objects.play.Note, time:Float):Score {
-		return switch (system) {
-			case EMI | WEEK7 | LEGACY:
-				var score:Score = Scoring.judgeLegacy(hitWindows, note.hitWindow, time);
-				// todo : fun stuff!
-				score;
-			case PBOT1:
-				var score:Score = Scoring.judgePBOT1(hitWindows, note.hitWindow, time);
-				score;
-		}
-	}
-	public function judgeNoteGhost():Score {
-		return {score: -10, healthMod: -.01};
+		return system.judgeHit(time, note.hitWindow);
 	}
 	public function judgeNoteMiss(note:funkin.objects.play.Note):Score {
-		return switch (system) {
-			case EMI:
-				{score: -50, misses: 1, accuracyMod: 0, breaksCombo: true};
-			default:
-				{score: -10, misses: 1, accuracyMod: 0, breaksCombo: true};
-		}
+		return system.judgeMiss(note);
 	}
-	public function getHitWindow(rating:String)
-		return hitWindows.find((win:HitWindow) -> win.rating == rating);
-	public function getRatingCount(rating:String)
+	public function judgeNoteGhost():Score {
+		return system.judgeGhost();
+	}
+	public function getHitWindow(rating:String) {
+		return system.hitFromName(rating);
+	}
+	public function getRatingCount(rating:String) {
 		return ratingCount.get(rating) ?? 0;
-	public function countRating(rating:String, mod:Int = 1)
+	}
+	public function countRating(rating:String, mod:Int = 1) {
 		ratingCount.set(rating, getRatingCount(rating) + mod);
+	}
 	public function addMod(mod:Float = 0, div:Float = 1) {
 		accuracyMod += mod;
 		accuracyDiv += div;

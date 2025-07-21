@@ -2,10 +2,10 @@ package funkin.objects.play;
 
 import funkin.shaders.RGBSwap;
 import funkin.objects.play.Lane;
-import funkin.backend.play.Scoring;
 import funkin.backend.rhythm.Event;
 import funkin.backend.FunkinSprite;
 import funkin.backend.play.NoteStyle;
+import funkin.backend.play.ScoreSystem;
 import funkin.objects.CharacterGroup;
 import funkin.backend.FunkinStrip;
 
@@ -130,7 +130,7 @@ class Note extends NoteObject {
 	@resetVar public var healthLoss:Float = 6.0 / 100;
 	@resetVar public var healthGain:Float = 1.5 / 100;
 	@resetVar public var healthGainPerSecond:Float = 7.5 / 100; // hold bonus
-	@resetVar public var hitWindow:Float = Scoring.safeFrames * 1000 / 60;
+	@resetVar public var hitWindow:Float = (ScoreSystem.safeFrames * 1000 / 60);
 	
 	@resetVar public var hitPriority:Float = 1;
 	@resetVar public var multAlpha:Float = 1;

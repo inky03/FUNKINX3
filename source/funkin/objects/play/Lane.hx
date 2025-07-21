@@ -4,9 +4,9 @@ import haxe.Constraints;
 import funkin.shaders.RGBSwap;
 import funkin.objects.Character;
 import funkin.objects.play.Note;
-import funkin.backend.play.Scoring;
 import funkin.backend.play.NoteEvent;
 import funkin.backend.play.NoteStyle;
+import funkin.backend.play.ScoreSystem;
 import funkin.backend.rhythm.Conductor;
 
 import flixel.input.keyboard.FlxKey;
@@ -35,7 +35,7 @@ class Lane extends FunkinSpriteGroup {
 	public var scrollSpeed(default, set):Float = 1;
 	public var direction:Float = 90;
 	public var spawnRadius:Float;
-	public var hitWindow:Float = Scoring.safeFrames / 60 * 1000;
+	public var hitWindow:Float = (ScoreSystem.safeFrames * 1000 / 60);
 	public var conductorInUse:Conductor = FunkinState.getCurrentConductor();
 	public var inputKeys:Array<FlxKey> = [];
 	public var character:ICharacter = null;

@@ -2,9 +2,9 @@ package funkin.objects.play;
 
 import funkin.objects.Character;
 import funkin.objects.play.Note;
-import funkin.backend.play.Scoring;
 import funkin.backend.play.NoteEvent;
 import funkin.backend.play.NoteStyle;
+import funkin.backend.play.ScoreSystem;
 
 import flixel.util.FlxAxes;
 import flixel.input.keyboard.FlxKey;
@@ -33,7 +33,7 @@ class Strumline extends FunkinSpriteGroup {
 	public var allowInput(default, set):Bool = true;
 	public var character(default, set):ICharacter = null;
 	public var noteClass(default, set):Class<Note> = Note;
-	public var hitWindow(default, set):Float = Scoring.safeFrames / 60 * 1000;
+	public var hitWindow(default, set):Float = (ScoreSystem.safeFrames * 1000 / 60);
 	
 	//oh dear
 	function set_cpu(isCpu:Bool) { for (lane in lanes) lane.cpu = isCpu; return cpu = isCpu; }
