@@ -147,7 +147,11 @@ class FunkinRuntimeShader extends FlxRuntimeShader {
 	}
 	public function postUpdateFrame(frame:flixel.graphics.frames.FlxFrame) {
 		if (hasParameter('uFrameBounds'))
+			#if (flixel >= "6.1.0")
+			setFloatArray('uFrameBounds', [frame.uv.left, frame.uv.top, frame.uv.right, frame.uv.bottom]);
+			#else
 			setFloatArray('uFrameBounds', [frame.uv.x, frame.uv.y, frame.uv.width, frame.uv.height]);
+			#end
 	}
 	
 	function set_postProcessing(isPost:Bool) {

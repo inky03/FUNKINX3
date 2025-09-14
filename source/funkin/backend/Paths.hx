@@ -1,13 +1,14 @@
 package funkin.backend;
 
-import flixel.util.FlxDestroyUtil.IFlxDestroyable;
 import openfl.utils.Assets as OFLAssets;
 import lime.utils.Assets as LimeAssets;
 import flxanimate.data.AnimationData;
+import flixel.util.FlxDestroyUtil;
 import flixel.graphics.FlxGraphic;
 import openfl.display.BitmapData;
 import flixel.graphics.frames.*;
 import flixel.system.FlxAssets;
+import funkin.util.MemoryUtil;
 import openfl.utils.AssetType;
 import openfl.media.Sound;
 import openfl.Assets;
@@ -52,16 +53,12 @@ class Paths {
 		}
 		for (key => dyn in dynamicCache) {
 			if (!trackedAssets.contains(key) && !excludeKeys.contains(key)) {
-				if (dyn != null) {
-					if (Std.isOfType(dyn, IFlxDestroyable))
-						try dyn.destroy();
-					dyn = null;
-				}
+				if (dyn is IFlxDestroyable) FlxDestroyUtil.destroy(dyn);
 				dynamicCache.remove(key);
 			}
 		}
 		FlxG.bitmap.clearUnused();
-		runGC();
+		MemoryUtil.collect();
 	}
 	inline public static function excludedGraphicKeys():Array<String> {
 		var exclusions:Array<String> = excludeKeys.copy();
@@ -69,11 +66,10 @@ class Paths {
 		for (spr in excludeSprites) exclusions.push(spr.graphic.key);
 		return exclusions;
 	}
+	
+	@:deprecated('Paths.runGC is deprecated, use MemoryUtil.collect instead!')
 	public static function runGC() {
-		openfl.system.System.gc();
-		#if hl
-		hl.Gc.major();
-		#end
+		MemoryUtil.collect();
 	}
 
 	public static function getPath(key:String, allowMods:Bool = true, ?library:String) {
@@ -83,26 +79,9 @@ class Paths {
 			
 			var path:String;
 			var allMods:Bool = (Mods.currentMod == null);
-			var priorize:Bool = (!allMods);
-			
-			if (!allMods && Mods.currentMod != '') { // current mod is high priority
-				var curMod:Mod = Mods.modByDirectory(Mods.currentMod);
-				
-				priorize = true;
-				if (curMod.doLoad) {
-					path = modPath(key, Mods.currentMod, library);
-					if (FileSystem.exists(path)) {
-						return path;
-					} else {
-						path = modPath(key, Mods.currentMod);
-						if (FileSystem.exists(path))
-							return path;
-					}
-				}	
-			}
 			
 			for (mod in Mods.get()) {
-				if (!mod.doLoad || !mod.enabled || (!allMods && !mod.global) || (priorize && mod.directory == Mods.currentMod))
+				if (!mod.doLoad || !mod.enabled || (!allMods && !mod.global && mod.directory != Mods.currentMod))
 					continue;
 				
 				path = modPath(key, mod.directory, library);
@@ -139,22 +118,10 @@ class Paths {
 				files.push({path: globalModPath(key), type: GLOBAL});
 			
 			var path:String;
-			var priorize:Bool = (!allMods);
-			
-			if (Mods.currentMod == null) {
-				allMods = true;
-				priorize = false;
-			} else if (Mods.currentMod != '') { // current mod is high priority
-				var curMod:Mod = Mods.modByDirectory(Mods.currentMod);
-				
-				priorize = true;
-				path = modPath(key, Mods.currentMod, library);
-				if (curMod.doLoad && FileSystem.exists(path))
-					files.push({mod: Mods.currentMod, path: path, type: MOD});
-			}
+			var allMods:Bool = (Mods.currentMod == null);
 			
 			for (mod in Mods.get()) {
-				if (!mod.doLoad || !mod.enabled || (!allMods && !mod.global) || (priorize && mod.directory == Mods.currentMod))
+				if (!mod.doLoad || !mod.enabled || (!allMods && !mod.global && mod.directory != Mods.currentMod))
 					continue;
 				
 				path = modPath(key, mod.directory, library);
@@ -185,7 +152,9 @@ class Paths {
 		return (FileSystem.exists(modPath(key, mod, library)));
 	inline public static function exists(key:String, allowMods:Bool = true, ?library:String):Bool
 		return (getPath(key, allowMods, library) != null);
-
+	
+	inline public static function video(key:String, ?library:String, ?format:String = 'mp4')
+		return getPath('videos/$key.$format', library);
 	inline public static function sound(key:String, ?library:String)
 		return ogg('sounds/$key', false, library);
 	inline public static function music(key:String, ?library:String)

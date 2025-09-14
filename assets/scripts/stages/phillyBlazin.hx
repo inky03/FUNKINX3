@@ -38,9 +38,9 @@ function createPost() {
 	rainShader.setFloat('uScale', FlxG.height / 200);
 	rainShader.setFloatArray('uRainColor', [0x66 / 0xff, 0x80 / 0xff, 0xcc / 0xff]);
 	camGame.addFilter(rainShader);
-
-	player1.setPosition(1360, 1720);
-	player2.setPosition(1440, 1720); // uh?
+	
+	player1.dance(0, true);
+	player2.dance(0, true);
 	player1.color = player2.color = 0xffdedede;
 	player3.color = 0xff888888;
 	ratingGroup.x += 560;

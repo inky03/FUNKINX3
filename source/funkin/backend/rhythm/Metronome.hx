@@ -165,6 +165,18 @@ class Metronome {
 		bpm = prevBPM;
 		return target;
 	}
+	
+	public function copyTempoChanges(copyChanges:Array<TempoChange>):Array<TempoChange> {
+		tempoChanges.resize(0);
+		for (change in copyChanges) {
+			var newChange:TempoChange = new TempoChange(change.beatTime, change.bpm, change.timeSignature?.clone());
+			tempoChanges.push(newChange);
+		}
+		return tempoChanges;
+	}
+	public function sortTempoChanges():Void {
+		tempoChanges.sort((a:TempoChange, b:TempoChange) -> Std.int(a.beatTime) - Std.int(b.beatTime));
+	}
 }
 
 enum abstract Measure(String) to String {

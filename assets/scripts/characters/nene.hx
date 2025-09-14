@@ -71,14 +71,14 @@ function update(elapsed:Float) {
 }
 function draw() {
 	aBotSpeaker.setPosition(x, y);
+	// aBotSpeaker.color = color;
 	aBotSpeaker.alpha = alpha;
-	aBotSpeaker.color = color;
 	aBotSpeaker.draw();
 	super.draw();
 }
 
 function shouldTransitionState() {
-	return (game.inputEnabled && game.player1 != null && game.player1.current.loadedCharacter != 'pico-blazin');
+	return (!game.inputDisabled && game.player1 != null && game.player1.current.loadedCharacter != 'pico-blazin');
 }
 function transitionState() {
 	switch (getVar('state')) {
@@ -136,8 +136,10 @@ function dance(?beat:Int = 0, ?forced:Bool = false) {
 			}
 	}
 	
-	if (!stopDance)
-		super.dance(beat, forced);
+	if (stopDance)
+		return false;
+	
+	return super.dance(beat, forced);
 }
 function animationFinishedC(anim:String) {
 	switch (getVar('state')) {

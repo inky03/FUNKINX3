@@ -3,8 +3,17 @@ package funkin.backend.scripting;
 import crowplexus.iris.Iris;
 import crowplexus.hscript.Expr;
 import crowplexus.hscript.Tools;
+import crowplexus.hscript.Interp;
 
-class ModInterp extends crowplexus.hscript.Interp {
+import funkin.backend.FunkinSprite;
+
+enum Exit { // all of this because Stop IS PRIVATW AHHHHHHHHH
+	Continue;
+	Return;
+	Break;
+}
+
+class ModInterp extends Interp {
 	public var hscript:HScript;
 	
 	override function setVar(name:String, v:Dynamic) {
@@ -62,6 +71,14 @@ class ModInterp extends crowplexus.hscript.Interp {
 		if (o == null)
 			error(EInvalidAccess(f));
 		
+		if (variables.get('experimentalVars') == true) {
+			if (Std.isOfType(o, FlxBasic)) {
+				var basic:FlxBasic = cast o;
+				if (basic.hasVar(f))
+					return basic.getVar(f);
+			}
+		}
+		
 		#if hl
 		if (Type.typeof(o) == Type.ValueType.TObject && Reflect.hasField(o, '__evalues__')) { // hashlink enums
 			try {
@@ -75,6 +92,7 @@ class ModInterp extends crowplexus.hscript.Interp {
 			error(EInvalidAccess(f));
 		}
 		#end
+		
 		return Reflect.getProperty(o, f);
 	}
 	override function makeIterator(v:Dynamic):Iterator<Dynamic> {
@@ -157,8 +175,179 @@ class ModInterp extends crowplexus.hscript.Interp {
 		switch (eDef) {
 			case EImport(v, as):
 				return doImport(v, as);
+			case EBreak:
+				throw Break;
+			case EContinue:
+				throw Continue;
+			case EReturn(e):
+				returnValue = (e == null ? null : expr(e));
+				throw Return;
+			case EFunction(params, fexpr, name, _):
+				var capturedLocals = duplicate(locals);
+				var minParams:Int = 0;
+				var me = this;
+				for (p in params) {
+					if (!p.opt)
+						minParams ++;
+				}
+				
+				var f = function(args: Array<Dynamic>) {
+					if (args?.length ?? 0 != params.length) {
+						if (args.length < minParams) {
+							var str = "Invalid number of parameters. Got " + args.length + ", required " + minParams;
+							if (name != null)
+								str += " for function '" + name + "'";
+							error(ECustom(str));
+						}
+						// make sure mandatory args are forced
+						var args2 = [];
+						var extraParams = args.length - minParams;
+						var pos = 0;
+						for (p in params) {
+							if (p.opt) {
+								if (extraParams > 0) {
+									args2.push(args[pos++]);
+									extraParams--;
+								} else {
+									args2.push(p.value == null ? null : expr(p.value)); // GENIUS
+								}
+							} else {
+								args2.push(args[pos++]);
+							}
+						}
+						args = args2;
+					}
+					
+					var old = me.locals, depth = me.depth;
+					me.depth ++;
+					me.locals = me.duplicate(capturedLocals);
+					for (i in 0...params.length)
+						me.locals.set(params[i].name, {r: args[i], const: false});
+					var r = null;
+					var oldDecl = declared.length;
+					if (inTry)
+						try {
+							r = me.exprReturn(fexpr);
+						} catch (e:Dynamic) {
+							me.locals = old;
+							me.depth = depth;
+							#if neko
+							neko.Lib.rethrow(e);
+							#else
+							throw e;
+							#end
+						}
+					else {
+						r = me.exprReturn(fexpr);
+					}
+					restore(oldDecl);
+					me.locals = old;
+					me.depth = depth;
+					return r;
+				};
+				var f = Reflect.makeVarArgs(f);
+				if (name != null) {
+					if (depth == 0) {
+						// global function
+						variables.set(name, f);
+					} else {
+						// function-in-function is a local function
+						declared.push({n: name, old: locals.get(name)});
+						var ref:LocalVar = {r: f, const: false};
+						locals.set(name, ref);
+						capturedLocals.set(name, ref); // allow self-recursion
+					}
+				}
+				return f;
 			default:
 		}
 		return super.expr(e);
+	}
+	override function exprReturn(e): Dynamic {
+		try {
+			return expr(e);
+		} catch (e:Exit) {
+			switch (e) {
+				case Break:
+					throw "Invalid break";
+				case Continue:
+					throw "Invalid continue";
+				case Return:
+					var v = returnValue;
+					returnValue = null;
+					return v;
+			}
+		}
+		return null;
+	}
+	
+	override function doWhileLoop(eCond, e) {
+		var old: Int = declared.length;
+		do {
+			try {
+				expr(e);
+			} catch (err:Exit) {
+				switch (err) {
+					case Continue:
+					case Break: break;
+					case Return: throw err;
+				}
+			}
+		} while (expr(eCond) == true);
+		restore(old);
+	}
+	override function whileLoop(eCond, e) {
+		var old: Int = declared.length;
+		while (expr(eCond) == true) {
+			try {
+				expr(e);
+			} catch (err:Exit) {
+				switch (err) {
+					case Continue:
+					case Break: break;
+					case Return: throw err;
+				}
+			}
+		}
+		restore(old);
+	}
+	override function forLoop(n, v, itExpr, e): Void {
+		var old: Int = declared.length;
+		declared.push({n: n, old: locals.get(n)});
+		var keyValue: Bool = false;
+		if (v != null) {
+			keyValue = true;
+			declared.push({n: v, old: locals.get(v)});
+		}
+		var it: Dynamic = (keyValue ? makeKVIterator : makeIterator)(expr(itExpr));
+		var _itHasNext: Dynamic = it.hasNext;
+		var _itNext: Dynamic = it.next;
+		
+		while (_itHasNext()) {
+			if (keyValue) {
+				var next = _itNext();
+				if (next.key == null || next.value == null) {
+					var nulled: String = (next.key == null ? 'key' : 'value');
+					error(ECustom('${Std.isOfType(next, Int) ? 'Int' : Type.getClassName(Type.getClass(next))} has no field $nulled'));
+				}
+				locals.set(n, {r: next.key, const: false});
+				locals.set(v, {r: next.value, const: false});
+			} else {
+				locals.set(n, {r: _itNext(), const: false});
+			}
+			
+			try {
+				expr(e);
+			} catch (err:Exit) {
+				switch (err) {
+					case Continue:
+					case Break:
+						break;
+					case Return:
+						throw err;
+				}
+			}
+		}
+		restore(old);
 	}
 }

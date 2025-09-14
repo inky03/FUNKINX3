@@ -1,7 +1,9 @@
 package funkin.backend;
 
+#if (flixel >= "6.1.0") import flixel.system.FlxAssets; #end
 import openfl.display.BitmapData;
 import openfl.display.Bitmap;
+import openfl.Lib;
 
 // Hello funkin crew
 class FunkinSoundTray extends flixel.system.ui.FlxSoundTray {
@@ -14,7 +16,6 @@ class FunkinSoundTray extends flixel.system.ui.FlxSoundTray {
 	
 	public var scale(default, set):Float;
 	public var barsY(default, set):Float;
-	public var volumeMaxSound:String;
 	
 	public function new() {
 		super();
@@ -26,6 +27,7 @@ class FunkinSoundTray extends flixel.system.ui.FlxSoundTray {
 		addChild(bg);
 		addChild(bgBar);
 		
+		_bg = bg;
 		_bars.resize(0);
 		for (i in 0...10) {
 			var bar:Bitmap = new Bitmap();
@@ -36,10 +38,10 @@ class FunkinSoundTray extends flixel.system.ui.FlxSoundTray {
 		
 		scale = .6;
 		barsY = 18;
-
+		
 		reloadSoundtrayGraphics();
 		y = -height;
-
+		
 		volumeUpSound = 'soundtray/volUP';
 		volumeDownSound = 'soundtray/volDOWN';
 		volumeMaxSound = 'soundtray/volMAX';
@@ -50,13 +52,12 @@ class FunkinSoundTray extends flixel.system.ui.FlxSoundTray {
 	public function reloadSoundtrayGraphics() {
 		bg.bitmapData = Paths.bmd('soundtray/volumebox');
 		bgBar.bitmapData = Paths.bmd('soundtray/bars_bg');
-		_width = bg.bitmapData.width;
+		
 		for (i => bar in _bars) {
-			var bmd:Null<BitmapData> = Paths.bmd('soundtray/bars_${i + 1}');
-			bar.x = ((bg.bitmapData?.width ?? 0) - (bmd?.width ?? 0)) * .5;
-			bar.bitmapData = bmd;
+			bar.bitmapData = Paths.bmd('soundtray/bars_${i + 1}');
+			bar.x = (bg.width - bar.width) * .5;
 		}
-		bgBar.x = ((bg.bitmapData?.width ?? 0) - (bgBar.bitmapData?.width ?? 0)) * .5;
+		bgBar.x = (bg.width - bgBar.width) * .5;
 		
 		screenCenter();
 	}
@@ -102,7 +103,46 @@ class FunkinSoundTray extends flixel.system.ui.FlxSoundTray {
 			#end
 		}
 	}
-
+	
+	#if (flixel >= "6.1.0")
+	public var volumeMaxSound:FlxSoundAsset;
+	
+	override public function showAnim(volume:Float, ?sound:FlxSoundAsset, duration:Float = 1, label:String = 'VOLUME'):Void {
+		if (sound != null) {
+			if (sound is String) {
+				FlxG.sound.play(Paths.sound(sound));
+			} else {
+				FlxG.sound.play(sound);
+			}
+		}
+		
+		var nVolume:Int = Math.round(volume * 10);
+		
+		_timer = duration;
+		lerpYPos = 10;
+		visible = true;
+		active = true;
+		
+		for (i => bar in _bars)
+			bar.visible = (i + 1 == nVolume);
+		
+		max = (nVolume >= 10);
+	}
+	
+	override function showIncrement():Void {
+		final volume = FlxG.sound.muted ? 0 : FlxG.sound.volume;
+		showAnim(volume, silent ? null : (max ? volumeMaxSound : volumeUpSound));
+	}
+	
+	override function showDecrement():Void {
+		final volume = FlxG.sound.muted ? 0 : FlxG.sound.volume;
+		showAnim(volume, silent ? null : volumeDownSound);
+	}
+	
+	override function updateSize():Void {} // just useless here
+	#else
+	public var volumeMaxSound:String;
+	
 	override public function show(up:Bool = false):Void {
 		_timer = 1;
 		lerpYPos = 10;
@@ -126,4 +166,5 @@ class FunkinSoundTray extends flixel.system.ui.FlxSoundTray {
 			bar.visible = (i + 1 == globalVolume);
 		max = (baseVolume == 10);
 	}
+	#end
 }

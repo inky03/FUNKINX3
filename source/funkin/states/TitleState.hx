@@ -13,6 +13,9 @@ class TitleState extends FunkinState {
 	public var enter:FunkinSprite;
 	public var logo:FunkinSprite;
 	
+	public var enterColors:Array<FlxColor> = [0xff33ffff, 0xff3333cc];
+	var enterColorIndex:Int = 0;
+	
 	public var introTexts:Array<Array<String>> = [];
 	public var currentIntroText:Array<String>;
 	public var titleStarted:Bool = false;
@@ -42,10 +45,12 @@ class TitleState extends FunkinState {
 		}
 	}
 	public override function create() {
-		preload();
-		currentIntroText = FlxG.random.getObject(introTexts) ?? ['funkin', 'FOREVER'];
+		super.create();
 		
-		conductorInUse.beatHit.add(beatHitEvent);
+		preload();
+		currentIntroText = FlxG.random.getObject(introTexts) ?? ['FUNKIN', 'FOREVER'];
+		
+		beatHit.add(beatHitEvent);
 		
 		logo = new FunkinSprite().loadAtlas('titlescreen/logo');
 		logo.addAnimation('bump', 'logo bumpin');
@@ -65,9 +70,9 @@ class TitleState extends FunkinState {
 		titleGroup.add(enter);
 		
 		ngSpr = new FunkinSprite();
-	    if (FlxG.random.bool(1)) {
+		if (FlxG.random.bool(1)) {
 			ngSpr.loadGraphic(Paths.image('titlescreen/ngClassic'));
-	    } else if (FlxG.random.bool(30)) {
+		} else if (FlxG.random.bool(30)) {
 			ngSpr.loadGraphic(Paths.image('titlescreen/ngAnimated'), true, 600);
 			ngSpr.setGraphicSize(Std.int(ngSpr.width * 0.55));
 			ngSpr.addAnimation('idle', null, 4, true, [0, 1]);
@@ -79,15 +84,16 @@ class TitleState extends FunkinState {
 		}
 		ngSpr.alpha = .0001;
 		ngSpr.updateHitbox();
-    	ngSpr.screenCenter(X);
-    	ngSpr.y = FlxG.height - ngSpr.height - 160;
+		ngSpr.screenCenter(X);
+		ngSpr.y = FlxG.height - ngSpr.height - 160;
 		
 		playMusic(MainMenuState.menuMusic, !skipIntro);
 		conductorInUse.syncTracker = FlxG.sound.music;
+		conductorInUse.sync();
 		add(introGroup);
 		
 		if (!skipIntro) {
-    		add(ngSpr);
+			add(ngSpr);
 			final ySpacing:Float = 60;
 			
 			queueEvent(beatToMS(1), (_) -> {
@@ -122,8 +128,10 @@ class TitleState extends FunkinState {
 			showTitleScreen(true);
 		}
 		
-		DiscordRPC.presence.details = 'In the title screen';
-		DiscordRPC.dirty = true;
+		DiscordRpc.presence.details = 'In the title screen';
+		DiscordRpc.dirty = true;
+		
+		enter.color = enterColors[enterColorIndex ++];
 	}
 	public override function update(elapsed:Float) {
 		super.update(elapsed);
@@ -147,19 +155,17 @@ class TitleState extends FunkinState {
 			}
 		}
 	}
-	public override function destroy() {
-		conductorInUse.beatHit.remove(beatHitEvent);
-		super.destroy();
-	}
 	
 	public function beatHitEvent(beat:Int) {
 		logo.playAnimation('bump', true);
 		if (beat % 2 == 0) {
 			if (!confirmed) {
-				var to:FlxColor = 0xff3333cc;
-				var from:FlxColor = 0xff33ffff;
+				if (enterColorIndex >= enterColors.length) enterColorIndex = 0;
+				
+				var to:FlxColor = enterColors[enterColorIndex ++];
+				
 				FlxTween.cancelTweensOf(enter);
-				FlxTween.color(enter, conductorInUse.crochet * .001 * 2, from, to, {type: (beat % 4 < 2 ? ONESHOT : BACKWARD)});
+				FlxTween.color(enter, conductorInUse.crochet * .001 * 2, enter.color, to);
 			}
 		}
 	}

@@ -36,6 +36,7 @@ import funkin.util.*;
 import funkin.debug.Log;
 import funkin.backend.Options;
 import funkin.backend.Controls;
+import funkin.backend.FunkinText;
 import funkin.backend.FunkinSound;
 import funkin.backend.FunkinState;
 import funkin.backend.FunkinSprite;
@@ -47,5 +48,5 @@ import funkin.backend.rhythm.*;
 import funkin.backend.Mods;
 import funkin.backend.Paths;
 
-import funkin.backend.DiscordRpc;
+import funkin.backend.api.DiscordRpc;
 #end

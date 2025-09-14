@@ -26,7 +26,7 @@ haxelib install moonchart
 haxelib install hxdiscord_rpc
 haxelib git funkin.vis https://github.com/FunkinCrew/funkVis
 haxelib git grig.audio https://gitlab.com/haxe-grig/grig.audio.git
-haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate.git dev
+haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate.git 884606823b39b41ae460cd5f0ec1a07310654aa2
 haxelib git hscript-iris https://github.com/pisayesiwsi/hscript-iris.git dev
 ```
 (hscript-iris and flxanimate use indev versions)

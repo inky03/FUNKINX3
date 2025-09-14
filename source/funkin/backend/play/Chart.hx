@@ -35,6 +35,7 @@ class Chart {
 	public var name:String = 'Unnamed';
 	public var artist:String = 'Unknown';
 	public var difficulty:String = '';
+	public var noteStyle:String = 'funkin';
 	public var format:ChartFormat = UNKNOWN;
 
 	public var chart:Any; //BasicFormat?
@@ -50,6 +51,7 @@ class Chart {
 	public var instLoaded:Bool;
 	public var inst:FunkinSound;
 	public var songLength:Float = 0;
+	public var audioOffset:Float = 0;
 	public var audioSuffix:String = '';
 
 	public var player1:String = 'bf';
@@ -95,7 +97,7 @@ class Chart {
 		}
 	}
 
-	function loadGeneric(format:Dynamic, difficulty:String, ?playerNoteFilter:BasicNote -> Bool) {
+	function loadGeneric(format:Dynamic, difficulty:String, ?strumlineNoteFilter:BasicNote -> Int) {
 		this.difficulty = difficulty;
 		this.chart = format;
 
@@ -143,20 +145,29 @@ class Chart {
 		tempMetronome.tempoChanges = this.tempoChanges;
 		var notes:Array<BasicNote> = format.getNotes(difficulty);
 		for (note in notes) {
-			var isPlayer:Bool;
-			if (playerNoteFilter != null) {
-				isPlayer = playerNoteFilter(note);
+			var strumlineIndex:Int = 0;
+			if (strumlineNoteFilter != null) {
+				strumlineIndex = strumlineNoteFilter(note);
 			} else {
-				isPlayer = note.lane >= 4;
+				strumlineIndex = note.lane % keyCount;
 			}
 			tempMetronome.setMS(note.time + 1);
 			var stepCrochet:Float = tempMetronome.getCrochet(tempMetronome.bpm, tempMetronome.timeSignature.denominator) * .25;
-			this.notes.push({player: isPlayer, msTime: note.time, laneIndex: Std.int(note.lane % 4), msLength: note.length - stepCrochet, kind: note.type});
+			this.notes.push({strumlineIndex: strumlineIndex, msTime: note.time, laneIndex: Std.int(note.lane % 4), msLength: note.length - stepCrochet, kind: note.type});
 		}
 		
 		this.sort();
 		this.findSongLength();
+		this.clearStackedNotes();
 		return this;
+	}
+	public function getStrumlineCount():Int {
+		var strumlines:Int = 2;
+		for (note in notes) {
+			if (strumlines < note.strumlineIndex)
+				strumlines = note.strumlineIndex;
+		}
+		return strumlines;
 	}
 	public function findSongLength() {
 		if (instLoaded) {
@@ -167,14 +178,45 @@ class Chart {
 		}
 		return this.songLength;
 	}
+	public function clearStackedNotes(minDifference:Float = 6, suicide:Bool = false) {
+		if (notes.length >= 10000 && !suicide) {
+			Log.warning('chart contains TOO MANY notes (${notes.length} / 10000), won\'t check for note stacking');
+			return;
+		}
+		
+		var previousNotes:Array<Array<ChartNote>> = [];
+		var caught:Int = 0;
+		var i:Int = notes.length;
+		
+		while (i > 0) {
+			var note:ChartNote = notes[-- i];
+			
+			var lane:Int = note.laneIndex;
+			var strumline:Int = note.strumlineIndex;
+			
+			while (previousNotes.length <= strumline) previousNotes.push([]);
+			while (previousNotes[strumline].length <= lane) previousNotes[strumline].push(null);
+			var prevNote:ChartNote = previousNotes[strumline][lane];
+			
+			if (prevNote != null && Math.abs(note.msTime - prevNote.msTime) < minDifference &&
+				prevNote.kind == note.kind && prevNote.laneIndex == lane && prevNote.strumlineIndex == strumline) {
+				notes.remove(note);
+				caught ++;
+			}
+			previousNotes[strumline][lane] = note;
+		}
+		
+		if (caught > 0)
+			Log.warning('caught and deleted $caught stacked ${caught == 1 ? 'note' : 'notes'} in chart!');
+	}
 	
 	// TODO: these could just not be static
 	// suffix is for playable characters
-	static function loadLegacyChart(path:String, difficulty:String = 'normal', suffix:String = '', keyCount:Int = 4) { // move to moonchart format???
+	static function loadLegacyChart(path:String, difficulty:String = 'normal', suffix:String = '', ?keyCount:Int) { // move to moonchart format???
 		difficulty = difficulty.toLowerCase();
 		Log.minor('loading legacy FNF song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
 		
-		var song = new Chart(path, keyCount);
+		var song = new Chart(path);
 		song.json = loadLegacyJson(path, difficulty);
 		song.difficulty = difficulty;
 		
@@ -234,13 +276,18 @@ class Chart {
 			}
 			song.name = song.json.song;
 			song.initialBpm = song.json.bpm;
+			song.audioOffset = song.json.offset ?? 0;
 			song.tempoChanges = [new TempoChange(-4, song.initialBpm, new TimeSignature())];
 			song.scrollSpeed = songSpeed;
 			
+			song.keyCount = (song.json.keys ?? keyCount ?? song.keyCount);
+			song.noteStyle = song.json.noteStyle ?? 'funkin';
+			
 			var ms:Float = 0;
 			var beat:Float = 0;
-			var sectionNumerator:Float = 0;
-			var osectionNumerator:Float = 0;
+			
+			var numerator:Int = 0;
+			var onumerator:Int = 0;
 			
 			var bpm:Float = song.initialBpm;
 			var crochet:Float = 60000 / song.initialBpm;
@@ -277,22 +324,32 @@ class Chart {
 				}
 				
 				var sectionDenominator:Int = 4;
-				var sectionNumerator:Null<Float> = section.sectionBeats;
-				if (sectionNumerator == null) sectionNumerator = section.lengthInSteps * .25;
-				if (sectionNumerator == null) sectionNumerator = 4;
+				var sectionNumerator:Null<Float> = section.sectionBeats ?? ((section?.lengthInSteps ?? 16) * .25);
 				while (sectionNumerator % 1 > 0 && sectionDenominator < 32) {
 					sectionNumerator *= 2;
 					sectionDenominator *= 2;
 				}
-				var changeSign:Bool = (sectionNumerator != osectionNumerator);
-				if (section.changeBPM || changeSign) {
-					osectionNumerator = sectionNumerator;
-					if (section.changeBPM) bpm = section.bpm;
-					crochet = 60000 / bpm / sectionDenominator * 4;
-					stepCrochet = crochet * .25;
-					
-					song.tempoChanges.push(new TempoChange(beat, section.changeBPM ? section.bpm : null, changeSign ? new TimeSignature(Std.int(sectionNumerator), sectionDenominator) : null));
+				numerator = Std.int(sectionNumerator);
+				
+				var changeTempo:Bool = false;
+				var newSign:TimeSignature = null;
+				
+				if (numerator != onumerator) {
+					newSign = new TimeSignature(Math.ceil(numerator), sectionDenominator);
+					onumerator = numerator;
+					changeTempo = true;
 				}
+				if (section.changeBPM) {
+					bpm = section.bpm;
+					changeTempo = true;
+				}
+				
+				if (changeTempo) {
+					crochet = (60000 / bpm / sectionDenominator * 4);
+					stepCrochet = crochet * .25;
+					song.tempoChanges.push(new TempoChange(beat, section.changeBPM ? bpm : null, newSign));
+				}
+				
 				beat += sectionNumerator;
 				ms += sectionNumerator * crochet;
 				
@@ -307,14 +364,18 @@ class Chart {
 					var noteLength:Float = dataNote[2];
 					var noteKind:Dynamic = dataNote[3];
 					if (!Std.isOfType(noteKind, String)) noteKind = '';
-					var playerNote:Bool;
+					var strumlineIndex:Int = 0;
 					if (fromSong) {
-						playerNote = ((noteData < keyCount) == section.mustHitSection);
+						strumlineIndex = Std.int(noteData / song.keyCount);
+						if (section.mustHitSection)
+							strumlineIndex += (strumlineIndex % 2 == 0 ? 1 : -1);
 					} else { // assume psych 1.0
-						playerNote = (noteData < keyCount);
+						strumlineIndex = Std.int(noteData / song.keyCount);
+						if (strumlineIndex < 2) // how silly
+							strumlineIndex = 1 - strumlineIndex;
 					}
 					
-					song.notes.push({player: playerNote, msTime: noteTime, laneIndex: noteData % keyCount, msLength: noteLength, kind: noteKind});
+					song.notes.push({strumlineIndex: strumlineIndex, msTime: noteTime, laneIndex: noteData % song.keyCount, msLength: noteLength, kind: noteKind});
 				}
 			}
 			song.sort();
@@ -332,12 +393,13 @@ class Chart {
 		}
 		
 		song.audioSuffix = suffix;
+		song.clearStackedNotes();
 		return song;
 	}
 	static function loadStepMania(path:String, difficulty:String = 'Beginner', suffix:String = '') {
 		difficulty = difficulty.toLowerCase();
 		Log.minor('loading StepMania simfile "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
-
+		
 		var songPath:String = 'data/songs/$path/$path';
 		var sscPath:String = '${Util.pathSuffix(songPath, suffix)}.ssc';
 		var smPath:String = '$songPath.sm';
@@ -350,7 +412,7 @@ class Chart {
 			Log.minor('- chart: $smPath OR $sscPath');
 			return song;
 		}
-
+		
 		var time = Sys.time();
 		var shark:StepManiaShark;
 		@:privateAccess try {
@@ -364,7 +426,7 @@ class Chart {
 			}
 			var notes:Array<BasicNote> = shark.getNotes(difficulty);
 			var dance:StepManiaDance = shark.resolveDance(notes);
-			song.loadGeneric(shark, difficulty, (note:BasicNote) -> (dance == SINGLE ? note.lane < 4 : note.lane >= 4));
+			song.loadGeneric(shark, difficulty, (note:BasicNote) -> ((dance == SINGLE ? note.lane < 4 : note.lane >= 4) ? 1 : 0));
 			song.format = (useShark ? SHARK : STEPMANIA);
 
 			Log.info('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
@@ -378,12 +440,12 @@ class Chart {
 	static function loadModernChart(path:String, difficulty:String = 'normal', suffix:String = '') {
 		difficulty = difficulty.toLowerCase();
 		Log.minor('loading modern FNF song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
-
+		
 		var songPath:String = 'data/songs/$path/$path';
 		var chartPath:String = '${Util.pathSuffix('$songPath-chart', suffix)}.json';
 		var metaPath:String = '${Util.pathSuffix('$songPath-metadata', suffix)}.json';
 		var song:Chart = new Chart(path, 4);
-
+		
 		if (!Paths.exists(chartPath) || !Paths.exists(metaPath)) {
 			Log.warning('chart or metadata JSON not found... (chart not generated)');
 			Log.minor('verify paths:');
@@ -391,39 +453,40 @@ class Chart {
 			Log.minor('- metadata: $metaPath');
 			return song;
 		}
-
+		
 		var time = Sys.time();
 		var vslice:FNFVSlice;
 		try {
 			var chartContent:String = Paths.text(chartPath);
 			var metaContent:String = Paths.text(metaPath);
 			vslice = new FNFVSlice().fromJson(chartContent, metaContent);
-			song.loadGeneric(vslice, difficulty, (note:BasicNote) -> note.lane >= 4);
+			song.loadGeneric(vslice, difficulty, (note:BasicNote) -> Std.int(note.lane / song.keyCount));
 
 			var meta:BasicMetaData = vslice.getChartMeta();
 			song.player1 = meta.extraData['FNF_P1'] ?? 'bf';
 			song.player2 = meta.extraData['FNF_P2'] ?? 'dad';
 			song.player3 = meta.extraData['FNF_P3'] ?? 'gf';
 			song.stage = meta.extraData['FNF_STAGE'] ?? 'placeholder';
+			song.noteStyle = vslice.meta.playData?.noteStyle ?? 'funkin';
 			song.format = MODERN;
 
 			Log.info('chart loaded successfully! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 		} catch (e:Exception) {
 			Log.error('chart error... -> <<< ${e.details()} >>>');
 		}
-
+		
 		song.audioSuffix = suffix;
 		return song;
 	}
 	static function loadCNEChart(path:String, difficulty:String = 'Normal', suffix:String = '') {
 		Log.minor('loading CNE song "$path" with difficulty "$difficulty"${suffix == '' ? '' : ' ($suffix)'}');
-
+		
 		var songPath:String = 'data/songs/$path';
 		var chartPath:String = '$songPath/charts/${Util.pathSuffix(difficulty, suffix)}.json';
 		var metaPath:String = '$songPath/${Util.pathSuffix('meta', suffix)}.json';
 		var chartPathA:String = chartPath;
 		var song:Chart = new Chart(path, 4);
-
+		
 		if (!Paths.exists(chartPath)) chartPath = '$songPath/$difficulty.json';
 		if (!Paths.exists(chartPath) || !Paths.exists(metaPath)) {
 			Log.warning('chart or metadata JSON not found... (chart not generated)');
@@ -432,14 +495,14 @@ class Chart {
 			Log.minor('- metadata: $metaPath');
 			return song;
 		}
-
+		
 		var time = Sys.time();
 		var cne:FNFCodename;
 		try {
 			var metaContent:String = Paths.text(metaPath);
 			var chartContent:String = Paths.text(chartPath);
 			cne = new FNFCodename().fromJson(chartContent, metaContent);
-			song.loadGeneric(cne, difficulty, (note:BasicNote) -> note.lane >= 4);
+			song.loadGeneric(cne, difficulty, (note:BasicNote) -> Std.int(note.lane / song.keyCount));
 
 			var meta:BasicMetaData = cne.getChartMeta();
 			song.player1 = meta.extraData['FNF_P1'] ?? 'bf';
@@ -452,7 +515,7 @@ class Chart {
 		} catch (e:Exception) {
 			Log.error('chart error... -> <<< ${e.details()} >>>');
 		}
-
+		
 		song.audioSuffix = suffix;
 		return song;
 	}
@@ -539,64 +602,6 @@ class Chart {
 			return null;
 		}
 	}
-
-	public function generateNotes(singleSegmentHolds:Bool = false):Array<Note> {
-		var time:Float = Sys.time();
-		Log.minor('generating notes from song');
-		var notes:Array<Note> = generateNotesFromArray(notes, singleSegmentHolds, this);
-		Log.info('generated ${notes.length} note objects! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
-		return notes;
-	}
-	public static function generateNotesFromArray(songNotes:Array<ChartNote>, singleSegmentHolds:Bool = false, ?chart:Chart) {
-		var noteArray:Array<Note> = [];
-		var tempMetronome:Metronome = null;
-		var type:Dynamic = (CharterState.inEditor ? CharterNote : Note);
-		if (chart != null) {
-			tempMetronome = new Metronome();
-			tempMetronome.tempoChanges = chart.tempoChanges;
-		}
-		
-		for (songNote in songNotes) {
-			tempMetronome?.setMS(songNote.msTime);
-			var hitNote:Note = Type.createInstance(type, [songNote.player, songNote.msTime, songNote.laneIndex, songNote.msLength, songNote.kind]);
-			noteArray.push(hitNote);
-			
-			if (hitNote.msLength > 0) { //hold bits
-				var endMs:Float = songNote.msTime + songNote.msLength;
-				if (!singleSegmentHolds && tempMetronome != null) {
-					var bitTime:Float = songNote.msTime;
-					while (bitTime < endMs) {
-						tempMetronome.setStep(Std.int(tempMetronome.step + .05) + 1);
-						var newTime:Float = tempMetronome.ms;
-						if (bitTime < songNote.msTime) {
-							Log.warning('??? $bitTime < ${songNote.msTime} (sustain bit off by ${songNote.msTime - bitTime}ms)');
-							bitTime = newTime;
-							break;
-						}
-						var bitLength:Float = Math.min(newTime - bitTime, endMs - bitTime);
-						var holdBit:Note = Type.createInstance(type, [songNote.player, bitTime, songNote.laneIndex, bitLength, songNote.kind, true]);
-						hitNote.children.push(holdBit);
-						holdBit.parent = hitNote;
-						noteArray.push(holdBit);
-						bitTime = newTime;
-					}
-				} else {
-					var holdBit:Note = Type.createInstance(type, [songNote.player, songNote.msTime, songNote.laneIndex, songNote.msLength, songNote.kind, true]);
-					hitNote.children.push(holdBit);
-					holdBit.parent = hitNote;
-					noteArray.push(holdBit);
-				}
-				var endBit:Note = Type.createInstance(type, [songNote.player, endMs, songNote.laneIndex, 0, songNote.kind, true]);
-				hitNote.children.push(endBit);
-				noteArray.push(endBit);
-				
-				endBit.parent = hitNote;
-				hitNote.tail = endBit;
-			}
-		}
-		
-		return noteArray;
-	}
 	
 	public function loadMusic(path:String, overwrite:Bool = true) { // this could be better
 		if (instLoaded && !overwrite) return true;
@@ -613,6 +618,7 @@ class Chart {
 				inst.play();
 				inst.stop();
 				inst.volume = 1;
+				inst.looped = false;
 				Log.info('instrumental loaded!! (${Math.round((Sys.time() - time) * 1000) / 1000}s)');
 				return true;
 			}
@@ -632,29 +638,22 @@ class Chart {
 	}
 }
 
-enum ChartFormat {
-	AUTO;
-	MODERN;
-	LEGACY; // psych / pre0.3
-	STEPMANIA;
-	SHARK;
-	CNE;
+enum abstract ChartFormat(String) to String {
+	var AUTO = 'auto';
+	var MODERN = 'modern';
+	var LEGACY = 'legacy'; // psych / pre0.3
+	var STEPMANIA = 'stepmania';
+	var SHARK = 'stepmaniashark';
+	var CNE = 'codenameengine';
 
-	UNKNOWN;
+	var UNKNOWN = 'unknown';
 }
 
-@:structInit class ChartNote implements ITimeSortable {
-	public var laneIndex:Int;
-	public var msTime:Float = 0;
-	public var kind:String = '';
-	public var msLength:Float = 0;
-	public var player:Bool = true;
-}
 @:structInit class ChartEvent implements ITimedEvent<ChartEvent> {
 	public var name:String;
 	public var msTime:Float = 0;
 	public var params:Map<String, Any>;
-	public var func:ChartEvent -> Void = genericFunction;
+	public var func:#if hl Dynamic #else ChartEvent #end -> Void = genericFunction;
 	
 	public static function genericFunction(e:ChartEvent) {
 		var chartEvent:ChartEvent = cast e;

@@ -28,7 +28,7 @@ class Log {
 	public static function error(text:String) return Sys.println(colorTag(' ERROR ', black, red) + ' $text');
 	public static function fatal(text:String) return Sys.println(colorTag(' FATAL ', black, brightRed) + ' $text');
 	public static function info(text:String) return Sys.println(colorTag(' INFO ', black, cyan) + ' $text');
-	public static function minor(text:String) return Sys.println(colorTag(text, white, none));
+	public static function minor(text:String) return Sys.println(colorTag(text, brightBlack, none));
 	#end
 }
 

@@ -1,101 +1,93 @@
 package funkin.objects;
 
 import funkin.backend.play.Chart;
+import funkin.backend.scripting.*;
 import funkin.objects.CharacterGroup;
 import funkin.objects.Character;
 
 using StringTools;
 
 //THIS IS ALL KINDOF A MESS BUT IT WORKS??? I THINK
-class Stage extends FlxSpriteGroup {
-	var chart:Chart;
-	public var name:String;
+class Stage extends FunkinSpriteGroup {
+	public var stage:String;
 	public var json:Dynamic;
 	public var library:String = '';
 	public var hasContent:Bool = false;
 	public var stageValid:Bool = false;
 	public var format:StageFormat = NONE;
+	public var loadCharacters:Bool = true;
 	public var props:Map<String, FunkinSprite> = new Map();
 	public var characters:Map<String, CharacterGroup> = new Map();
-
+	
+	public var hscripts:HScriptGroup = new HScriptGroup();
 	public var zoom:Float = 1;
 
-	var state = FlxG.state;
+	var state:FunkinState;
 	
-	public function new(?chart:Chart) {
+	public function new(?stageId:String) {
 		super();
-		this.chart = chart;
+		
+		this.stage = stageId;
+		
+		setup(stageId);
+	}
+	public override function destroy():Void {
+		hscripts.destroy();
+		super.destroy();
 	}
 	
-	public function setup(?stageId:String, ?chartData:Chart) {
-		// right now only works with vslice stage jsons
-		chartData ??= chart;
-        if (stageId != null) {
-    		Log.minor('loading stage "$stageId"');
+	public function setup(?stageId:String) {
+		if (stageId != null) {
+			Log.minor('loading stage "$stageId"');
 
-    		var jsonPath:String = 'data/stages/$stageId.json';
-    		if (Paths.exists(jsonPath)) {
-    			var time:Float = Sys.time();
-    			try {
-    				var content:String = Paths.text(jsonPath);
-    				var jsonData:Dynamic = TJSON.parse(content);
-    				loadModernStageData(jsonData);
-    				json = jsonData;
-    				format = MODERN;
-    				stageValid = true;
-    				hasContent = true;
-    				Log.info('stage loaded successfully! (${FlxMath.roundDecimal(Sys.time() - time, 3)}s)');
-    			} catch (e:haxe.Exception) {
-    				format = NONE;
-    				Log.error('error while loading stage "$stageId"... -> ${e.details()}');
-    			}
-    		} else {
-    			Log.warning('stage "$stageId" not found...');
+			var jsonPath:String = 'data/stages/$stageId.json';
+			if (Paths.exists(jsonPath)) {
+				var time:Float = Sys.time();
+				try {
+					var content:String = Paths.text(jsonPath);
+					var jsonData:Dynamic = TJSON.parse(content);
+					loadModernStageData(jsonData);
+					json = jsonData;
+					format = MODERN;
+					stageValid = true;
+					hasContent = true;
+					Log.info('stage loaded successfully! (${FlxMath.roundDecimal(Sys.time() - time, 3)}s)');
+				} catch (e:haxe.Exception) {
+					format = NONE;
+					Log.error('error while loading stage "$stageId"... -> ${e.details()}');
+				}
+			} else {
+				Log.warning('stage "$stageId" not found...');
 				Log.minor('verify path:');
 				Log.minor('- $jsonPath');
-    		}
-        }
-        
-        // loads hscript file
-        var state:FunkinState = cast(FlxG.state, FunkinState);
-        var scriptPath:String = 'scripts/stages/$stageId.hx';
-        if (Paths.exists(scriptPath)) {
-            if (state != null)
-            	state.hscripts.loadFromPaths(scriptPath);
-            hasContent = true;
-        }
-        
-        if (state != null)
-        	state.hscripts.run('setupStage', [stageId, this]);
-        
-        if (!hasContent) {
-			Log.warning('no stage content (json or script): loading fallback stage');
-			loadFallback();
-		}
-	}
-	
-	public function sortZIndex() {
-		sort(Util.sortZIndex, FlxSort.ASCENDING);
-	}
-	public function insertZIndex(obj:FlxSprite) {
-		if (members.contains(obj)) remove(obj);
-		var low:Float = Math.POSITIVE_INFINITY;
-		for (pos => mem in members) {
-			low = Math.min(mem.zIndex, low);
-			if (obj.zIndex < mem.zIndex) {
-				insert(pos, obj);
-				return obj;
 			}
 		}
-		if (obj.zIndex < low) {
-			insert(0, obj);
-		} else {
-			add(obj);
+		
+		if (!stageValid) {
+			Log.warning('no stage content (json or script): loading fallback stage');
+			loadFallbackStage();
 		}
-		return obj;
+	}
+	public function addCharacters(?baseChart:Chart):Void {
+		switch (format) {
+			case MODERN:
+				loadModernCharData(json, baseChart);
+			default:
+				loadFallbackCharacters(baseChart);
+		}
+	}
+	public function start(state:FunkinState):Void { // runs stage hscript
+		var scriptPath:String = 'scripts/stages/$stage.hx';
+		if (Paths.exists(scriptPath)) {
+			hscripts.concat(state.hscripts.loadFromPaths(scriptPath));
+			hasContent = true;
+		}
+		
+		if (state != null)
+			state.hscripts.run('setupStage', [stage, this]);
 	}
 	
-	public function beatHit(beat:Int) {
+	public function beatHit(beat:Int):Void {
 		for (prop in props) {
 			if (prop != null && prop.alive && prop.exists && Std.isOfType(prop, IBopper)) {
 				var bopper:IBopper = cast prop;
@@ -107,23 +99,20 @@ class Stage extends FlxSpriteGroup {
 				chara.dance(beat);
 		}
 	}
-	public function destroyProps() {
-		for (prop in props) prop.destroy();
-	}
-	
 	public function getProp(name:String):FunkinSprite {
-		return props[name];
+		return props.get(name);
 	}
 	public function getCharacter(name:String):CharacterGroup {
-		return characters[name];
+		return characters.get(name);
 	}
-	public function loadModernStageData(data:ModernStageData) {
+	
+	function loadModernStageData(data:ModernStageData):Void {
 		library = data.directory ?? data.library ?? '';
+		Paths.library = library;
 
 		zoom = data.cameraZoom;
 		for (prop in data.props) {
 			var propSprite:StageProp = new StageProp();
-			add(propSprite);
 			propSprite.zIndex = prop.zIndex;
 			propSprite.x = prop.position[0];
 			propSprite.y = prop.position[1];
@@ -154,44 +143,17 @@ class Stage extends FlxSpriteGroup {
 				else
 					propSprite.loadTexture(prop.assetPath, library);
 			}
+			insertZIndex(propSprite);
 			propSprite.sway = (propSprite.animationExists('danceLeft') && propSprite.animationExists('danceRight'));
 			if (prop.scroll != null) propSprite.scrollFactor.set(prop.scroll[0], prop.scroll[1]);
 			if (prop.scale != null) propSprite.scale.set(prop.scale[0], prop.scale[1]);
 			var assetName:String = prop.name ?? prop.assetPath;
 			propSprite.updateHitbox();
 			
-			this.props[assetName] = propSprite;
-		}
-		
-		var charas:Dynamic = data.characters;
-		for (name in Reflect.fields(charas)) {
-			var chara:ModernStageChar = Reflect.field(charas, name);
-			var char:Null<String> = null;
-			
-			var side:CharacterSide = (switch (name) {
-				case 'bf': RIGHT;
-				case 'gf': IDGAF;
-				default: LEFT;
-			});
-			if (chart != null) {
-				char = Reflect.field(chart, switch (name) {
-					case 'bf': 'player1';
-					case 'dad': 'player2';
-					case 'gf': 'player3';
-					default: name;
-				});
-			}
-			
-			var charaGroup:CharacterGroup = new CharacterGroup(chara.position[0], chara.position[1], char, side, name);
-			add(charaGroup);
-			charaGroup.zIndex = chara.zIndex;
-			charaGroup.stageCameraOffset.set(chara.cameraOffsets[0], chara.cameraOffsets[1]);
-            if (chara.scale != null) charaGroup.scale.set(chara.scale, chara.scale);
-            
-			this.characters[name] = charaGroup;
+			this.props.set(assetName, propSprite);
 		}
 	}
-	public function loadFallback() {
+	function loadFallbackStage():Void {
 		var basicBG:StageProp = new StageProp();
 		props['basicBG'] = basicBG;
 		basicBG.loadTexture('bg');
@@ -200,21 +162,47 @@ class Stage extends FlxSpriteGroup {
 		basicBG.scale.set(2.25, 2.25);
 		basicBG.zIndex = 0;
 		add(basicBG);
-		loadCharactersGeneric();
 	}
-	function loadCharactersGeneric() {
+	function loadModernCharData(data:ModernStageData, ?chart:Chart):Void {
+		var charas:Dynamic = data.characters;
+		
+		for (name in Reflect.fields(charas)) {
+			var chara:ModernStageChar = Reflect.field(charas, name);
+			
+			var side:CharacterSide = (switch (name) {
+				case 'bf': RIGHT;
+				case 'gf': IDGAF;
+				default: LEFT;
+			});
+			var char:Null<String> = (switch (name) {
+				case 'bf': chart?.player1;
+				case 'dad': chart?.player2;
+				case 'gf': chart?.player3;
+				default: name;
+			});
+			
+			var charaGroup:CharacterGroup = new CharacterGroup(chara.position[0], chara.position[1], char, side, name);
+			charaGroup.zIndex = chara.zIndex;
+			charaGroup.stageCameraOffset.set(chara.cameraOffsets[0], chara.cameraOffsets[1]);
+			if (chara.scale != null) charaGroup.scale.set(chara.scale, chara.scale);
+			insertZIndex(charaGroup);
+						
+			this.characters.set(name, charaGroup);
+		}
+	}
+	function loadFallbackCharacters(?chart:Chart):Void {
 		var player1:CharacterGroup = new CharacterGroup(400, 750, chart?.player1 ?? 'bf', RIGHT, 'bf');
 		var player2:CharacterGroup = new CharacterGroup(-400, 750, chart?.player2 ?? 'dad', LEFT, 'dad');
 		var player3:CharacterGroup = new CharacterGroup(0, 680, chart?.player3 ?? 'gf', IDGAF, 'gf');
 		player1.zIndex = 300;
 		player2.zIndex = 200;
 		player3.zIndex = 100;
-		characters['bf'] = player1;
-		characters['dad'] = player2;
-		characters['gf'] = player3;
-		for (chara in [player1, player2, player3]) {
-			add(chara);
-		}
+		characters.set('bf', player1);
+		characters.set('dad', player2);
+		characters.set('gf', player3);
+		
+		for (chara in characters)
+			insertZIndex(chara);
 	}
 }
 
@@ -248,7 +236,6 @@ class StageProp extends FunkinSprite implements IBopper { // maybe unify charact
 
 enum StageFormat {
 	MODERN;
-	PSYCH;
 	NONE;
 }
 

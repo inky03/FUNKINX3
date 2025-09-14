@@ -859,11 +859,13 @@ class FlxCamera extends FlxBasic
 	}
 	
 	public function drawTriangles(graphic:FlxGraphic, vertices:DrawData<Float>, indices:DrawData<Int>, uvtData:DrawData<Float>, ?colors:DrawData<Int>, ?position:FlxPoint, ?blend:BlendMode, repeat:Bool = false, smoothing:Bool = false, ?transform:ColorTransform, ?shader:FlxShader):Void {
+		_bounds.set(0, 0, width / zoom, height / zoom);
+		_bounds.y = (height - _bounds.height) * .5;
+		_bounds.x = (width - _bounds.width) * .5;
+		
 		if (FlxG.renderBlit) {
 			if (position == null)
 				position = FlxCamera.renderPoint.set();
-			
-			_bounds.set(0, 0, width, height);
 			
 			var verticesLength:Int = vertices.length;
 			var currentVertexPosition:Int = 0;
@@ -873,9 +875,20 @@ class FlxCamera extends FlxBasic
 			var bounds = FlxCamera.renderRect.set();
 			FlxCamera.drawVertices.splice(0, FlxCamera.drawVertices.length);
 			
+			var vertPoint:FlxPoint = FlxPoint.get();
 			while (i < verticesLength) {
-				tempX = position.x + vertices[i];
-				tempY = position.y + vertices[i + 1];
+				vertPoint.set(position.x + vertices[i], position.y + vertices[i + 1]);
+				
+				if (rotation == 0) {
+					tempX = vertPoint.x;
+					tempY = vertPoint.y;
+				} else {
+					var pivot:FlxPoint = _bounds.getMidpoint(FlxPoint.weak());
+					var rotatedPoint:FlxPoint = vertPoint.pivotDegrees(pivot, rotation);
+					
+					tempX = rotatedPoint.x;
+					tempY = rotatedPoint.y;
+				}
 
 				FlxCamera.drawVertices[currentVertexPosition++] = tempX;
 				FlxCamera.drawVertices[currentVertexPosition++] = tempY;
@@ -888,7 +901,7 @@ class FlxCamera extends FlxBasic
 
 				i += 2;
 			}
-
+			vertPoint.put();
 			position.putWeak();
 
 			if (!_bounds.overlaps(bounds)) {
@@ -924,17 +937,16 @@ class FlxCamera extends FlxBasic
 			
 			bounds.put();
 		} else {
-			_bounds.set(0, 0, width, height);
 			var isColored:Bool = (colors != null && colors.length != 0);
 			
 			#if !flash
 			var hasColorOffsets:Bool = (transform != null && transform.hasRGBAOffsets());
 			isColored = isColored || (transform != null && transform.hasRGBMultipliers());
 			var drawItem:FlxDrawTrianglesItem = startTrianglesBatch(graphic, smoothing, isColored, blend, hasColorOffsets, shader);
-			drawItem.addTriangles(vertices, indices, uvtData, colors, position, _bounds, transform);
+			drawItem.addTriangles(vertices, indices, uvtData, colors, position, _bounds, transform, rotation);
 			#else
 			var drawItem:FlxDrawTrianglesItem = startTrianglesBatch(graphic, smoothing, isColored, blend);
-			drawItem.addTriangles(vertices, indices, uvtData, colors, position, _bounds);
+			drawItem.addTriangles(vertices, indices, uvtData, colors, position, _bounds, rotation);
 			#end
 		}
 	}
@@ -1143,6 +1155,7 @@ class FlxCamera extends FlxBasic
 		if (target != null)
 		{
 			updateFollow();
+			updateLerp(elapsed);
 		}
 
 		updateScroll();
@@ -1197,7 +1210,7 @@ class FlxCamera extends FlxBasic
 		if (deadzone == null)
 		{
 			target.getMidpoint(_point);
-			_point.addPoint(targetOffset);
+			_point.add(targetOffset);
 			_scrollTarget.set(_point.x - width * 0.5, _point.y - height * 0.5);
 		}
 		else
@@ -1267,15 +1280,21 @@ class FlxCamera extends FlxBasic
 				_lastTargetPosition.y = target.y;
 			}
 		}
-
-		if (followLerp >= 60 / FlxG.updateFramerate)
+	}
+	
+	function updateLerp(elapsed:Float)
+	{
+		if (followLerp >= 1.0)
 		{
 			scroll.copyFrom(_scrollTarget); // no easing
 		}
-		else
+		else if (followLerp > 0.0)
 		{
-			scroll.x += (_scrollTarget.x - scroll.x) * followLerp * (60 / FlxG.updateFramerate);
-			scroll.y += (_scrollTarget.y - scroll.y) * followLerp * (60 / FlxG.updateFramerate);
+			// Adjust lerp based on the current frame rate so lerp is less framerate dependant
+			final adjustedLerp = 1.0 - Math.pow(1.0 - followLerp, elapsed * 60);
+			
+			scroll.x += (_scrollTarget.x - scroll.x) * adjustedLerp;
+			scroll.y += (_scrollTarget.y - scroll.y) * adjustedLerp;
 		}
 	}
 

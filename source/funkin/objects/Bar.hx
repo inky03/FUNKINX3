@@ -9,33 +9,39 @@ class Bar extends FunkinSpriteGroup {
 	public var leftBar:FunkinSprite;
 	public var rightBar:FunkinSprite;
 	
-	public var targetPercent:Float = 100;
+	public var value:Float = .5;
+	public var targetPercent:Float = 50;
 	public var percent(default, set):Float;
-	public var percentLerp:Float = .15 * 60;
+	public var percentLerp:Null<Float> = .15 * 60;
 	public var valueFunc:Bar -> Float = null;
 	
 	public var bounds:BarBounds = {min: 0, max: 1};
 	public var barRect:FlxRect = new FlxRect(4, 4);
-	public var barCenter:FlxPoint = new FlxPoint();
+	public var barCenter(get, null):FlxPoint;
 	
 	public var leftToRight(default, set):Bool = true;
+	public var overlayOnTop(default, set):Bool = false;
 	
-	public function new(x:Float = 0, y:Float = 0, valueFunction:Bar -> Float = null, overlayImage:String = 'healthBar') {
+	var _barPoint:FlxPoint = FlxPoint.get();
+	
+	public function new(x:Float = 0, y:Float = 0, valueFunction:Bar -> Float = null, overlayImage:String = 'healthBar', ?newBounds:BarBounds) {
 		super(x, y);
 		overlay = new FunkinSprite().loadTexture(overlayImage);
 		leftBar = new FunkinSprite().makeGraphic(Std.int(overlay.width), Std.int(overlay.height), -1);
 		rightBar = new FunkinSprite().makeGraphic(Std.int(overlay.width), Std.int(overlay.height), -1);
 		rightBar.clipRect = new FlxRect();
 		leftBar.clipRect = new FlxRect();
-		add(overlay);
-		add(leftBar);
-		add(rightBar);
 		valueFunc = valueFunction;
+		if (newBounds != null)
+			bounds = newBounds;
 		
-		barRect.width = leftBar.width - barRect.x * 2;
+		insertZIndex(leftBar, 5);
+		insertZIndex(rightBar, 10);
+		
 		barRect.height = leftBar.height - barRect.y * 2;
-		percent = updateTargetPercent();
-		updateBars();
+		barRect.width = leftBar.width - barRect.x * 2;
+		overlayOnTop = false;
+		snapToPercent();
 		setColors();
 	}
 	public function loadTexture(overlayImage:String = 'healthBar'):Bar {
@@ -59,19 +65,34 @@ class Bar extends FunkinSpriteGroup {
 		rightBar.color = rightColor;
 		return this;
 	}
+	public function snapToPercent():Bar {
+		percent = updateTargetPercent();
+		updateBars();
+		return this;
+	}
 	
 	public override function update(elapsed:Float) {
 		super.update(elapsed);
 		updateTargetPercent();
-		if (percentLerp >= 0) {
+		if (percentLerp != null && percentLerp >= 0) {
 			percent = Util.smoothLerp(percent, targetPercent, percentLerp * elapsed);
 		} else {
 			percent = targetPercent;
 		}
-		updateBarCenter();
 	}
 	
-	function set_percent(newPercent:Float) {
+	function get_barCenter():FlxPoint {
+		var result:FlxPoint = _barPoint.set(leftBar.clipRect.x + leftBar.clipRect.width, leftBar.clipRect.y + leftBar.clipRect.height * .5);
+		result.subtract(leftBar.origin);
+		result.scale(leftBar.scale.x, leftBar.scale.y);
+		result.degrees += leftBar.angle;
+		result.add(leftBar.origin);
+		result.subtract(leftBar.offset);
+		result.add(leftBar.x, leftBar.y);
+		
+		return result;
+	}
+	function set_percent(newPercent:Float):Float {
 		if (percent != newPercent) {
 			percent = newPercent;
 			updateBars();
@@ -93,37 +114,38 @@ class Bar extends FunkinSpriteGroup {
 			if (bounds.max <= bounds.min)
 				return 0;
 			
-			var val:Float = valueFunc(this);
-			return targetPercent = Util.clamp((val - bounds.min) / bounds.max * 100, 0, 100);
+			value = valueFunc(this);
+			return targetPercent = Util.clamp((value - bounds.min) / (bounds.max - bounds.min) * 100, 0, 100);
 		} else {
 			return Util.clamp(targetPercent, 0, 100);
 		}
 	}
-	function set_leftToRight(isIt:Bool) {
+	function set_leftToRight(isIt:Bool):Bool {
 		if (leftToRight == isIt) return isIt;
 		leftToRight = isIt;
 		updateBars();
 		return isIt;
 	}
+	function set_overlayOnTop(yea:Bool):Bool {
+		insertZIndex(overlay, (yea ? 15 : 0));
+		return overlayOnTop = yea;
+	}
 	public function updateBars() {
 		var fPercent:Float = (leftToRight ? 100 - percent : percent) * .01;
 		var leftWidth:Float = FlxMath.lerp(0, barRect.width, fPercent);
+		var yM:Float = (leftBar.frameHeight / overlay.frameHeight);
+		var xM:Float = (leftBar.frameWidth / overlay.frameWidth);
 		
-		leftBar.clipRect.x = barRect.x;
-		leftBar.clipRect.y = barRect.y;
-		leftBar.clipRect.width = leftWidth;
+		leftBar.clipRect.x = barRect.x * xM;
+		leftBar.clipRect.y = barRect.y * yM;
+		leftBar.clipRect.width = leftWidth * xM;
 		
-		rightBar.clipRect.y = barRect.y;
-		rightBar.clipRect.x = barRect.x + leftWidth;
-		rightBar.clipRect.width = barRect.width - leftWidth;
+		rightBar.clipRect.y = barRect.y * yM;
+		rightBar.clipRect.x = (barRect.x + leftWidth) * xM;
+		rightBar.clipRect.width = (barRect.width - leftWidth) * xM;
 		
-		rightBar.clipRect.height = leftBar.clipRect.height = barRect.height;
+		rightBar.clipRect.height = leftBar.clipRect.height = barRect.height * yM;
 		rightBar.clipRect = rightBar.clipRect;
 		leftBar.clipRect = leftBar.clipRect;
-		
-		updateBarCenter();
-	}
-	inline function updateBarCenter() {
-		barCenter.set(leftBar.x + leftBar.clipRect.x + leftBar.clipRect.width, leftBar.y + leftBar.height * .5);
 	}
 }

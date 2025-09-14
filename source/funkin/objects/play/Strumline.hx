@@ -1,7 +1,10 @@
 package funkin.objects.play;
 
-import funkin.backend.play.Scoring;
+import funkin.objects.Character;
+import funkin.objects.play.Note;
 import funkin.backend.play.NoteEvent;
+import funkin.backend.play.NoteStyle;
+import funkin.backend.play.ScoreSystem;
 
 import flixel.util.FlxAxes;
 import flixel.input.keyboard.FlxKey;
@@ -24,137 +27,182 @@ class Strumline extends FunkinSpriteGroup {
 	public var cpu(default, set):Bool; // todo: macro..?
 	public var laneCount(default, set):Int;
 	public var direction(default, set):Float;
+	public var style(default, set):NoteStyle;
 	public var scrollSpeed(default, set):Float;
 	public var oneWay(default, set):Bool = true;
 	public var allowInput(default, set):Bool = true;
-	public var hitWindow(default, set):Float = Scoring.safeFrames / 60 * 1000;
+	public var character(default, set):ICharacter = null;
+	public var noteClass(default, set):Class<Note> = Note;
+	public var hitWindow(default, set):Float = (ScoreSystem.safeFrames * 1000 / 60);
 	
 	//oh dear
-	public function set_cpu(isCpu:Bool) { for (lane in lanes) lane.cpu = isCpu; return cpu = isCpu; }
-	public function set_oneWay(isOneWay:Bool) { for (lane in lanes) lane.oneWay = isOneWay; return oneWay = isOneWay; }
-	public function set_direction(newDir:Float) { for (lane in lanes) lane.direction = newDir; return direction = newDir; }
-	public function set_hitWindow(newWindow:Float) { for (lane in lanes) lane.hitWindow = newWindow; return hitWindow = newWindow; }
-	public function set_allowInput(isAllowed:Bool) { for (lane in lanes) lane.allowInput = isAllowed; return allowInput = isAllowed; }
-	public function set_scrollSpeed(newSpeed:Float) { for (lane in lanes) lane.scrollSpeed = newSpeed; return scrollSpeed = newSpeed; }
-	public function set_laneSpacing(newSpacing:Float) {
-		var i:Int = 0;
-		var diff:Float = newSpacing - laneSpacing;
-		for (lane in lanes) {
-			lane.x += i * diff;
-			i ++;
-		}
+	function set_cpu(isCpu:Bool) { for (lane in lanes) lane.cpu = isCpu; return cpu = isCpu; }
+	function set_oneWay(isOneWay:Bool) { for (lane in lanes) lane.oneWay = isOneWay; return oneWay = isOneWay; }
+	function set_style(newStyle:NoteStyle) { if (style == newStyle) return newStyle; loadStyle(newStyle); return style = newStyle; }
+	function set_direction(newDir:Float) { for (lane in lanes) lane.direction = newDir; return direction = newDir; }
+	function set_hitWindow(newWindow:Float) { for (lane in lanes) lane.hitWindow = newWindow; return hitWindow = newWindow; }
+	function set_allowInput(isAllowed:Bool) { for (lane in lanes) lane.allowInput = isAllowed; return allowInput = isAllowed; }
+	function set_character(newChara:ICharacter) { for (lane in lanes) lane.character = newChara; return character = newChara; }
+	function set_noteClass(newClass:Class<Note>) { for (lane in lanes) lane.noteClass = newClass; return noteClass = newClass; }
+	function set_scrollSpeed(newSpeed:Float) { for (lane in lanes) lane.scrollSpeed = newSpeed; return scrollSpeed = newSpeed; }
+	function set_laneSpacing(newSpacing:Float) {
+		recalculateLaneSpacing(newSpacing, laneSpacing);
 		return laneSpacing = newSpacing;
 	}
-	public function set_laneCount(newCount:Int) {
+	function set_laneCount(newCount:Int) {
 		while (lanes.length > 0 && lanes.length > newCount) {
-			var lane = lanes.members[lanes.length - 1];
-			lanes.remove(lane, true);
+			var lane:Lane = lanes.members.shift();
 			lane.destroy();
 		}
 		for (i in laneCount...newCount) {
-			var lane:Lane = new Lane(i * laneSpacing * scale.x, 0, i);
+			var lane:Lane = new Lane(i * laneSpacing * scale.x, 0, i, direction, scrollSpeed, style);
+			
+			lane.allowInput = allowInput;
+			lane.noteClass = noteClass;
+			lane.hitWindow = hitWindow;
+			lane.character = character;
 			lane.strumline = this;
 			lane.selfDraw = false;
+			lane.oneWay = oneWay;
+			lane.cpu = cpu;
+			
+			lane.scale.copyFrom(scale);
 			lanes.add(lane);
 		}
 		return laneCount = newCount;
 	}
 	
-	//getters
-	public function get_leftBound() {
-		var minX:Float = Math.POSITIVE_INFINITY;
-		for (lane in lanes) minX = Math.min(minX, lane.receptor.x);
-		return minX;
-	}
-	public function get_rightBound() {
-		var maxX:Float = Math.NEGATIVE_INFINITY;
-		for (lane in lanes) maxX = Math.max(maxX, lane.receptor.x + lane.receptor.width);
-		return maxX;
-	}
-	public function get_topBound() {
-		var minY:Float = Math.POSITIVE_INFINITY;
-		for (lane in lanes) minY = Math.min(minY, lane.receptor.y);
-		return minY;
-	}
-	public function get_bottomBound() {
-		var maxY:Float = Math.NEGATIVE_INFINITY;
-		for (lane in lanes) maxY = Math.max(maxY, lane.receptor.y + lane.receptor.height);
-		return maxY;
-	}
-	public function get_strumlineWidth() {
-		var minX:Float = Math.POSITIVE_INFINITY;
-		var maxX:Float = Math.NEGATIVE_INFINITY;
+	//more getters
+	function get_leftBound() { return findMinXHelper(); }
+	function get_rightBound() { return findMaxXHelper(); }
+	function get_topBound() { return findMinYHelper(); }
+	function get_bottomBound() { return findMaxYHelper(); }
+	function get_strumlineWidth() { return width; }
+	function get_strumlineHeight() { return height; }
+	
+	override function findMinX():Float { return (lanes.length > 0 ? findMinXHelper() : x); }
+	override function findMaxX():Float { return (lanes.length > 0 ? findMaxXHelper() : x); }
+	override function findMinY():Float { return (lanes.length > 0 ? findMinYHelper() : y); }
+	override function findMaxY():Float { return (lanes.length > 0 ? findMaxYHelper() : y); }
+	override function findMinXHelper():Float {
+		var value:Float = Math.POSITIVE_INFINITY;
 		for (lane in lanes) {
-			minX = Math.min(minX, lane.receptor.x);
-			maxX = Math.max(maxX, lane.receptor.x + lane.receptor.width);
+			var minX:Float = lane.receptor.x;
+			if (minX < value) value = minX;
 		}
-		return (maxX - minX);
+		return value;
 	}
-	public function get_strumlineHeight() {
-		var minY:Float = Math.POSITIVE_INFINITY;
-		var maxY:Float = Math.NEGATIVE_INFINITY;
+	override function findMaxXHelper():Float {
+		var value:Float = Math.NEGATIVE_INFINITY;
 		for (lane in lanes) {
-			minY = Math.min(minY, lane.receptor.y);
-			maxY = Math.max(maxY, lane.receptor.y + lane.receptor.height);
+			var maxX:Float = lane.receptor.x + lane.receptor.width;
+			if (maxX > value) value = maxX;
 		}
-		return (maxY - minY);
+		return value;
 	}
-	public function get_receptorWidth() {
+	override function findMinYHelper():Float {
+		var value:Float = Math.POSITIVE_INFINITY;
+		for (lane in lanes) {
+			var minY:Float = lane.receptor.y;
+			if (minY < value) value = minY;
+		}
+		return value;
+	}
+	override function findMaxYHelper():Float {
+		var value:Float = Math.NEGATIVE_INFINITY;
+		for (lane in lanes) {
+			var maxY:Float = lane.receptor.y + lane.receptor.height;
+			if (maxY > value) value = maxY;
+		}
+		return value;
+	}
+	
+	function get_receptorWidth() {
 		var width:Float = 0;
 		for (lane in lanes) width = Math.max(width, lane.receptor.width);
 		return width;
 	}
-	public function get_receptorHeight() {
+	function get_receptorHeight() {
 		var height:Float = 0;
 		for (lane in lanes) height = Math.max(height, lane.receptor.height);
 		return height;
 	}
-	public override function get_width() return strumlineWidth;
-	public override function get_height() return strumlineHeight;
 	
-	public function new(laneCount:Int = 4, direction:Float = 90, scrollSpeed:Float = 1) {
+	public function new(laneCount:Int = 4, direction:Float = 90, scrollSpeed:Float = 1, ?style:NoteStyleAsset = 'funkin', ?noteClass:Class<Note>) {
 		super();
 		this.lanes = new FunkinTypedSpriteGroup();
 		this.add(lanes);
+		
 		this.allowInput = true;
-		this.laneCount = laneCount;
 		this.direction = direction;
 		this.scrollSpeed = scrollSpeed;
+		this.noteClass = noteClass ?? Note;
+		
+		this.laneCount = laneCount;
+		
+		this.style = NoteStyle.fetch(style);
+	}
+	public function loadStyle(newStyle:NoteStyleAsset) {
+		var style:NoteStyle = NoteStyle.fetch(newStyle);
+		
+		laneSpacing = (style?.data.general.laneSpacing ?? laneSpacing);
+		
+		for (lane in lanes)
+			lane.style = style;
+	}
+	public function recalculateLaneSpacing(newSpacing:Float, oldSpacing:Float) {
+		var i:Int = 0;
+		var diff:Float = newSpacing - oldSpacing;
+		for (lane in lanes) {
+			lane.startX += i * diff * scale.x;
+			lane.x += i * diff * scale.x;
+			i ++;
+		}
+	}
+	public function resetLanePositions():Void {
+		for (i => lane in lanes) {
+			lane.setPosition(x + i * laneSpacing * scale.x, y);
+			lane.startX = lane.x;
+			lane.startY = lane.y;
+		}
 	}
 	public function fadeIn() {
 		var i:Int = 0;
-		var targetY:Float = y;
 		for (lane in lanes) {
 			lane.alpha = 0;
-			var targetX:Float = x + i * laneSpacing;
 			var rad:Float = lane.direction / 180 * Math.PI;
 			
 			FlxTween.cancelTweensOf(lane);
-			lane.x = targetX - Math.cos(rad) * 10;
-			lane.y = targetY - Math.sin(rad) * 10;
-			FlxTween.tween(lane, {x: targetX, y: targetY, alpha: alpha}, 1, {ease: FlxEase.circOut, startDelay: .5 + i * .2});
+			lane.x = lane.startX - Math.cos(rad) * 10;
+			lane.y = lane.startY - Math.sin(rad) * 10;
+			FlxTween.tween(lane, {x: lane.startX, y: lane.startY, alpha: alpha}, 1, {ease: FlxEase.circOut, startDelay: .5 + i * .2});
 			
 			i ++;
 		}
 		visible = true;
 	}
+	public function drawSelf() { super.draw(); }
 	public override function draw() {
-		super.draw();
+		drawSelf();
 		for (lane in lanes) { // draw on top
 			if (!lane.selfDraw)
-				lane.drawTop();
+				@:privateAccess lane.drawThing(true);
 		}
 	}
 	public function forEachLane(func:Lane -> Void) {
 		for (lane in lanes)
 			func(lane);
 	}
-	public function forEachNote(func:Note -> Void, includeQueued:Bool = false) {
+	public function forEachNote(func:ChartNote -> Void, includeQueued:Bool = false) {
 		for (lane in lanes)
 			lane.forEachNote(func, includeQueued);
 	}
+	public function forEachActiveNote(func:Note -> Void) {
+		for (lane in lanes)
+			lane.forEachActiveNote(func);
+	}
 	public function getAllNotes() {
-		var notes:Array<Note> = [];
+		var notes:Array<ChartNote> = [];
 		for (lane in lanes) {
 			for (note in lane.getAllNotes())
 				notes.push(note);
@@ -166,26 +214,24 @@ class Strumline extends FunkinSpriteGroup {
 		var wRatio:Float = (targetWidth > 0 ? targetWidth / width : 1);
 		var hRatio:Float = (targetHeight > 0 ? targetHeight / height : 1);
 		var ratio:Float = Math.min(wRatio, hRatio);
-		if (ratio != 1) {
-			switch (center) {
-				case X:
-					x += (width - width * ratio) * .5;
-				case Y:
-					y += (height - height * ratio) * .5;
-				case XY:
-					x += (width - width * ratio) * .5;
-					y += (height - height * ratio) * .5;
-				default:
-					//shrug
-			}
-			for (lane in lanes) {
-				lane.receptor.scale.x *= ratio;
-				lane.receptor.scale.y *= ratio;
-				lane.receptor.updateHitbox();
-				lane.receptor.spriteOffset.set(0, 0);
-			}
-			laneSpacing *= ratio;
+		if (ratio != 1)
+			scaleTo(scale.x * ratio);
+	}
+	public function scaleTo(x:Float, ?y:Float, center:FlxAxes = NONE) {
+		y ??= x;
+		switch (center) {
+			case X:
+				x += (width - width * x) * .5;
+			case Y:
+				y += (height - height * x) * .5;
+			case XY:
+				x += (width - width * y) * .5;
+				y += (height - height * y) * .5;
+			default:
 		}
+		
+		recalculateLaneSpacing(laneSpacing / scale.x * x, laneSpacing);
+		scale.set(x, y);
 	}
 	public function center(axes:FlxAxes = XY) { //do Not inline that.
 		switch (axes) {
@@ -210,12 +256,21 @@ class Strumline extends FunkinSpriteGroup {
 		}
 	}
 	
-	public function queueNote(note:Note, ?laneIndex:Int) {
-		laneIndex ??= note.noteData;
-		laneIndex = FlxMath.wrap(laneIndex, 0, lanes.length - 1);
-		var lane:Lane = getLane(laneIndex);
-		if (lane != null)
-			lane.queueNote(note);
+	public function getNoteLane(note:ChartNote):Lane {
+		return getLane(note.laneIndex % laneCount);
+	}
+	public inline function queueNote(note:ChartNote, ?laneIndex:Int, sort:Bool = false, checkExists:Bool = true):ChartNote {
+		var lane:Lane = (laneIndex == null ? getNoteLane(note) : getLane(laneIndex));
+		if (lane != null) {
+			lane.queueNote(note, sort, checkExists);
+			return note;
+		}
+		
+		return null;
+	}
+	public function dequeueNote(note:ChartNote) {
+		for (lane in lanes)
+			lane.dequeueNote(note);
 	}
 	public function clearAllNotes() {
 		for (lane in lanes)
@@ -226,7 +281,7 @@ class Strumline extends FunkinSpriteGroup {
 			lane.resetLane();
 	}
 	
-	public function getLane(noteData:Int) return lanes.members[noteData];
+	public inline function getLane(index:Int):Lane { return lanes.members[index]; }
 	
 	public function fireInput(key:flixel.input.keyboard.FlxKey, pressed:Bool) {
 		var fired:Bool = false;
@@ -235,5 +290,24 @@ class Strumline extends FunkinSpriteGroup {
 				fired = true;
 		}
 		return fired;
+	}
+	
+	override function set_x(value:Float):Float {
+		if (exists && x != value) {
+			var diff:Float = (value - x);
+			transformChildren(xTransform, diff);
+			for (lane in lanes)
+				lane.startX += diff;
+		}
+		return x = value;
+	}
+	override function set_y(value:Float):Float {
+		if (exists && y != value) {
+			var diff:Float = (value - y);
+			transformChildren(yTransform, diff);
+			for (lane in lanes)
+				lane.startY += diff;
+		}
+		return y = value;
 	}
 }

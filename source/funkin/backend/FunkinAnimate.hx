@@ -1,9 +1,11 @@
 package funkin.backend;
 
 import openfl.Assets;
+import openfl.geom.Matrix;
 import openfl.display.BlendMode;
 import openfl.geom.ColorTransform;
 import flixel.math.FlxMatrix;
+import flixel.util.FlxDestroyUtil;
 import flixel.graphics.frames.FlxFrame;
 import flxanimate.zip.Zip;
 import flxanimate.animate.*;
@@ -16,11 +18,17 @@ import flixel.graphics.frames.FlxFramesCollection;
 
 using StringTools;
 
-class FunkinAnimate extends FlxAnimate implements funkin.backend.FunkinSprite.IZoomFactor { // this is kind of useless, but pop off
+class FunkinAnimate extends FlxAnimate implements funkin.backend.FunkinSprite.IFunkinSpriteVars { // this is kind of useless, but pop off
 	public var funkAnim:FunkinAnimateAnim;
 	
 	public var zoomFactor(default, set):Float = 1;
 	public var initialZoom(default, set):Float = 1;
+	
+	public var transformMatrix(default, null):Matrix = new Matrix();
+	public var skew(default, null):FlxPoint = FlxPoint.get();
+	public var matrixExposed:Bool = false;
+	
+	var _skewMatrix:Matrix = new Matrix();
 	
 	public function new(x:Float = 0, y:Float = 0, ?path:String, ?settings:flxanimate.Settings) {
 		super(x, y);
@@ -154,6 +162,10 @@ class FunkinAnimate extends FlxAnimate implements funkin.backend.FunkinSprite.IZ
 		} catch (e:Dynamic) {
 			destroyAnim();
 		}
+		
+		skew = FlxDestroyUtil.put(skew);
+		transformMatrix = null;
+		_skewMatrix = null;
 	}
 	
 	override function drawLimb(limb:FlxFrame, _matrix:FlxMatrix, ?colorTransform:ColorTransform = null, filterin:Bool = false, ?blendMode:BlendMode, ?scrollFactor:FlxPoint = null, cameras:Array<FlxCamera> = null) {
@@ -178,14 +190,21 @@ class FunkinAnimate extends FlxAnimate implements funkin.backend.FunkinSprite.IZ
 					matrix.translate(-origin.x, -origin.y);
 
 					matrix.scale(scale.x, scale.y);
-
-					if (bakedRotationAngle <= 0) {
-						updateTrig();
-
-						if (angle != 0)
-							matrix.rotateWithTrig(_cosAngle, _sinAngle);
+					
+					if (matrixExposed) {
+						matrix.concat(transformMatrix);
+					} else {
+						if (bakedRotationAngle <= 0) {
+							updateTrig();
+							
+							if (angle != 0)
+								matrix.rotateWithTrig(_cosAngle, _sinAngle);
+						}
+						
+						updateSkewMatrix();
+						matrix.concat(_skewMatrix);
 					}
-
+					
 					_point.addPoint(origin);
 				} else {
 					matrix.scale(.9, .9);
@@ -230,6 +249,15 @@ class FunkinAnimate extends FlxAnimate implements funkin.backend.FunkinSprite.IZ
 		#if FLX_DEBUG
 		FlxBasic.visibleCount++;
 		#end
+	}
+	
+	function updateSkewMatrix():Void {
+		_skewMatrix.identity();
+		
+		if (skew.x != 0 || skew.y != 0) {
+			_skewMatrix.b = Math.tan(skew.y / 180 * Math.PI);
+			_skewMatrix.c = Math.tan(skew.x / 180 * Math.PI);
+		}
 	}
 	
 	function set_zoomFactor(value:Float):Float {
@@ -283,6 +311,9 @@ class FunkinAnimateAnim extends FlxAnim {
 	}
 	public function exists(name:String):Bool {
 		return (animsMap.exists(name) || (symbolDictionary != null && symbolDictionary.exists(name)));
+	}
+	public function remove(name:String):Void {
+		animsMap.remove(name);
 	}
 	public function rename(oldName:String, newName:String):Void {
 		var anim:SymbolStuff = animsMap.get(oldName);

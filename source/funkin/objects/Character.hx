@@ -2,20 +2,24 @@ package funkin.objects;
 
 import funkin.objects.HealthIcon;
 import funkin.backend.scripting.HScript;
-import funkin.backend.scripting.HScripts;
+import funkin.backend.scripting.HScriptGroup;
 
 using StringTools;
 
 class Character extends FunkinSprite implements ICharacter {
 	public var bopFrequency:Int = 2;
 	public var bop(default, set):Bool = true;
+	public var held(default, set):Bool = false;
 	public var animReset(default, set):Float = 0;
 	public var singForSteps(default, set):Float = 4;
 	public var specialAnim(default, set):Bool = false;
+	public var idleAfterAnim(default, set):Bool = true; // like held but for special anim
 	public var conductorInUse(default, set):Conductor = FunkinState.getCurrentConductor();
 	public var scaleMultiplier:Float = 1;
 	public var sway:Bool = false;
 	
+	public var hasDropAnimations(get, never):Bool;
+	public var hasComboAnimations(get, never):Bool;
 	public var comboNoteCounts(default, null):Array<Int>;
 	public var dropNoteCounts(default, null):Array<Int>;
 	
@@ -23,6 +27,7 @@ class Character extends FunkinSprite implements ICharacter {
 	var binSide:CharacterSide;
 	var dataSide:CharacterSide;
 	var characterGroup:CharacterGroup;
+	public var flipSingAnimations:Bool = false;
 	public var side(default, set):CharacterSide;
 	public var classicFlip(default, set):Bool = false;
 	
@@ -48,13 +53,17 @@ class Character extends FunkinSprite implements ICharacter {
 	public var volume(default, set):Float = 1;
 	public var vocals:FunkinSound;
 	
-	public var hscripts:HScripts;
+	public var hscripts:HScriptGroup;
 	var safeH:Null<String> = null;
 	
 	public function new(x:Float, y:Float, ?character:String, side:CharacterSide = IDGAF, ?fallback:String, runScripts:Bool = true) {
 		super(x, y);
 		
-		hscripts = new HScripts([this], ['this' => this, 'super' => this]);
+		anim.onFrame.add((number:Int, anim:String) -> characterGroup?.onAnimationFrame.dispatch(number, anim));
+		anim.onComplete.add((anim:String) -> characterGroup?.onAnimationComplete.dispatch(anim));
+		anim.onLoop.add((anim:String) -> characterGroup?.onAnimationLoop.dispatch(anim));
+		
+		hscripts = new HScriptGroup([this], ['this' => this, 'super' => this]);
 		
 		rotateOffsets = true;
 		vocals = new FunkinSound();
@@ -80,7 +89,7 @@ class Character extends FunkinSprite implements ICharacter {
 	public function startScripts() {
 		var scriptPath:String = Paths.getPath('scripts/characters/$loadedCharacter.hx');
 		if (scriptPath != null)
-			hscripts.loadFromFile(scriptPath);
+			hscripts.loadFromFile(scriptPath, '($loadedCharacter) Character Script');
 	}
 	
 	public static function getPathSuffix(basePath:String = '', baseSuffix:String = '', chara:String = ''):String {
@@ -125,15 +134,11 @@ class Character extends FunkinSprite implements ICharacter {
 	}
 	
 	function set_classicFlip(isIt:Bool) {
-		if (classicFlip == isIt)
-			return isIt;
 		classicFlip = isIt;
 		refreshSide();
 		return isIt;
 	}
 	function set_side(newSide:CharacterSide) {
-		if (side == newSide)
-			return newSide;
 		side = newSide;
 		refreshSide();
 		return newSide;
@@ -162,9 +167,10 @@ class Character extends FunkinSprite implements ICharacter {
 			var offset:FlxPoint = offsets[currentAnimation];
 			setAnimOffset(offset.x, offset.y);
 		}
+		flipSingAnimations = (!classicFlip && !sideMatches());
 	}
 	function flipAnim(anim:String):String {
-		if (classicFlip || sideMatches()) return anim;
+		if (!flipSingAnimations) return anim;
 		
 		if (anim.startsWith('singLEFT')) {
 			return anim.replace('singLEFT', 'singRIGHT');
@@ -214,18 +220,19 @@ class Character extends FunkinSprite implements ICharacter {
 		super.update(elapsed);
 		if (animReset > 0) {
 			animReset -= elapsed;
-			if (animReset <= 0 && !specialAnim) {
+			if (animReset <= 0) {
 				animReset = 0;
-				dance();
+				if (!specialAnim && idleAfterAnim && !held)
+					idle();
 			}
 		}
 		if (specialAnim) {
 			if (isAnimationFinished() && animReset <= 0) {
-				specialAnim = false;
 				animReset = 0;
-				if (singForSteps <= 0) {
-					dance();
-				}
+				specialAnim = false;
+				
+				if (idleAfterAnim && singForSteps <= 0)
+					idle();
 			}
 		}
 	}
@@ -237,16 +244,64 @@ class Character extends FunkinSprite implements ICharacter {
 		
 		super.draw();
 	}
+	public override function kill() {
+		hscripts.kill();
+		super.kill();
+	}
+	public override function revive() {
+		hscripts.revive();
+		super.revive();
+	}
 	public override function destroy() {
-		hscripts.destroyAll();
+		hscripts.destroy();
 		super.destroy();
 	}
 	
-	public function timeAnimSteps(?steps:Float) {
-		animReset = (steps ?? singForSteps) * conductorInUse.stepCrochet * .001;
+	public function timeAnimSteps(?steps:Float, max:Bool = true) {
+		// Sys.println('timed animation $currentAnimation steps $steps');
+		var time:Float = (steps ?? singForSteps) * conductorInUse.stepCrochet * .001;
+		if (max) {
+			animReset = Math.max(animReset, time);
+		} else {
+			animReset = time;
+		}
 	}
 	public function animationIsLooping(anim:String):Bool {
 		return (currentAnimation == '$anim-loop' || currentAnimation == '$anim-hold');
+	}
+	public function playAnim(anim:String, context:PlayAnimContext = SOFT, forced:Bool = false, reversed:Bool = false, frame:Int = 0, ?time:Float) {
+		if (safeH != 'playAnim' && functionOverridden('playAnim')) {
+			safeCall('playAnim', [anim, context, forced, reversed, frame, time]);
+			return;
+		}
+		
+		switch (context) {
+			case SOFT:
+				playAnimationSoft(anim, forced, reversed, frame);
+			case SING:
+				playAnimationSteps(anim, forced, time, reversed, frame);
+			case SPECIAL:
+				playAnimationSpecial(anim, forced, time, reversed, frame);
+			default:
+				playAnimation(anim, forced, reversed, frame);
+		}
+	}
+	public function playAnimationSpecial(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0) {
+		if (safeH != 'playAnimationSpecial' && functionOverridden('playAnimationSpecial')) {
+			safeCall('playAnimationSpecial', [anim, forced, steps, reversed, frame]);
+			return;
+		}
+		
+		if (animationExists(anim)) {
+			var sameAnim:Bool = (currentAnimation == anim);
+			var animWasDone:Bool = isAnimationFinished();
+			playAnimation(anim, forced, reversed, frame);
+			
+			if (forced || !sameAnim || animWasDone) {
+				timeAnimSteps(steps);
+				specialAnim = true;
+			}
+		}
 	}
 	public function playAnimationSoft(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0) {
 		if (safeH != 'playAnimationSoft' && functionOverridden('playAnimationSoft')) {
@@ -263,9 +318,11 @@ class Character extends FunkinSprite implements ICharacter {
 			return;
 		}
 		
-		animReset = 0;
-		specialAnim = false;
-		super.playAnimation(flipAnim(anim) + animSuffix, forced, reversed, frame);
+		if (animationExists(anim)) {
+			animReset = 0;
+			specialAnim = false;
+			super.playAnimation(flipAnim(anim) + animSuffix, forced, reversed, frame);
+		}
 	}
 	public function playAnimationSteps(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0) {
 		if (safeH != 'playAnimationSteps' && functionOverridden('playAnimationSteps')) {
@@ -274,10 +331,11 @@ class Character extends FunkinSprite implements ICharacter {
 		}
 		
 		if (!specialAnim && animationExists(anim)) {
+			var sameAnim:Bool = (currentAnimation == anim);
+			var animWasDone:Bool = isAnimationFinished();
 			playAnimation(anim, forced, reversed, frame);
 			
-			var sameAnim:Bool = (currentAnimation == anim);
-			if (forced || !sameAnim || isAnimationFinished())
+			if (forced || !sameAnim || animWasDone)
 				timeAnimSteps(steps ?? singForSteps);
 		}
 	}
@@ -285,16 +343,27 @@ class Character extends FunkinSprite implements ICharacter {
 		if (safeH != 'dance' && functionOverridden('dance'))
 			return cast safeCall('dance', [beat, forced], Bool, false);
 		
-		if (!forced && (animReset > 0 || bopFrequency <= 0 || !bop || specialAnim))
+		if (!forced && (animReset > 0 || bopFrequency <= 0 || !bop || specialAnim || held))
 			return false;
 		
-		if (sway) {
-			playAnimation((beat % 2 == 0 ? 'danceLeft' : 'danceRight') + idleSuffix);
-		} else if (beat % 2 == 0) {
-			playAnimation('idle$idleSuffix');
+		if (forced || beat % bopFrequency == 0) {
+			if (sway) {
+				var swayLeft:Bool = (beat % (bopFrequency * 2) == 0);
+				playAnimation((swayLeft ? 'danceLeft' : 'danceRight') + idleSuffix, forced);
+			} else {
+				playAnimation('idle$idleSuffix', forced);
+			}
 		}
 		
 		return true;
+	}
+	public function idle():Void {
+		if (!idleAfterAnim) return;
+		
+		specialAnim = false;
+		animReset = 0;
+		
+		dance();
 	}
 	public override function setAnimOffset(x:Float = 0, y:Float = 0):Void {
 		if (!classicFlip && !sideMatches()) {
@@ -310,22 +379,22 @@ class Character extends FunkinSprite implements ICharacter {
 		if (isAnimate) return flipAnim(animate.funkAnim.name);
 		else return flipAnim(animation.name);
 	}
-	override function _onAnimationComplete(?anim:String) {
-		onAnimationComplete.dispatch(currentAnimation ?? '');
-		if (characterGroup != null && this == characterGroup.current)
-			characterGroup.onAnimationComplete.dispatch(currentAnimation ?? '');
-	}
-	override function _onAnimationFrame(frame:Int) {
-		onAnimationFrame.dispatch(frame);
-		if (characterGroup != null && this == characterGroup.current)
-			characterGroup.onAnimationFrame.dispatch(frame);
+	function set_held(value:Bool):Bool {
+		if (held == value) return value;
+		
+		held = value;
+		if (!value && animReset <= 0 && !specialAnim)
+			idle();
+		
+		return value;
 	}
 	function set_bop(value:Bool):Bool { return bop = value; }
 	function set_animReset(value:Float):Float { return animReset = value; }
 	function set_specialAnim(value:Bool):Bool { return specialAnim = value; }
 	function set_idleSuffix(value:String):String { return idleSuffix = value; }
 	function set_animSuffix(value:String):String { return animSuffix = value; }
-	function set_singForSteps(value:Float):Float { return singForSteps = value; };
+	function set_idleAfterAnim(value:Bool):Bool { return idleAfterAnim = value; }
+	function set_singForSteps(value:Float):Float { return singForSteps = value; }
 	function set_conductorInUse(conductor:Conductor):Conductor { return conductorInUse = conductor; }
 	
 	function safeCall(func:String, ?args:Array<Dynamic>, ?expectedReturn:Dynamic, ?defaultVal:Dynamic):Dynamic {
@@ -340,8 +409,8 @@ class Character extends FunkinSprite implements ICharacter {
 		return res;
 	}
 	function functionOverridden(id:String):Bool {
-		for (script in hscripts.activeScripts) {
-			if (Reflect.isFunction(script.get(id)))
+		for (script in hscripts) {
+			if (Reflect.isFunction(script.getVar(id)))
 				return true;
 		}
 		return false;
@@ -467,7 +536,8 @@ class Character extends FunkinSprite implements ICharacter {
 		
 		scaleMultiplier = charData.scale;
 		smooth = !charData.no_antialiasing;
-		singForSteps = charData.sing_duration;
+		bopFrequency = (animationExists('danceLeft') && animationExists('danceRight') ? 1 : 2);
+		singForSteps = Math.max(charData.sing_duration, 1);
 		defaultFlipX = charData.flip_x ?? false;
 		scale.set(scaleMultiplier, scaleMultiplier);
 		cameraOffset.set(charData.camera_position[0], charData.camera_position[1]);
@@ -485,7 +555,10 @@ class Character extends FunkinSprite implements ICharacter {
 			setBaseSize();
 			dance();
 		}
+		
 		finishAnimation();
+		if (anim.looped)
+			playAnimation(currentAnimation, true);
 		
 		dropNoteCounts = findCountAnimations('drop');
 		comboNoteCounts = findCountAnimations('combo');
@@ -501,10 +574,8 @@ class Character extends FunkinSprite implements ICharacter {
 			return;
 		
 		var comboAnim:String = 'combo$combo';
-		if (animationExists(comboAnim, true)) {
-			playAnimationSteps(comboAnim, true);
-			specialAnim = true;
-		}
+		if (animationExists(comboAnim, true))
+			playAnimationSpecial(comboAnim, true);
 	}
 	public function playComboDropAnimation(combo:Int) {
 		if (safeH != 'playComboDropAnimation' && functionOverridden('playComboDropAnimation')) {
@@ -521,12 +592,12 @@ class Character extends FunkinSprite implements ICharacter {
 				dropAnim = 'drop$count';
 		}
 		
-		if (dropAnim != null) {
-			playAnimationSteps(dropAnim, true);
-			specialAnim = true;
-		}
+		if (dropAnim != null)
+			playAnimationSpecial(dropAnim, true);
 	}
 	
+	function get_hasComboAnimations():Bool { return (comboNoteCounts.length > 0); }
+	function get_hasDropAnimations():Bool { return (dropNoteCounts.length > 0); }
 	function findCountAnimations(prefix:String):Array<Int> {
 		var counts:Array<Int> = [];
 		
@@ -601,26 +672,38 @@ class Character extends FunkinSprite implements ICharacter {
 	}
 }
 interface ICharacter extends IBopper extends IFunkinSpriteAnim {
+	public var held(default, set):Bool;
 	public var volume(default, set):Float;
 	public var animReset(default, set):Float;
 	public var specialAnim(default, set):Bool;
 	public var animSuffix(default, set):String;
+	public var idleAfterAnim(default, set):Bool;
 	public var side(default, set):CharacterSide;
 	public var character(default, set):Null<String>;
 	public var conductorInUse(default, set):Conductor;
 	
-	public function timeAnimSteps(?steps:Float):Void;
 	public function animationIsLooping(anim:String):Bool;
+	public function timeAnimSteps(?steps:Float, max:Bool = true):Void;
 	public function playAnimationSoft(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0):Void;
 	public function playAnimationSteps(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0):Void;
+	public function playAnimationSpecial(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0):Void;
+	public function playAnim(anim:String, context:PlayAnimContext = SOFT, forced:Bool = false, reversed:Bool = false, frame:Int = 0, ?time:Float):Void;
 	public function playComboDropAnimation(combo:Int):Void;
 	public function playComboAnimation(combo:Int):Void;
+	public function idle():Void;
 }
 interface IBopper {
 	public var bop(default, set):Bool;
 	public var idleSuffix(default, set):String;
 	
 	public function dance(beat:Int = 0, forced:Bool = false):Bool;
+}
+
+enum abstract PlayAnimContext(String) to String {
+	var SOFT = 'soft';
+	var SING = 'sing';
+	var SPECIAL = 'special';
+	var DEFAULT = 'default';
 }
 
 enum abstract CharacterDataType(String) to String {

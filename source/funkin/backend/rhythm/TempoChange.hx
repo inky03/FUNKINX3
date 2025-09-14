@@ -24,6 +24,14 @@ class TempoChange {
 		return (bpm != null);
 	public function get_changeSign()
 		return (timeSignature != null);
+	
+	public function toString():String {
+		var str:String = '(beatTime: $beatTime';
+		if (changeBPM) str += ' | bpm: $bpm';
+		if (changeSign) str += ' | timeSignature: $timeSignature';
+		
+		return '$str)';
+	}
 }
 
 class TimeSignature { //should this be a class?
@@ -50,6 +58,9 @@ class TimeSignature { //should this be a class?
 		numerator = sign.numerator;
 		denominator = sign.denominator;
 		return this;
+	}
+	public function clone():TimeSignature {
+		return new TimeSignature(numerator, denominator);
 	}
 	public function toString():String {
 		return '$numerator/$denominator';

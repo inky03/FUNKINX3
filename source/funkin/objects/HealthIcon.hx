@@ -60,14 +60,17 @@ class HealthIcon extends FunkinSprite {
 	}
 	function set_state(newState:IconState):IconState {
 		if (state == newState) return newState;
+		
 		updateIconState(newState);
+		
 		return state = newState;
 	}
-	function set_iconData(newIcon:ModernCharacterHealthIconData) {
-		if (iconData == newIcon) return newIcon;
-		
+	function set_iconData(?newIcon:ModernCharacterHealthIconData):ModernCharacterHealthIconData {
 		newIcon ??= {id: 'face', flipX: false};
 		
+		if (iconData == newIcon) return newIcon;
+		
+		resetData();
 		name = newIcon.id;
 		loadGraphic(Paths.image('icons/$name') ?? Paths.image('icons/icon-$name') ?? Paths.image('icons/face'));
 		var wFrameRatio:Int = Math.round(width / height);
@@ -95,6 +98,7 @@ class HealthIcon extends FunkinSprite {
 			spriteOffset.set();
 		}
 		
+		state = NEUTRAL;
 		updateIconState(state);
 		
 		return iconData = newIcon;

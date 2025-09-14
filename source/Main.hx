@@ -9,7 +9,7 @@ class Main extends openfl.display.Sprite {
 	public static var instance:Main;
 	
 	public static var engineVersion(default, never):String = '0.0.8';
-	public static var apiVersion(default, never):String = '0.0.2';
+	public static var apiVersion(default, never):String = '0.0.3';
 	
 	public static var compiledTo(get, never):String;
 	public static var compiledWith(get, never):String;
@@ -18,13 +18,36 @@ class Main extends openfl.display.Sprite {
 	public static var windowTitle(default, null):String;
 	public static var showWatermark(default, set):Bool;
 	public static var debugDisplay:DebugDisplay;
-	public static var watermark:FlxText;
 	
 	public function new() {
 		super();
 		instance = this;
 		windowTitle = FlxG.stage.window.title;
 		
+		printStartup();
+		
+		Mods.refresh();
+		HScript.init();
+		DiscordRpc.prepare();
+		
+		var game:FunkinGame = new FunkinGame(0, 0, funkin.states.TitleState);
+		addChild(game);
+		addChild(debugDisplay = new DebugDisplay(10, 3));
+		
+		FlxG.maxElapsed = 1;
+		FlxG.drawFramerate = 144;
+		FlxG.updateFramerate = 144;
+		FlxG.signals.postUpdate.add(() -> DiscordRpc.update());
+		
+		showWatermark = true;
+		
+		DiscordRpc.presence.largeImageText = 'FUNKINX3 $engineVersion';
+		openfl.Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(openfl.events.UncaughtErrorEvent.UNCAUGHT_ERROR, CrashState.handleUncaughtError);
+		#if cpp
+		untyped __global__.__hxcpp_set_critical_error_handler((error) -> throw error);
+		#end
+	}
+	inline function printStartup():Void {
 		final timeText:String = 'GAME STARTED ON ${Date.now().toString()}';
 		Sys.println('');
 		#if I_AM_BORING_ZZZ
@@ -49,45 +72,15 @@ class Main extends openfl.display.Sprite {
 		}
 		#end
 		Sys.println('');
-		
-		Mods.refresh();
-		HScript.init();
-		DiscordRPC.prepare();
-		var game:FunkinGame = new FunkinGame(0, 0, funkin.states.TitleState);
-		addChild(game);
-		addChild(debugDisplay = new DebugDisplay(10, 3));
-
-		FlxG.maxElapsed = 1;
-		FlxG.drawFramerate = 144;
-		FlxG.updateFramerate = 144;
-		FlxG.fixedTimestep = false;
-		
-		watermark = new FlxText(10, FlxG.height + 5, FlxG.width, 'FUNKINX3 $engineVersion\nengine by emi3');
-		watermark.setFormat(Paths.font('vcr.ttf'), 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		watermark.alpha = .7;
-		watermark.updateHitbox();
-		watermark.borderSize = 1.25;
-		watermark.scrollFactor.set();
-		
-		FlxG.signals.postUpdate.add(() -> DiscordRPC.update());
-		
-		FlxG.plugins.drawOnTop = true;
-		FlxG.plugins.addPlugin(watermark);
-		showWatermark = true;
-		
-		DiscordRPC.presence.largeImageText = 'FUNKINX3 $engineVersion';
-		openfl.Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(openfl.events.UncaughtErrorEvent.UNCAUGHT_ERROR, CrashState.handleUncaughtError);
-		#if cpp
-		untyped __global__.__hxcpp_set_critical_error_handler((error) -> throw error);
-		#end
 	}
 	
-	public static function get_soundTray() {
-		return cast(FlxG.game.soundTray, funkin.backend.FunkinSoundTray);
+	public static function get_soundTray():funkin.backend.FunkinSoundTray {
+		return cast FlxG.game.soundTray;
 	}
 	public static function set_showWatermark(show:Bool) {
 		if (showWatermark == show) return showWatermark;
-		FlxTween.tween(watermark, {y: FlxG.height + (show ? -40 : 5)}, 1, {ease: FlxEase.quartOut});
+		
+		debugDisplay.showWatermark = show;
 		return showWatermark = show;
 	}
 	
@@ -121,9 +114,10 @@ class Pride {
 	public static var flagsMap:Map<String, Array<BackgroundColor>> = [
 		'transgender' => [brightCyan, brightMagenta, brightWhite, brightMagenta, brightCyan],
 		'lesbian' => [brightRed, brightYellow, brightWhite, brightMagenta, magenta],
-		'pride' => [brightRed, brightYellow, green, brightBlue, magenta],
-		'bisexual' => [brightRed, brightRed, magenta, blue, blue],
-		'pansexual' => [brightRed, brightRed, brightYellow, brightCyan, brightCyan]
+		'pride' => [brightRed, yellow, brightYellow, green, brightBlue, magenta],
+		'bisexual' => [brightRed, brightRed, magenta, magenta, blue, blue],
+		'pansexual' => [brightRed, brightRed, brightYellow, brightYellow, brightCyan, brightCyan],
+		'nonbinary' => [brightYellow, brightWhite, magenta, brightBlack]
 	];
 	public static var flags(get, never):Array<Array<BackgroundColor>>;
 	
@@ -133,7 +127,8 @@ class Pride {
 			array.push(item);
 		return array;
 	}
-	public static function getFlagSlices(array:Array<BackgroundColor>, width:Int = 15):Array<String> {
+	public static function getFlagSlices(array:Array<BackgroundColor>, ?width:Int):Array<String> {
+		width ??= array.length * 3;
 		var rectangle:String = StringTools.rpad('', ' ', width);
 		var slices:Array<String> = [];
 		for (color in array)

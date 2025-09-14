@@ -7,7 +7,7 @@ class Alphabet extends FlxSpriteGroup {
 	public var text(default, set):String;
 	public var padding(default, set):Float = -3;
 	public var letterCase(default, set):LetterCase = NONE;
-	public var characters:Array<AlphabetCharacter> = [];
+	public var characters:FunkinTypedSpriteGroup<AlphabetCharacter> = new FunkinTypedSpriteGroup();
 	
 	public var white(default, set):FlxColor = FlxColor.WHITE;
 	public var black(default, set):FlxColor = FlxColor.BLACK;
@@ -16,6 +16,7 @@ class Alphabet extends FlxSpriteGroup {
 		super(x, y);
 		this.type = type;
 		this.text = text;
+		this.add(characters);
 	}
 	
 	public function scaleTo(x:Float = 1, y:Float = 1):Alphabet {
@@ -32,6 +33,12 @@ class Alphabet extends FlxSpriteGroup {
 			blankWidth = 50 * scale.x;
 			xx += (character.blank ? blankWidth : character.width) + padding * scale.x;
 		}
+	}
+	
+	public override function revive():Void {
+		super.revive();
+		for (i => character in characters)
+			if (i >= text.length) character.kill();
 	}
 	
 	public function setColors(white:FlxColor = FlxColor.WHITE, black:FlxColor = FlxColor.BLACK):Alphabet {
@@ -91,29 +98,23 @@ class Alphabet extends FlxSpriteGroup {
 	function set_text(newText:String = ''):String {
 		if (newText == text) return newText;
 		
-		while (characters.length > newText.length) {
-			var character:AlphabetCharacter = characters.shift();
-			remove(character, true);
-			character.destroy(); //todo: pool letters?
-		}
+		var letters:Array<String> = newText.split('');
 		
-		var stringLetters:Array<String> = newText.split('');
-		var i:Int = 0;
-		for (letter in stringLetters) {
-			var character:AlphabetCharacter;
-			if (i >= characters.length) {
-				character = new AlphabetCharacter(0, 0, letter, type);
-				character.setColors(white, black);
-				character.scale.copyFrom(scale);
-				character.updateHitbox();
-				characters.push(character);
-				add(character);
-			} else {
-				character = characters[i];
-				character.character = letter;
+		while (characters.length < newText.length) // how economic
+			characters.add(new AlphabetCharacter(0, 0, ' ', type));
+		for (i => character in characters) {
+			if (i >= newText.length) {
+				character.kill();
+				continue;
 			}
+			
 			character.letterCase = letterCase;
-			i ++;
+			character.character = letters[i];
+			character.type = type;
+			character.setColors(white, black);
+			character.scale.copyFrom(scale);
+			character.updateHitbox();
+			character.revive();
 		}
 		
 		recalculateLetters();
@@ -306,17 +307,19 @@ class AlphabetCharacter extends FunkinSprite {
 	}
 	
 	function set_letterCase(newCase:LetterCase):LetterCase {
+		if (letterCase == newCase) return newCase;
+		
 		letterCase = newCase;
 		set_character(character);
 		return letterCase = newCase;
 	}
 	function set_type(newType:String):String {
-		if (type != newType) {
-			offsets.clear();
-			loadAtlas('fonts/$newType');
-			setupFont();
-			set_character(character);
-		}
+		if (type == newType) return newType;
+		
+		offsets.clear();
+		loadAtlas('fonts/$newType');
+		setupFont();
+		set_character(character);
 		return type = newType;
 	}
 	function set_baseX(newX:Float):Float {

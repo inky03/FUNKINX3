@@ -9,28 +9,32 @@ using Lambda;
 typedef CharacterOrString = flixel.util.typeLimit.OneOfTwo<Character, String>;
 typedef CharacterOrGroup = flixel.util.typeLimit.OneOfTwo<Character, CharacterGroup>;
 
-class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements ICharacter { // TODO: implement interface so currently CharacterGroup type fields can be both group and character instead?
+class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements ICharacter {
+	public var onAnimationFrame:FlxTypedSignal<Int -> String -> Void> = new FlxTypedSignal();
 	public var onAnimationComplete:FlxTypedSignal<String -> Void> = new FlxTypedSignal();
-	public var onAnimationFrame:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
+	public var onAnimationLoop:FlxTypedSignal<String -> Void> = new FlxTypedSignal();
+	public var anim(get, never):FunkinSpriteAnimHandler;
 	
 	public var bop(default, set):Bool = true;
+	public var held(default, set):Bool = false;
 	public var side(default, set):CharacterSide;
 	public var animReset(default, set):Float = 0;
+	public var cameraOffset(get, never):FlxPoint;
 	public var idleSuffix(default, set):String = '';
 	public var animSuffix(default, set):String = '';
 	public var specialAnim(default, set):Bool = false;
 	public var conductorInUse(default, set):Conductor;
+	public var idleAfterAnim(default, set):Bool = true;
 	public var stageCameraOffset(default, null):FlxCallbackPoint;
 	public var onCharacterChanged:FlxTypedSignal<String -> Character -> Void> = new FlxTypedSignal();
-	@:isVar public var cameraOffset(get, never):FlxPoint;
 	
 	public var volume(default, set):Float = 1;
 	public var character(default, set):String;
 	public var current(default, set):Character = null;
 	
-	@:isVar public var healthIcon(get, never):String;
-	@:isVar public var healthIconData(get, never):ModernCharacterHealthIconData;
-	@:isVar public var currentAnimation(get, never):String;
+	public var healthIcon(get, never):String;
+	public var healthIconData(get, never):ModernCharacterHealthIconData;
+	public var currentAnimation(get, never):String;
 	
 	public var fallbackCharacter:Null<String>;
 	var fallbackChara:Null<String>;
@@ -80,6 +84,9 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 		}
 		return side = newSide;
 	}
+	function get_anim():FunkinSpriteAnimHandler {
+		return current?.anim;
+	}
 	function get_healthIcon():String {
 		return current?.healthIcon;
 	}
@@ -115,7 +122,21 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 			if (chara == null) continue;
 			chara.bop = value;
 		}
-		return specialAnim = value;
+		return bop = value;
+	}
+	function set_held(value:Bool):Bool {
+		for (chara in members) {
+			if (chara == null) continue;
+			chara.held = value;
+		}
+		return held = value;
+	}
+	function set_idleAfterAnim(value:Bool):Bool {
+		for (chara in members) {
+			if (chara == null) continue;
+			chara.idleAfterAnim = value;
+		}
+		return idleAfterAnim = value;
 	}
 	function set_animReset(value:Float):Float {
 		if (current != null)
@@ -162,6 +183,7 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 	function get_currentAnimation():String {
 		return (current?.currentAnimation);
 	}
+	
 	override function set_zIndex(newZ:Int):Int {
 		for (chara in members) {
 			if (chara == null) continue;
@@ -223,12 +245,13 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 		newChara.y += newChara.height * -1 + newChara.originOffset.y;
 		newChara.stageCameraOffset.copyFrom(off);
 		newChara.conductorInUse = conductorInUse;
+		newChara.alpha = invisible;
 		newChara.bop = bop;
 		off.put();
+		add(newChara);
 		newChara.startScripts();
 		
-		newChara.alpha = invisible;
-		return add(newChara);
+		return newChara;
 	}
 	public function unloadCharacter(?chara:CharacterOrString) {
 		var toDestroy:Character;
@@ -262,77 +285,62 @@ class CharacterGroup extends FunkinTypedSpriteGroup<Character> implements IChara
 		return group.remove(chara, splice);
 	}
 	
-	public function timeAnimSteps(?steps:Float):Void {
-		for (chara in members) {
-			if (chara == null) continue;
-			chara.timeAnimSteps(steps);
-		}
-	}
-	public function setOffset(x:Float = 0, y:Float = 0):Void {
-		if (current != null)
-			current.setOffset(x, y);
-	}
-	public function finishAnimation():Void {
-		if (current != null)
-			current.finishAnimation();
-	}
-	public function isAnimationFinished():Bool {
-		if (current != null)
-			return current.isAnimationFinished();
-		return false;
-	}
-	public function animationExists(anim:String, includeUnloaded:Bool = true):Bool {
-		if (current != null)
-			return current.animationExists(anim, includeUnloaded);
-		return false;
-	}
-	public function animationIsLooping(anim:String):Bool {
-		if (current != null)
-			return current.animationIsLooping(anim);
-		return false;
+	public function finishAnimation():Void { current?.finishAnimation(); }
+	public function isAnimationFinished():Bool { return current?.isAnimationFinished() ?? false; }
+	public function animationExists(anim:String, preload:Bool = true):Bool { return current?.animationExists(anim, preload) ?? false; }
+	public function animationIsLooping(anim:String):Bool { return current?.animationIsLooping(anim) ?? false; }
+	public function setOffset(x:Float = 0, y:Float = 0):Void { current?.setOffset(x, y); }
+	
+	public function timeAnimSteps(?steps:Float, max:Bool = true):Void {
+		for (chara in members)
+			chara?.timeAnimSteps(steps, max);
 	}
 	public function playAnimationSoft(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0):Void {
-		for (chara in members) {
-			if (chara == null) continue;
-			chara.playAnimationSoft(anim, forced, reversed, frame);
-		}
+		for (chara in members)
+			chara?.playAnimationSoft(anim, forced, reversed, frame);
+	}
+	public function playAnim(anim:String, context:PlayAnimContext = SOFT, forced:Bool = false, reversed:Bool = false, frame:Int = 0, ?time:Float):Void {
+		for (chara in members)
+			chara?.playAnim(anim, context, forced, reversed, frame, time);
 	}
 	public function playAnimation(anim:String, forced:Bool = false, reversed:Bool = false, frame:Int = 0):Void {
-		for (chara in members) {
-			if (chara == null) continue;
-			chara.playAnimation(anim, forced, reversed, frame);
-		}
+		for (chara in members)
+			chara?.playAnimation(anim, forced, reversed, frame);
 	}
 	public function playAnimationSteps(anim:String, forced:Bool = false, ?steps:Float, reversed:Bool = false, frame:Int = 0):Void {
-		for (chara in members) {
-			if (chara == null) continue;
-			chara.playAnimationSteps(anim, forced, steps, reversed, frame);
-		}
+		for (chara in members)
+			chara?.playAnimationSteps(anim, forced, steps, reversed, frame);
+	}
+	public function playAnimationSpecial(anim:String, forced:Bool = false, ?time:Float, reversed:Bool = false, frame:Int = 0):Void {
+		for (chara in members)
+			chara?.playAnimationSpecial(anim, forced, time, reversed, frame);
 	}
 	public function playComboAnimation(combo:Int) {
-		for (chara in members) {
-			if (chara == null) continue;
-			chara.playComboAnimation(combo);
-		}
+		for (chara in members)
+			chara?.playComboAnimation(combo);
 	}
 	public function playComboDropAnimation(combo:Int) {
-		for (chara in members) {
-			if (chara == null) continue;
-			chara.playComboDropAnimation(combo);
-		}
+		for (chara in members)
+			chara?.playComboDropAnimation(combo);
 	}
 	public function preloadAnimAsset(anim:String) { // preloads animation with a different spritesheet path
-		for (chara in members) {
-			if (chara == null) continue;
-			chara.preloadAnimAsset(anim);
-		}
+		for (chara in members)
+			chara?.preloadAnimAsset(anim);
 	}
 	public function dance(beat:Int = 0, forced:Bool = false):Bool {
+		var danced:Bool = false;
 		for (chara in members) {
-			if (chara == null) continue;
-			chara.dance(beat, forced);
+			if (chara == current) {
+				danced = chara?.dance(beat, forced) ?? false;
+			} else {
+				chara?.dance(beat, forced);
+			}
 		}
-		return true;
+		return danced;
+	}
+	public function idle():Void {
+		for (chara in members)
+			chara?.idle();
 	}
 	
 	public function flip():CharacterGroup {

@@ -13,6 +13,7 @@ class Conductor {
 	public var stepCrochet(get, never):Float;
 	public var timeSignature(get, never):TimeSignature;
 	@:isVar public var songPosition(get, set):Float = 0;
+	@:isVar public var tempoChanges(get, set):Array<TempoChange>;
 	
 	@:isVar public var step(get, set):Float;
 	@:isVar public var beat(get, set):Float;
@@ -23,11 +24,18 @@ class Conductor {
 	public var barHit:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
 	public var beatHit:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
 	public var stepHit:FlxTypedSignal<Int -> Void> = new FlxTypedSignal();
+	public var advance:FlxTypedSignal<Float -> Void> = new FlxTypedSignal();
 	
 	public var metronome:Metronome;
 	public var syncTracker:FlxSound;
+	public var audioOffset:Float = 0;
 	public var maxDisparity:Float = 33.34;
 	public static var global(default, never):Conductor = new Conductor();
+	
+	var prevBar:Int;
+	var prevBeat:Int;
+	var prevStep:Int;
+	var prevPosition:Float;
 	
 	public function new(?metronome:Metronome) {
 		this.metronome = metronome ?? new Metronome();
@@ -35,25 +43,35 @@ class Conductor {
 	public function update(elapsedMS:Float) {
 		if (paused) return;
 		
-		var prevStep:Int = Math.floor(metronome.step);
-		var prevBeat:Int = Math.floor(metronome.beat);
-		var prevBar:Int = Math.floor(metronome.bar);
+		setPosition(songPosition + Math.min(elapsedMS, 250) * timeScale);
+	}
+	
+	public inline function setPosition(position:Float):Void {
+		prevPosition = metronome.ms;
+		prevStep = Math.floor(metronome.step);
+		prevBeat = Math.floor(metronome.beat);
+		prevBar = Math.floor(metronome.bar);
 		
-		songPosition += Math.min(elapsedMS, 250) * timeScale;
-		if (syncTracker != null) {
-			timeScale = syncTracker.pitch;
-			if (syncTracker.playing && Math.abs(songPosition - syncTracker.time) > maxDisparity * timeScale)
-				songPosition = syncTracker.time;
-		}
+		songPosition = position;
+		sync();
 		
 		if (dispatchEvents) {
 			var curBar:Int = Math.floor(metronome.bar);
 			var curBeat:Int = Math.floor(metronome.beat);
 			var curStep:Int = Math.floor(metronome.step);
 			
-			if (prevBar != curBar) barHit.dispatch(curBar);
-			if (prevBeat != curBeat) beatHit.dispatch(curBeat);
+			if (prevPosition != metronome.ms) advance.dispatch(metronome.ms);
 			if (prevStep != curStep) stepHit.dispatch(curStep);
+			if (prevBeat != curBeat) beatHit.dispatch(curBeat);
+			if (prevBar != curBar) barHit.dispatch(curBar);
+		}
+	}
+	public inline function sync():Void {
+		if (syncTracker != null) {
+			timeScale = syncTracker.pitch;
+			var offsetTime:Float = syncTracker.time + audioOffset;
+			if (syncTracker.playing && Math.abs(metronome.ms - offsetTime) > maxDisparity * timeScale)
+				songPosition = offsetTime;
 		}
 	}
 	
@@ -63,6 +81,8 @@ class Conductor {
 	public function get_crochet():Float { return metronome.getCrochet(metronome.bpm, metronome.timeSignature.denominator); }
 	public function get_stepCrochet():Float { return (crochet * .25); }
 	
+	public function get_tempoChanges():Array<TempoChange> { return metronome.tempoChanges; }
+	public function set_tempoChanges(newArray:Array<TempoChange>):Array<TempoChange> { return metronome.tempoChanges = newArray; }
 	public function get_songPosition():Float { return metronome.ms; }
 	public function set_songPosition(newMS:Float):Float { return metronome.setMS(newMS); }
 	public function get_timeSignature():TimeSignature { return metronome.timeSignature; }
@@ -77,7 +97,14 @@ class Conductor {
 	public function set_bar(newBar:Float):Float { return metronome.setBar(newBar); }
 	// public function set_ms(newMS:Float):Float { return metronome.setMS(newMS); }
 	
-	public function resetToDefault() {
+	public function resetToDefault():Void {
 		metronome = new Metronome();
+	}
+	
+	public function copyTempoChanges(tempoChanges:Array<TempoChange>):Array<TempoChange> {
+		return metronome.copyTempoChanges(tempoChanges);
+	}
+	public function sortTempoChanges():Void {
+		metronome.sortTempoChanges();
 	}
 }
